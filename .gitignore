@@ -1,3 +1,4 @@
-/overlay/target
-/overlay/overlay.iml
+/overlay/target/
+*/*.iml
 **/*.rs.bk
+/system/.terraform/
