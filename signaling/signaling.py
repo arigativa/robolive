@@ -47,6 +47,7 @@ class SignalingServer:
             loop.close()
 
     async def handle_message(self, ws, msg):
+        self.logger.info('handle_message: %s' % msg)
         if ws == self.robot:
             self.logger.info('Send message to client: %s' % msg)
             await self.client.send(json.dumps(msg))
@@ -78,12 +79,13 @@ class SignalingServer:
         """
         try:
             async for message in ws:
+                self.logger.info('SIGN RECV: %s %s' % (message, ws))
                 if message == 'ROBOT':
                     await self.connect_robot(ws)
                 elif message == 'CLIENT':
                     await self.connect_client(ws)
                 else:
-                    msg = json.loads(await ws.recv())
+                    msg = json.loads(message)
                     await self.handle_message(ws, msg)
         except websockets.exceptions.ConnectionClosed as e:
             self.logger.info("Connection closed")
