@@ -130,6 +130,7 @@ class WebRTCClient:
             promise.interrupt()
         elif 'ice' in msg:
             ice = msg['ice']
+            self.logger.info(ice)
             candidate = ice['candidate']
             sdpmlineindex = ice['sdpMLineIndex']
             self.webrtc.emit('add-ice-candidate', sdpmlineindex, candidate)
@@ -173,10 +174,8 @@ if __name__ == '__main__':
     Gst.init(None)
     if not check_plugins():
         sys.exit(1)
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--server', help='Signalling server to connect to, eg "wss://127.0.0.1:8443"')
-    args = parser.parse_args()
-    c = WebRTCClient(args.server, logging.getLogger(__name__))
+    server = os.getenv('SERVER')
+    c = WebRTCClient(server, logging.getLogger(__name__))
     asyncio.get_event_loop().run_until_complete(c.connect())
     res = asyncio.get_event_loop().run_until_complete(c.loop())
     sys.exit(res)

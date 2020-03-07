@@ -20,4 +20,4 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD ["/usr/bin/python3", "./robot.py" ,"--server=ws://signaling:5000"]
+CMD ["/usr/bin/python3", "./robot.py"]

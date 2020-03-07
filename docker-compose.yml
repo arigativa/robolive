@@ -2,6 +2,7 @@ version: '3'
 services:
   signaling:
     build: signaling
+    container_name: signaling
     ports:
       - "5000:5000"
     volumes:
@@ -13,12 +14,16 @@ services:
       retries: 3
   robot:
     build: robot
+    environment:
+      - SERVER=ws://signaling:5000
+    container_name: robot
     depends_on:
       - "signaling"
     volumes:
       - ./robot/:/code
   static_cnt:
     build: static
+    container_name: static_cnt
     ports:
       - "8080:80"
     volumes:

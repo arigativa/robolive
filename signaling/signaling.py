@@ -48,10 +48,10 @@ class SignalingServer:
 
     async def handle_message(self, ws, msg):
         if ws == self.robot:
-            self.logger.info('Send message to client')
+            self.logger.info('Send message to client: %s' % msg)
             await self.client.send(json.dumps(msg))
         else:
-            self.logger.info('Send message to robot')
+            self.logger.info('Send message to robot: %s' % msg)
             await self.robot.send(json.dumps(msg))
 
     async def connect_robot(self, ws):

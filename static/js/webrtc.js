@@ -297,6 +297,7 @@ function createCall(msg) {
             console.log("ICE Candidate was null, done");
             return;
 	}
+	console.log(event.candidate);
 	ws_conn.send(JSON.stringify({'ice': event.candidate}));
     };
 
