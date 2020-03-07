@@ -1,4 +1,5 @@
-FROM maxmcd/gstreamer:1.14-buster
+FROM maxmcd/gstreamer:1.16-buster
+# docker build -f Dockerfile.gstreamer-1.16-buster -t maxmcd/gstreamer:1.16-buster .
 RUN apt-get --allow-releaseinfo-change update
 WORKDIR /code
 RUN apt-get update

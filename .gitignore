@@ -2,3 +2,4 @@
 */*.iml
 **/*.rs.bk
 /system/.terraform/
+/.idea/
