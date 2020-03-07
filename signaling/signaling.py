@@ -7,7 +7,6 @@ in the process of a webrtc connection establishement
 
 import asyncio
 import http
-
 import websockets
 import logging
 import json
@@ -91,13 +90,13 @@ class SignalingServer:
         except Exception as e:
             self.logger.exception("Error while receiving messages")
 
-    async def health_check(self, path, request_headers):
+    @staticmethod
+    async def health_check(path, request_headers):
         if path == '/health':
             return http.HTTPStatus.OK, [], b"OK\n"
 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
-    logger = logging.getLogger(__name__)
-    server = SignalingServer(logger)
+    server = SignalingServer(logging.getLogger(__name__))
     server.serve(5000)

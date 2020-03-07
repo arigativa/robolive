@@ -13,8 +13,6 @@ services:
       retries: 3
   robot:
     build: robot
-    ports:
-      - "19302:19302/udp"
     depends_on:
       - "signaling"
     volumes:
@@ -23,6 +21,5 @@ services:
     build: static
     ports:
       - "8080:80"
-      - "3478:3478/udp"
     volumes:
       - ./static/:/usr/share/nginx/html

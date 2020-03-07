@@ -26,9 +26,8 @@ webrtcbin name=sendrecv bundle-policy=max-bundle stun-server=stun://stun.l.googl
 
 
 class WebRTCClient:
-    def __init__(self, id_, server, logger):
+    def __init__(self, server, logger):
         self.connected = False
-        self.id_ = id_
         self.conn = None
         self.pipe = None
         self.webrtc = None
@@ -171,15 +170,13 @@ def check_plugins():
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
-    logger = logging.getLogger(__name__)
     Gst.init(None)
     if not check_plugins():
         sys.exit(1)
     parser = argparse.ArgumentParser()
     parser.add_argument('--server', help='Signalling server to connect to, eg "wss://127.0.0.1:8443"')
     args = parser.parse_args()
-    our_id = random.randrange(10, 10000)
-    c = WebRTCClient(our_id, args.server, logger)
+    c = WebRTCClient(args.server, logging.getLogger(__name__))
     asyncio.get_event_loop().run_until_complete(c.connect())
     res = asyncio.get_event_loop().run_until_complete(c.loop())
     sys.exit(res)
