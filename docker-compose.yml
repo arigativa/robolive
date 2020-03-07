@@ -1,0 +1,28 @@
+version: '3'
+services:
+  signaling:
+    build: signaling
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./signaling/:/code
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+  robot:
+    build: robot
+    ports:
+      - "19302:19302/udp"
+    depends_on:
+      - "signaling"
+    volumes:
+      - ./robot/:/code
+  static_cnt:
+    build: static
+    ports:
+      - "8080:80"
+      - "3478:3478/udp"
+    volumes:
+      - ./static/:/usr/share/nginx/html

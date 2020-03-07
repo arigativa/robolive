@@ -1,0 +1,4 @@
+websockets
+gobject
+asyncio
+PyGObject
