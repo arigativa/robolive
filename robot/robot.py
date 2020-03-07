@@ -117,6 +117,7 @@ class WebRTCClient:
     async def handle_sdp(self, message):
         assert self.webrtc
         msg = json.loads(message)
+        self.logger.info('ROBOT RECV: %s' % msg)
         if 'sdp' in msg:
             sdp = msg['sdp']
             assert(sdp['type'] == 'answer')
