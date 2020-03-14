@@ -9,15 +9,10 @@
 
 # Build
 
-## Prepare gstreamer docker image
-```bash
-cd robot/
-docker build -f Dockerfile.gstreamer-1.16-buster -t maxmcd/gstreamer:1.16-buster .
-```
-
 ## Run (option 1). With docker-compose
+`--build` will make sure that all images are built from current Dockerfile's
 ```bash
-docker-compose up
+docker-compose up --build
 ```
 
 ## Run (option 2). Without docker-compose
