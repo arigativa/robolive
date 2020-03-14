@@ -3,8 +3,12 @@ locals {
   controlpanel_dir = "../../static"
 }
 
+locals {
+  controlpanel_endpoint = "control.rl.arigativa.ru"
+}
+
 resource "aws_s3_bucket" "controlpanel" {
-  bucket = "controlpanel-ui"
+  bucket = local.controlpanel_endpoint
   acl = "public-read"
   website {
     index_document = "index.html"
@@ -23,7 +27,7 @@ resource "aws_s3_bucket_object" "controlpanel-assets" {
 
 resource "aws_route53_record" "controlpanel" {
   zone_id = data.aws_route53_zone.default.zone_id
-  name    = "control.rl.arigativa.ru."
+  name    = "${local.controlpanel_endpoint}."
   type    = "CNAME"
   ttl     = "300"
   records = [aws_s3_bucket.controlpanel.website_endpoint]
