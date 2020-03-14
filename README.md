@@ -21,3 +21,12 @@ docker run -p 5000:5000 robolive_signalling
 docker run -e "SERVER=ws://$(ip -4 addr show docker0 | grep -Po 'inet \K[\d.]+'):5000" robolive_robot
 docker run -p 8080:80 robolive_static
 ```
+
+# Deploy
+
+## Deploy production
+```
+cd deployment/production
+terraform init
+terraform apply
+```

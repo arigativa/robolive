@@ -16,7 +16,7 @@ var default_peer_id;
 var rtc_configuration = {iceServers: [{urls: "stun:stun.services.mozilla.com"},
                                       {urls: "stun:stun.l.google.com:19302"}]};
 // The default constraints that will be attempted. Can be overriden by the user.
-var default_constraints = {video: true, audio: true};
+var default_constraints = {video: false, audio: true};
 
 var connect_attempts = 0;
 var peer_connection;
@@ -182,11 +182,6 @@ function getLocalStream() {
 }
 
 function websocketServerConnect() {
-    connect_attempts++;
-    if (connect_attempts > 3) {
-        setError("Too many connection attempts, aborting. Refresh page to try again");
-        return;
-    }
     // Clear errors in the status span
     var span = document.getElementById("status");
     span.classList.remove('error');
