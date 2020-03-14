@@ -2,6 +2,9 @@
 
 [Introductionary WebRTC article](https://habr.com/ru/company/yandex/blog/419951/)    
 [Hole punching explained](https://bford.info/pub/net/p2pnat/) 
+[GStreamer parts](https://habr.com/en/post/178813/)
+[GStreamer sources](https://habr.com/ru/post/179167/)
+[GStreamer sinks](https://habr.com/en/post/204014/)
 
 # Demos and samples
 [GStreamer WebRTC](https://github.com/centricular/gstwebrtc-demos)  
