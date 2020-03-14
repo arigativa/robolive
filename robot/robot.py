@@ -111,9 +111,7 @@ class WebRTCClient:
         self.webrtc = self.pipe.get_by_name('sendrecv')
         self.webrtc.connect('on-negotiation-needed', self.on_negotiation_needed)
         self.webrtc.connect('on-ice-candidate', self.send_ice_candidate_message)
-        # upgrade to 1.16 did help
-        # https://gstreamer.freedesktop.org/documentation/webrtc/index.html?gi-language=c#webrtcbin::on-data-channel
-        # self.webrtc.connect('on-data-channel', self.on_data_channel)
+        self.webrtc.connect('on-data-channel', self.on_data_channel)
         self.webrtc.connect('pad-added', self.on_incoming_stream)
         self.pipe.set_state(Gst.State.PLAYING)
 

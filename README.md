@@ -10,12 +10,15 @@
 [GStreamer WebRTC](https://github.com/centricular/gstwebrtc-demos)  
 [Awesome WebRTC](https://github.com/openrtc-io/awesome-webrtc)
 
-# Running with docker-compose
+# Build
+
+## Run (option 1). With docker-compose
+`--build` will make sure that all images are built from current Dockerfile's
 ```bash
-docker-compose up
+docker-compose up --build
 ```
 
-# Running without docker-compose
+## Run (option 2). Without docker-compose
 ```bash
 docker run -p 5000:5000 robolive_signalling
 docker run -e "SERVER=ws://$(ip -4 addr show docker0 | grep -Po 'inet \K[\d.]+'):5000" robolive_robot
