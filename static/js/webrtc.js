@@ -214,6 +214,14 @@ function websocketServerConnect() {
     ws_conn.addEventListener('close', onServerClose);
 }
 
+function sendMessage(dc, msg) {
+  let obj = {
+    "message": msg,
+    "timestamp": new Date()
+  }
+  dc.send(JSON.stringify(obj));
+}
+
 function onRemoteTrack(event) {
     if (getVideoElement().srcObject !== event.streams[0]) {
         console.log('Incoming stream');
@@ -267,12 +275,20 @@ function createCall(msg) {
     console.log('Creating RTCPeerConnection');
 
     peer_connection = new RTCPeerConnection(rtc_configuration);
-    send_channel = peer_connection.createDataChannel('label', null);
-    send_channel.onopen = handleDataChannelOpen;
-    send_channel.onmessage = handleDataChannelMessageReceived;
-    send_channel.onerror = handleDataChannelError;
-    send_channel.onclose = handleDataChannelClose;
-    peer_connection.ondatachannel = onDataChannel;
+    peer_connection.ondatachannel = function(ev) {
+      console.log('Data channel is created!');
+
+      ev.channel.onopen = function() {
+        console.log('Data channel is open and ready to be used.');
+        ev.channel.send("Hi from browser!")
+      };
+      ev.channel.onmessage = function (event) {
+        console.log("received: " + event.data);
+      };
+      ev.channel.onclose = function () {
+        console.log("datachannel close");
+      };
+    };
     peer_connection.ontrack = onRemoteTrack;
     /* Send our video/audio to the other peer */
     local_stream_promise = getLocalStream().then((stream) => {
@@ -286,14 +302,14 @@ function createCall(msg) {
     }
 
     peer_connection.onicecandidate = (event) => {
-	// We have a candidate, send it to the remote party with the
-	// same uuid
-	if (event.candidate == null) {
-            console.log("ICE Candidate was null, done");
-            return;
-	}
-	console.log(event.candidate);
-	ws_conn.send(JSON.stringify({'ice': event.candidate}));
+        // We have a candidate, send it to the remote party with the
+        // same uuid
+        if (event.candidate == null) {
+                console.log("ICE Candidate was null, done");
+                return;
+        }
+        console.log(event.candidate);
+        ws_conn.send(JSON.stringify({'ice': event.candidate}));
     };
 
     setStatus("Created peer connection for call, waiting for SDP");

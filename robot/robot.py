@@ -6,13 +6,16 @@ import sys
 
 import gi
 import websockets
-from gi.repository.Gst import Pad, Caps, CapsFeatures, Structure
 
+gi.require_version('GLib', '2.0')
 gi.require_version('Gst', '1.0')
-from gi.repository import Gst
-gi.require_version('GstWebRTC', '1.0')
-from gi.repository import GstWebRTC
+gi.require_version('GstApp', '1.0')
 gi.require_version('GstSdp', '1.0')
+gi.require_version('GstWebRTC', '1.0')
+
+from gi.repository.Gst import Pad, Caps, CapsFeatures, Structure
+from gi.repository import Gst
+from gi.repository import GstWebRTC
 from gi.repository import GstSdp
 
 PIPELINE_DESC = '''
@@ -113,14 +116,36 @@ class WebRTCClient:
         self.logger.info('Start negotiation')
         self.pipe = Gst.parse_launch(PIPELINE_DESC)
         self.webrtc = self.pipe.get_by_name('sendrecv')
+        print("BEFORE READY")
+        self.pipe.set_state(Gst.State.READY)
         self.webrtc.connect('on-negotiation-needed', self.on_negotiation_needed)
         self.webrtc.connect('on-ice-candidate', self.send_ice_candidate_message)
         self.webrtc.connect('on-data-channel', self.on_data_channel)
         self.webrtc.connect('pad-added', self.on_incoming_stream)
+        chan = self.webrtc.emit('create-data-channel', 'server-chan', None)
+        self.on_data_channel(self.pipe, chan)
+        print("BEFORE PLAYING")
         self.pipe.set_state(Gst.State.PLAYING)
 
-    def on_data_channel(self, *args, **kwargs):
-        self.logger.info('on_data_channel %s %s' % (args, kwargs))
+    def on_data_channel(self, webrtc, channel):
+        print('data_channel created')
+        channel.connect('on-error', self.on_data_channel_error)
+        channel.connect('on-open', self.on_data_channel_open)
+        channel.connect('on-close', self.on_data_channel_close)
+        channel.connect('on-message-string', self.on_data_channel_message)
+
+    def on_data_channel_error(self, channel):
+        print('data_channel error')
+
+    def on_data_channel_open(self, channel):
+        print('data_channel opened')
+
+    def on_data_channel_close(self, channel):
+        print('data_channel closed')
+
+    def on_data_channel_message(self, channel, msg_raw):
+        print('data_channel message:', msg_raw)
+        channel.emit('send-string', f'You said "{msg_raw}"')
 
     async def handle_sdp(self, message):
         assert self.webrtc
