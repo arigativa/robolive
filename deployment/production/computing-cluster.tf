@@ -6,7 +6,11 @@ resource "aws_key_pair" "hasselbach_public_key" {
 }
 
 
-//module "default-computing-cluster" {
-//  source = "../modules/computing-cluster"
-//  ssh_keypair_name = aws_key_pair.hasselbach_public_key.key_name
-//}
+module "default-computing-cluster" {
+  source = "../modules/computing-cluster"
+  ssh_keypair_name = aws_key_pair.hasselbach_public_key.key_name
+}
+
+output "the-only-one-node-ip" {
+  value = module.default-computing-cluster.instance_ip
+}
