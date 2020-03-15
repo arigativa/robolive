@@ -1,8 +1,18 @@
+//one repo per application =/
 
 resource "aws_ecr_repository" "default" {
   name = "default"
 }
 
-output "container_registry_url" {
-  value = aws_ecr_repository.default.repository_url
+resource "aws_ecr_repository" "ws-relay" {
+  name = "ws-relay"
+  image_tag_mutability = "IMMUTABLE"
+}
+
+output "container-registries" {
+  value = {
+    // default??
+    "default" = aws_ecr_repository.default.repository_url
+    "ws-relay" = aws_ecr_repository.ws-relay.repository_url
+  }
 }

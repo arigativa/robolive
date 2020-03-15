@@ -1,5 +1,6 @@
 package ru.arigativa.robolive.wsrelay.exchange
 
+import cats.Applicative
 import cats.effect.concurrent.Ref
 import cats.effect.{Concurrent, Resource}
 import cats.implicits._
@@ -29,7 +30,7 @@ class MembersInboxes[F[_] : Concurrent, MemberId, Message] private (makeNewMembe
     membersInboxesRef.get.map(_.get(to))
       .flatMap {
         case Some(inbox) => inbox.enqueue1(message)
-        case None => ().pure // member is not available anymore
+        case None => Applicative[F].unit // member is not available anymore, do nothing
       }
 }
 

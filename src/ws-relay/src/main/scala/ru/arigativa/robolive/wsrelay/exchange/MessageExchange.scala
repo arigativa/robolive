@@ -14,12 +14,11 @@ trait MessageExchange[F[_], RoomId, Message] {
 object MessageExchange {
 
   def inMemory[F[_] : Sync : Concurrent, RoomId, Message]: F[MessageExchange[F, RoomId, Message]] = {
-
     type MemberId = Long
 
     for {
       membersInboxes <- MembersInboxes.make[F, Message]
-      rooms <- Rooms.make[F, RoomId, MemberId]
+      rooms <- Rooms.make[F, RoomId, MemberId]()
     } yield {
       new MessageExchange[F, RoomId, Message] {
         override def join(roomId: RoomId): Resource[F, Membership] = {
