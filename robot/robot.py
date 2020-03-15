@@ -1,13 +1,12 @@
-import random
-import ssl
-import websockets
 import asyncio
+import json
+import logging
 import os
 import sys
-import json
-import argparse
-import logging
+
 import gi
+import websockets
+from gi.repository.Gst import Pad, Caps, CapsFeatures, Structure
 
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst
@@ -29,7 +28,7 @@ class WebRTCClient:
     def __init__(self, server, logger):
         self.connected = False
         self.conn = None
-        self.pipe = None
+        self.pipe: Gst.Pipeline = None
         self.webrtc = None
         self.server = server
         self.logger = logger
@@ -65,20 +64,22 @@ class WebRTCClient:
         loop = asyncio.new_event_loop()
         loop.run_until_complete(self.conn.send(icemsg))
 
-    def on_incoming_decodebin_stream(self, _, pad):
+    def on_incoming_decodebin_stream(self, _, pad: Pad):
         if not pad.has_current_caps():
             print (pad, 'has no caps, ignoring')
             return
 
-        caps = pad.get_current_caps()
-        assert (len(caps))
-        s = caps[0]
+        caps: Caps = pad.get_current_caps()
+        assert (caps.get_size() > 0)
+        s: Structure = caps.get_structure(0)
         name = s.get_name()
         if name.startswith('video'):
             q = Gst.ElementFactory.make('queue')
             conv = Gst.ElementFactory.make('videoconvert')
             sink = Gst.ElementFactory.make('autovideosink')
-            self.pipe.add(q, conv, sink)
+            self.pipe.add(q)
+            self.pipe.add(conv)
+            self.pipe.add(sink)
             self.pipe.sync_children_states()
             pad.link(q.get_static_pad('sink'))
             q.link(conv)
@@ -88,7 +89,10 @@ class WebRTCClient:
             conv = Gst.ElementFactory.make('audioconvert')
             resample = Gst.ElementFactory.make('audioresample')
             sink = Gst.ElementFactory.make('autoaudiosink')
-            self.pipe.add(q, conv, resample, sink)
+            self.pipe.add(q)
+            self.pipe.add(conv)
+            self.pipe.add(resample)
+            self.pipe.add(sink)
             self.pipe.sync_children_states()
             pad.link(q.get_static_pad('sink'))
             q.link(conv)
@@ -180,6 +184,7 @@ if __name__ == '__main__':
     if not check_plugins():
         sys.exit(1)
     server = os.getenv('SERVER')
+    print("Server: ", server)
     c = WebRTCClient(server, logging.getLogger(__name__))
     asyncio.get_event_loop().run_until_complete(c.connect())
     res = asyncio.get_event_loop().run_until_complete(c.loop())
