@@ -10,6 +10,25 @@
 [GStreamer WebRTC](https://github.com/centricular/gstwebrtc-demos)  
 [Awesome WebRTC](https://github.com/openrtc-io/awesome-webrtc)
 
+# Configure Docker registry
+
+Install aws-cli (`snap install aws-cli --classic` for ubuntu)
+
+Take credentials from `deployment/production/_setup.tf`, then:
+```shell script
+> aws configure
+  AWS Access Key ID [****************]: xxxxxxxxx
+  AWS Secret Access Key [****************]: xxxxxxxxxxxxxxxx
+  Default region name [None]: eu-central-1
+  Default output format [None]: 
+
+> bash -c "$(aws ecr get-login --no-include-email)"
+WARNING! Using --password via the CLI is insecure. Use --password-stdin.
+Login Succeeded
+
+
+```
+
 # Build
 
 ## Run (option 1). With docker-compose
