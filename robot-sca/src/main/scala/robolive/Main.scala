@@ -1,6 +1,7 @@
 package robolive
 import org.freedesktop.gstreamer.{Element, ElementFactory, Gst, Pipeline, State}
 import org.freedesktop.gstreamer.webrtc.{WebRTCBin, WebRTCSessionDescription}
+import zio.ZIO
 
 final class AppLogic
     extends WebRTCBin.ON_NEGOTIATION_NEEDED with WebRTCBin.ON_ICE_CANDIDATE
@@ -47,4 +48,36 @@ object Main extends App {
   pipeline.setState(State.PLAYING)
 
   Thread.sleep(10000)
+}
+
+// https://sttp.softwaremill.com/en/latest/websockets.html
+// https://sttp.softwaremill.com/en/latest/backends/zio.html
+object Ws extends zio.App {
+  import sttp.client._
+  import sttp.client.ws.{WebSocket, WebSocketResponse}
+  import sttp.model.ws.WebSocketFrame
+  import sttp.client.asynchttpclient.zio.ZioWebSocketHandler
+  import sttp.client.asynchttpclient.WebSocketHandler
+  import sttp.client.asynchttpclient.zio.AsyncHttpClientZioBackend
+  import zio.Task
+
+  override def run(args: List[String]): ZIO[zio.ZEnv, Nothing, Int] = {
+    AsyncHttpClientZioBackend
+      .managed()
+      .use { implicit backend =>
+        basicRequest
+          .get(uri"wss://echo.websocket.org")
+          .openWebsocketF(ZioWebSocketHandler())
+          .flatMap { r =>
+            val ws: WebSocket[Task] = r.result
+            for {
+              _ <- ws.send(WebSocketFrame.text("Hello!"))
+              response <- ws.receiveText()
+              _ <- Task(println(s"RECEIVED: $response"))
+              _ <- ws.close
+            } yield ()
+          }
+      }
+      .fold(_ => 1, _ => 0)
+  }
 }
