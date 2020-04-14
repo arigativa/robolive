@@ -20,8 +20,8 @@ class SignalingServer:
         self.robot = None
         self.logger = logger
 
-    def serve(self, port):
-        self.server = websockets.serve(self.ws_con_handler, '0.0.0.0', port, process_request=self.health_check)
+    def serve(self, host, port):
+        self.server = websockets.serve(self.ws_con_handler, host, port, process_request=self.health_check)
         loop = asyncio.get_event_loop()
 
         try:
@@ -101,4 +101,4 @@ class SignalingServer:
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     server = SignalingServer(logging.getLogger(__name__))
-    server.serve(5000)
+    server.serve('0.0.0.0', 5000)

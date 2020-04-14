@@ -1,7 +1,7 @@
 package robolive
 import org.freedesktop.gstreamer.{Element, ElementFactory, Gst, Pipeline, State}
 import org.freedesktop.gstreamer.webrtc.{WebRTCBin, WebRTCSessionDescription}
-import zio.ZIO
+import zio.{UIO, ZIO}
 
 final class AppLogic
     extends WebRTCBin.ON_NEGOTIATION_NEEDED with WebRTCBin.ON_ICE_CANDIDATE
@@ -66,14 +66,13 @@ object Ws extends zio.App {
       .managed()
       .use { implicit backend =>
         basicRequest
-          .get(uri"wss://echo.websocket.org")
+          .get(uri"ws://localhost:5000")
           .openWebsocketF(ZioWebSocketHandler())
           .flatMap { r =>
             val ws: WebSocket[Task] = r.result
             for {
-              _ <- ws.send(WebSocketFrame.text("Hello!"))
-              response <- ws.receiveText()
-              _ <- Task(println(s"RECEIVED: $response"))
+              _ <- ws.send(WebSocketFrame.text("ROBOT"))
+              response <- ws.receiveText().tap(r => UIO(println(s"RECEIVED: $r"))).forever
               _ <- ws.close
             } yield ()
           }
