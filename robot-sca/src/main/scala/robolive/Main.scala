@@ -84,35 +84,23 @@ object Application {
       sendrcv
     })(webrtc => UIO(webrtc.dispose()))
 
-  def init(
-    incomingMessages: zio.Queue[Models.Message],
-    outgoingMessages: zio.Queue[Models.Message]
-  ): ZManaged[Console, Throwable, zio.Promise[Nothing, Unit]] = {
+  def init(logic: AppLogic): ZManaged[Console, Throwable, StateChangeReturn] = {
     gstInit("robolive-robot").flatMap { implicit token =>
       for {
-        quit <- zio.Promise.make[Nothing, Unit].toManaged_
         pipeline <- parseDescription
         sendReceive <- getWebRTCBin(pipeline, "sendrecv")
         stateChange <- Task {
           println("BEFORE READY")
           pipeline.setState(State.READY)
 
-          val logic = new AppLogic(incomingMessages, outgoingMessages, quit)
           sendReceive.connect(logic: WebRTCBin.ON_NEGOTIATION_NEEDED)
           sendReceive.connect(logic: WebRTCBin.ON_ICE_CANDIDATE)
           sendReceive.createOffer(logic)
 
           pipeline.setState(State.PLAYING)
         }.toManaged_
-        _ <- ZIO
-          .when(stateChange != StateChangeReturn.SUCCESS) {
-            zio.console
-              .putStrLn(s"Wrong pipeline state change: $stateChange")
-              .zipRight(quit.succeed(()))
-          }
-          .toManaged_
       } yield {
-        quit
+        stateChange
       }
     }
   }
@@ -137,33 +125,54 @@ object Main extends zio.App {
           .flatMap { r =>
             val ws: WebSocket[Task] = r.result
             for {
+              exit <- zio.Promise.make[Nothing, Unit]
               incomingMessages <- ZQueue.unbounded[Models.Message]
               outgoingMessages <- ZQueue.unbounded[Models.Message]
-              _ <- ws.send(WebSocketFrame.text("ROBOT"))
-              _ <- ws.receiveText().flatMap(m => zio.console.putStrLn(s"$m"))
-              _ <- ws.receiveText().flatMap(m => zio.console.putStrLn(s"$m"))
-              _ <- ws
-                .receiveText()
-                .flatMap {
-                  case Left(error) =>
-                    zio.console.putStrLn(s"Error: $error").zipRight(ws.close)
-                  case Right(message) =>
-                    if (message != "READY") {
-                      Models.Message.fromWire(message) match {
+              logic = new AppLogic(incomingMessages, outgoingMessages, exit)
+              _ <- Application.init(logic).use { stateChange =>
+                if (stateChange != StateChangeReturn.SUCCESS) {
+                  zio.console
+                    .putStrLn(s"Wrong pipeline state change: $stateChange")
+                    .zipRight(exit.succeed(()))
+                } else {
+                  for {
+                    // temporary measure, seems like it is the task of signalling to correctly handle messages
+                    // in case client is not connected yet
+                    connectionEstablished <- zio.Promise.make[Nothing, Unit]
+                    _ <- ws.send(WebSocketFrame.text("ROBOT"))
+                    _ <- ws.receiveText().flatMap(m => zio.console.putStrLn(s"$m")) // ROBOT_OK
+                    _ <- ws
+                      .receiveText()
+                      .flatMap {
                         case Left(error) =>
-                          zio.console.putStr(s"Error while decoding message: $error")
-                        case Right(message) => incomingMessages.offer(message).map(_ => ())
+                          zio.console.putStrLn(s"Error: $error").zipRight(ws.close)
+                        case Right(message) =>
+                          message match {
+                            case "READY" =>
+                              zio.console
+                                .putStrLn("Received `READY` message. Connection established.")
+                                .zipRight(connectionEstablished.succeed(()))
+                            case other =>
+                              Models.Message.fromWire(other) match {
+                                case Left(error) =>
+                                  zio.console.putStr(s"Error while decoding message: $error")
+                                case Right(message) =>
+                                  zio.console
+                                    .putStrLn(message.toString)
+                                    .zipRight(incomingMessages.offer(message).unit)
+                              }
+                          }
                       }
-                    } else {
-                      zio.console.putStrLn("ANOTHER READY MESSAGE") // TODO: browser sends read message each time when it tries to connect
-                    }
+                      .forever
+                      .fork
+                    _ <- connectionEstablished.await zipRight outgoingMessages.take.flatMap {
+                      message =>
+                        ws.send(WebSocketFrame.text(Models.Message.toWire(message)))
+                    }.fork
+                  } yield ()
                 }
-                .forever
-                .fork
-              _ <- outgoingMessages.take.flatMap { message =>
-                ws.send(WebSocketFrame.text(Models.Message.toWire(message)))
-              }.fork
-              _ <- Application.init(incomingMessages, outgoingMessages).use(_.await)
+              }
+              _ <- exit.await
             } yield ()
           }
       }
@@ -178,7 +187,20 @@ object Models {
   import io.circe.{Decoder, Encoder}
   import io.circe.generic.semiauto._
 
-  sealed trait Message // TODO: lowercase discriminator
+  sealed trait Message
+  import io.circe.generic.extras.semiauto._
+  import io.circe.generic.extras.Configuration
+
+  case class Foo(fooBar: String)
+
+  implicit val customConfig: Configuration = {
+    val lowerFirstCharacter = (s: String) => s.head.toLower + s.substring(1)
+    val default = Configuration.default
+    default.copy(transformConstructorNames =
+      default.transformConstructorNames.andThen(lowerFirstCharacter)
+    )
+  }
+
   object Message {
     import io.circe.syntax._
     import io.circe.parser._
@@ -188,19 +210,19 @@ object Models {
     def fromWire(message: String): Either[circe.Error, Message] =
       parse(message).flatMap(_.as[Message])
 
-    implicit val encoder: Encoder[Message] = deriveEncoder
-    implicit val decoder: Decoder[Message] = deriveDecoder
+    implicit val encoder: Encoder[Message] = deriveConfiguredEncoder
+    implicit val decoder: Decoder[Message] = deriveConfiguredDecoder
   }
 
   final case class Sdp(`type`: String, sdp: String) extends Message
   object Sdp {
-    implicit val encoder: Encoder[Sdp] = deriveEncoder
-    implicit val decoder: Decoder[Sdp] = deriveDecoder
+    implicit val encoder: Encoder[Sdp] = deriveConfiguredEncoder
+    implicit val decoder: Decoder[Sdp] = deriveConfiguredDecoder
   }
 
   final case class Ice(candidate: String, sdpMLineIndex: Int) extends Message
   object Ice {
-    implicit val encoder: Encoder[Ice] = deriveEncoder
-    implicit val decoder: Decoder[Ice] = deriveDecoder
+    implicit val encoder: Encoder[Ice] = deriveConfiguredEncoder
+    implicit val decoder: Decoder[Ice] = deriveConfiguredDecoder
   }
 }
