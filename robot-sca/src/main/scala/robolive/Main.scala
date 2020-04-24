@@ -1,7 +1,7 @@
 package robolive
 
 import io.circe
-import org.freedesktop.gstreamer.webrtc.{WebRTCBin, WebRTCSessionDescription}
+import org.freedesktop.gstreamer.webrtc.{WebRTCBin, WebRTCSDPType, WebRTCSessionDescription}
 import org.freedesktop.gstreamer._
 import zio.console.Console
 import zio.{Ref, Task, UIO, ZIO, ZManaged, ZQueue}
@@ -42,9 +42,11 @@ final class AppLogic(
 ) extends WebRTCBin.ON_NEGOTIATION_NEEDED with WebRTCBin.ON_ICE_CANDIDATE
     with WebRTCBin.CREATE_OFFER with Bus.EOS with Bus.ERROR {
 
+  @volatile var sendReceive: WebRTCBin = null // BAD things but who cares for NOW
+
   override def onNegotiationNeeded(elem: Element): Unit = {
     println(s"Negotiation needed: ${elem.getName}")
-    val sendReceive = elem.asInstanceOf[WebRTCBin]
+    sendReceive = elem.asInstanceOf[WebRTCBin]
     sendReceive.createOffer(this)
   }
 
@@ -53,7 +55,11 @@ final class AppLogic(
   }
 
   override def onOfferCreated(offer: WebRTCSessionDescription): Unit = {
-    outputChannel.put(Models.Sdp(`type` = "offer", sdp = offer.getSDPMessage.toString))
+    offer.disown()
+    val offerMessage = offer.getSDPMessage.toString
+    sendReceive.setLocalDescription(offer)
+    outputChannel.put(Models.Sdp(`type` = "offer", sdp = offerMessage))
+    offer.dispose()
   }
   override def endOfStream(source: GstObject): Unit = killSwitch.kill()
 
@@ -62,12 +68,22 @@ final class AppLogic(
 
 final class WebRTCController(
   webRTCBin: WebRTCBin,
-  outgoingMessages: zio.Queue[Models.Message],
   incomingMessages: zio.Queue[Models.Message],
 ) {
-  def process: Task[Unit] = {
-    incomingMessages.take.map {
-      ???
+  def process: ZIO[Console, Throwable, Unit] = {
+    incomingMessages.take.flatMap {
+      case m @ Models.Sdp(tp, sdp) =>
+        zio.console.putStrLn(s"Received: $m").map { _ =>
+          val tpe = WebRTCSDPType.ANSWER
+          val sdpMessage = new SDPMessage()
+          sdpMessage.parseBuffer(sdp)
+          val description = new WebRTCSessionDescription(tpe, sdpMessage)
+          webRTCBin.setRemoteDescription(description)
+        }
+      case m @ Models.Ice(candidate, sdpMLineIndex) =>
+        zio.console.putStrLn(s"Received: $m").map { _ =>
+          webRTCBin.addIceCandidate(sdpMLineIndex, candidate)
+        }
     }
   }
 }
@@ -84,7 +100,7 @@ object Application {
 
   def gstInit(name: String): ZManaged[Any, Throwable, GSTInit.type] =
     ZManaged.make(Task {
-      Gst.init(name)
+      Gst.init(new Version(1, 14), name)
       Gst.setSegTrap(false)
       GSTInit
     })(_ =>
@@ -117,7 +133,7 @@ object Application {
       sendrcv
     })(webrtc => UIO(webrtc.dispose()))
 
-  def init(logic: AppLogic): ZManaged[Console, Throwable, StateChangeReturn] = {
+  def init(logic: AppLogic): ZManaged[Console, Throwable, (StateChangeReturn, WebRTCBin)] = {
     gstInit("robolive-robot").flatMap { implicit token =>
       for {
         pipeline <- parseDescription
@@ -133,7 +149,7 @@ object Application {
           pipeline.setState(State.PLAYING)
         }.toManaged_
       } yield {
-        stateChange
+        stateChange -> sendReceive // completely bad idea, but for now OK
       }
     }
   }
@@ -167,51 +183,73 @@ object Main extends zio.App {
                 val outputChannel = new ZioQueueChannel[Models.Message](console, outgoingMessages)
                 new AppLogic(outputChannel, killSwitch)
               }
-              _ <- Application.init(logic).use { stateChange =>
-                if (stateChange != StateChangeReturn.SUCCESS) {
-                  zio.console
-                    .putStrLn(s"Wrong pipeline state change: $stateChange")
-                    .zipRight(exit.succeed(()))
-                } else {
-                  for {
-                    // temporary measure, seems like it is the task of signalling to correctly handle messages
-                    // in case client is not connected yet
-                    connectionEstablished <- zio.Promise.make[Nothing, Unit]
-                    _ <- ws.send(WebSocketFrame.text("ROBOT"))
-                    _ <- ws.receiveText().flatMap(m => zio.console.putStrLn(s"$m")) // ROBOT_OK
-                    _ <- connectionEstablished.await.zipRight {
-                      outgoingMessages.take.flatMap { message =>
-                        ws.send(WebSocketFrame.text(Models.Message.toWire(message)))
-                      }
-                    }.fork
-                    _ <- ws
-                      .receiveText()
-                      .flatMap {
-                        case Left(error) =>
-                          zio.console
-                            .putStrLn(s"Error: $error")
-                            .zipRight(ws.close)
-                            .zipRight(exit.succeed(()))
-                        case Right(message) =>
-                          message match {
-                            case "READY" =>
-                              zio.console
-                                .putStrLn("Received `READY` message. Connection established.")
-                                .zipRight(connectionEstablished.succeed(()))
-                            case other =>
-                              Models.Message.fromWire(other) match {
-                                case Left(error) =>
-                                  zio.console.putStr(s"Error while decoding message: $error")
-                                case Right(message) =>
-                                  zio.console
-                                    .putStrLn(message.toString)
-                                    .zipRight(incomingMessages.offer(message).unit)
-                              }
+              _ <- Application.init(logic).use {
+                case (stateChange, bin) =>
+                  if (stateChange != StateChangeReturn.SUCCESS) {
+                    zio.console
+                      .putStrLn(s"Wrong pipeline state change: $stateChange")
+                      .zipRight(exit.succeed(()))
+                  } else {
+                    for {
+                      // temporary measure, seems like it is the task of signalling to correctly handle messages
+                      // in case client is not connected yet
+                      connectionEstablished <- zio.Promise.make[Nothing, Unit]
+                      _ <- new WebRTCController(bin, incomingMessages).process
+                        .doUntilM(_ => exit.isDone)
+                        .fork
+                      _ <- ws.send(WebSocketFrame.text("ROBOT"))
+                      _ <- ws
+                        .receiveText()
+                        .flatMap(m => zio.console.putStrLn(s"ASD: $m")) // ROBOT_OK
+                      _ <- connectionEstablished.await.zipRight {
+                        outgoingMessages.take.flatMap { message =>
+                          ws.send(WebSocketFrame.text(Models.Message.toWire(message)))
+                        }
+                      }.fork
+                      _ <- ws
+                        .receiveText()
+                        .flatMap {
+                          case Left(error) =>
+                            zio.console
+                              .putStrLn(s"Error: $error")
+                              .zipRight(ws.close)
+                              .zipRight(exit.succeed(()))
+                          case Right(message) =>
+                            message match {
+                              case "READY" =>
+                                zio.console
+                                  .putStrLn("Received `READY` message. Connection established.")
+                                  .zipRight(connectionEstablished.succeed(()))
+                              case other =>
+                                Models.Message.fromWire(other) match {
+                                  case Left(error) =>
+                                    zio.console.putStr(s"Error while decoding message: $error")
+                                  case Right(message) =>
+                                    println(s"Right($message)")
+                                    incomingMessages
+                                      .offer(message)
+                                      .tap { isOffered =>
+                                        if (isOffered)
+                                          zio.console.putStrLn("Incoming message put in a queue")
+                                        else
+                                          zio.console
+                                            .putStrLn("Can not put incoming message in a queue")
+                                      }
+                                      .unit
+                                }
+                            }
+                        }
+                        .doUntilM(_ =>
+                          exit.isDone.tap { isDone =>
+                            if (isDone) {
+                              UIO(println("GStreamer teared down"))
+                            } else {
+                              UIO(())
+                            }
                           }
-                      }
-                      .doUntilM(_ => exit.isDone.tap(_ => UIO(println("GStreamer teared down"))))
-                  } yield ()
-                }
+                        )
+                    } yield ()
+                  }
               }
             } yield ()
           }
