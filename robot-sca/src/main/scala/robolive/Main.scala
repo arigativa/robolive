@@ -60,6 +60,18 @@ final class AppLogic(
   override def errorMessage(source: GstObject, code: Int, message: String): Unit = killSwitch.kill()
 }
 
+final class WebRTCController(
+  webRTCBin: WebRTCBin,
+  outgoingMessages: zio.Queue[Models.Message],
+  incomingMessages: zio.Queue[Models.Message],
+) {
+  def process: Task[Unit] = {
+    incomingMessages.take.map {
+      ???
+    }
+  }
+}
+
 object Application {
   private val PipelineDescription =
     """webrtcbin name=sendrecv bundle-policy=max-bundle stun-server=stun://stun.l.google.com:19302
@@ -167,11 +179,19 @@ object Main extends zio.App {
                     connectionEstablished <- zio.Promise.make[Nothing, Unit]
                     _ <- ws.send(WebSocketFrame.text("ROBOT"))
                     _ <- ws.receiveText().flatMap(m => zio.console.putStrLn(s"$m")) // ROBOT_OK
+                    _ <- connectionEstablished.await.zipRight {
+                      outgoingMessages.take.flatMap { message =>
+                        ws.send(WebSocketFrame.text(Models.Message.toWire(message)))
+                      }
+                    }.fork
                     _ <- ws
                       .receiveText()
                       .flatMap {
                         case Left(error) =>
-                          zio.console.putStrLn(s"Error: $error").zipRight(ws.close)
+                          zio.console
+                            .putStrLn(s"Error: $error")
+                            .zipRight(ws.close)
+                            .zipRight(exit.succeed(()))
                         case Right(message) =>
                           message match {
                             case "READY" =>
@@ -189,16 +209,10 @@ object Main extends zio.App {
                               }
                           }
                       }
-                      .forever
-                      .fork
-                    _ <- connectionEstablished.await zipRight outgoingMessages.take.flatMap {
-                      message =>
-                        ws.send(WebSocketFrame.text(Models.Message.toWire(message)))
-                    }.fork
+                      .doUntilM(_ => exit.isDone.tap(_ => UIO(println("GStreamer teared down"))))
                   } yield ()
                 }
               }
-              _ <- exit.await
             } yield ()
           }
       }
