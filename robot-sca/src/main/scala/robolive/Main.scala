@@ -6,14 +6,41 @@ import org.freedesktop.gstreamer._
 import zio.console.Console
 import zio.{Ref, Task, UIO, ZIO, ZManaged, ZQueue}
 
+sealed trait ImpureAdapter {
+  protected def run[T](task: Task[T]): Unit = zio.Runtime.global.unsafeRunAsync_(task)
+}
+
+sealed trait OutputChannel[T] {
+  def put(value: T): Unit
+}
+
+final class ZioQueueChannel[T](
+  console: zio.console.Console.Service,
+  outgoingMessages: zio.Queue[T],
+) extends OutputChannel[T] with ImpureAdapter {
+  override def put(value: T): Unit = run {
+    outgoingMessages
+      .offer(value)
+      .tap { isSubmitted =>
+        ZIO.when(!isSubmitted)(console.putStrLn("Can not submit message to queue"))
+      }
+  }
+}
+
+sealed trait KillSwitch {
+  def kill(): Unit
+}
+
+final class PromiseKillSwitch(quit: zio.Promise[Nothing, Unit])
+    extends KillSwitch with ImpureAdapter {
+  override def kill(): Unit = run(quit.succeed(()))
+}
+
 final class AppLogic(
-  incomingMessages: zio.Queue[Models.Message],
-  outgoingMessages: zio.Queue[Models.Message],
-  quit: zio.Promise[Nothing, Unit],
+  outputChannel: OutputChannel[Models.Message],
+  killSwitch: KillSwitch,
 ) extends WebRTCBin.ON_NEGOTIATION_NEEDED with WebRTCBin.ON_ICE_CANDIDATE
     with WebRTCBin.CREATE_OFFER with Bus.EOS with Bus.ERROR {
-
-  private def run[T](task: Task[T]) = zio.Runtime.global.unsafeRunAsync_(task)
 
   override def onNegotiationNeeded(elem: Element): Unit = {
     println(s"Negotiation needed: ${elem.getName}")
@@ -26,17 +53,11 @@ final class AppLogic(
   }
 
   override def onOfferCreated(offer: WebRTCSessionDescription): Unit = {
-    run {
-      outgoingMessages.offer(Models.Sdp(`type` = "offer", sdp = offer.getSDPMessage.toString))
-    }
+    outputChannel.put(Models.Sdp(`type` = "offer", sdp = offer.getSDPMessage.toString))
   }
-  override def endOfStream(source: GstObject): Unit = run {
-    quit.succeed(())
-  }
+  override def endOfStream(source: GstObject): Unit = killSwitch.kill()
 
-  override def errorMessage(source: GstObject, code: Int, message: String): Unit = run {
-    quit.succeed(())
-  }
+  override def errorMessage(source: GstObject, code: Int, message: String): Unit = killSwitch.kill()
 }
 
 object Application {
@@ -125,10 +146,15 @@ object Main extends zio.App {
           .flatMap { r =>
             val ws: WebSocket[Task] = r.result
             for {
+              console <- ZIO.access[zio.console.Console](_.get[zio.console.Console.Service])
               exit <- zio.Promise.make[Nothing, Unit]
               incomingMessages <- ZQueue.unbounded[Models.Message]
               outgoingMessages <- ZQueue.unbounded[Models.Message]
-              logic = new AppLogic(incomingMessages, outgoingMessages, exit)
+              logic = {
+                val killSwitch = new PromiseKillSwitch(exit)
+                val outputChannel = new ZioQueueChannel[Models.Message](console, outgoingMessages)
+                new AppLogic(outputChannel, killSwitch)
+              }
               _ <- Application.init(logic).use { stateChange =>
                 if (stateChange != StateChangeReturn.SUCCESS) {
                   zio.console
