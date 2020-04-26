@@ -97,6 +97,10 @@ final class WebRTCController(
       case ExternalMessage.Sdp(tp, sdp) =>
         Task {
           val tpe = WebRTCSDPType.ANSWER
+          // causes:
+          // ** (robolive-robot:9694): WARNING **: 22:49:45.548: Unexpected item 0x7f4b20006370 dequeued from queue queue4 (refcounting problem?)
+          // seems like we need to dispose it somehow, but I don't know the moment when it should be done
+          // potential memory leak
           val sdpMessage = new SDPMessage()
           sdpMessage.parseBuffer(sdp)
           val description = new WebRTCSessionDescription(tpe, sdpMessage)
@@ -122,9 +126,9 @@ final class WebRTCController(
 object Application {
   private val PipelineDescription =
     """webrtcbin name=sendrecv bundle-policy=max-bundle stun-server=stun://stun.l.google.com:19302
-      | videotestsrc is-live=true pattern=ball ! videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay !
+      | autovideosrc ! videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay !
       | queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! sendrecv.
-      | audiotestsrc is-live=true wave=red-noise ! audioconvert ! audioresample ! queue ! opusenc ! rtpopuspay !
+      | autoaudiosrc ! audioconvert ! audioresample ! queue ! opusenc ! rtpopuspay !
       | queue ! application/x-rtp,media=audio,encoding-name=OPUS,payload=96 ! sendrecv.""".stripMargin
 
   case object GSTInit
