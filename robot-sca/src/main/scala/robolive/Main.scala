@@ -81,10 +81,8 @@ final class WebRTCController(
         Task.unit
       case InternalMessage.OnOfferCreated(offer) =>
         Task {
-          offer.disown()
           val offerMessage = offer.getSDPMessage.toString
           webRTCBin.setLocalDescription(offer)
-          offer.dispose()
           offerMessage
         }.flatMap { offerMessage =>
           externalOut.offer(Models.ExternalMessage.Sdp(`type` = "offer", sdp = offerMessage))
