@@ -69,49 +69,55 @@ final class WebRTCController(
   def process: ZIO[Console, Throwable, Unit] = {
     import Models._
 
-    internal.take.flatMap {
+    val internalProcessingTask = internal.take.tap { message =>
+      zio.console.putStrLn(s"Internal: $message")
+    }.flatMap {
       case InternalMessage.OnNegotiationNeeded(elem, handler) =>
         Task {
-          println(s"onNegotiationNeeded: ${Thread.currentThread().getName}")
-          println(s"Negotiation needed: ${elem.getName}")
           val sendReceive = elem.asInstanceOf[WebRTCBin]
           sendReceive.createOffer(handler)
-        }
+        }.unit
       case InternalMessage.OnIceCandidate(sdpMLineIndex, candidate) =>
-        Task {
-          println(s"onIceCandidate: ${Thread.currentThread().getName}")
-          println(s"Ice candidate: $sdpMLineIndex $candidate")
-        }
+        Task.unit
       case InternalMessage.OnOfferCreated(offer) =>
         Task {
-          println(s"onOfferCreated: ${Thread.currentThread().getName}")
           offer.disown()
           val offerMessage = offer.getSDPMessage.toString
           webRTCBin.setLocalDescription(offer)
-          offer.disown()
+          offer.dispose()
           offerMessage
         }.flatMap { offerMessage =>
           externalOut.offer(Models.ExternalMessage.Sdp(`type` = "offer", sdp = offerMessage))
-        }
+        }.unit
       case InternalMessage.EndOfStream(source) => killSwitch.kill()
-      case InternalMessage.SetLocalDescription(offer) => killSwitch.kill()
       case InternalMessage.ErrorMessage(source: GstObject, code: Int, message: String) =>
         killSwitch.kill()
     }
-    externalIn.take.flatMap {
-      case m @ ExternalMessage.Sdp(tp, sdp) =>
-        zio.console.putStrLn(s"Received: $m").map { _ =>
+    val externalProcessingTask = externalIn.take.tap { message =>
+      zio.console.putStrLn(s"External: $message")
+    }.flatMap {
+      case ExternalMessage.Sdp(tp, sdp) =>
+        Task {
           val tpe = WebRTCSDPType.ANSWER
           val sdpMessage = new SDPMessage()
           sdpMessage.parseBuffer(sdp)
           val description = new WebRTCSessionDescription(tpe, sdpMessage)
           webRTCBin.setRemoteDescription(description)
-        }
-      case m @ ExternalMessage.Ice(candidate, sdpMLineIndex) =>
-        zio.console.putStrLn(s"Received: $m").map { _ =>
-          webRTCBin.addIceCandidate(sdpMLineIndex, candidate)
-        }
+        }.unit
+      case ExternalMessage.Ice(candidate, sdpMLineIndex) =>
+        Task(webRTCBin.addIceCandidate(sdpMLineIndex, candidate))
     }
+    internalProcessingTask
+      .tapError(error => zio.console.putStrLn(s"Internal task error: $error"))
+      .doUntilM(_ => killSwitch.isKilled)
+      .fork
+      .zipRight {
+        externalProcessingTask
+          .tapError(error => zio.console.putStrLn(s"External task error: $error"))
+          .doUntilM(_ => killSwitch.isKilled)
+          .fork
+      }
+      .unit
   }
 }
 
@@ -178,7 +184,6 @@ object Application {
           pipeline.setState(State.PLAYING)
         }.toManaged_
       } yield {
-        println(s"init: ${Thread.currentThread().getName}")
         stateChange -> sendReceive // completely bad idea, but for now OK
       }
     }
@@ -224,8 +229,6 @@ object Main extends zio.App {
                       // in case client is not connected yet
                       connectionEstablished <- zio.Promise.make[Nothing, Unit]
                       _ <- new WebRTCController(bin, externalIn, externalOut, internal, killSwitch).process
-                        .doUntilM(_ => killSwitch.isKilled)
-                        .fork
                       _ <- ws.send(WebSocketFrame.text("ROBOT"))
                       _ <- ws
                         .receiveText()
@@ -305,7 +308,6 @@ object Models {
     final case class EndOfStream(source: GstObject) extends InternalMessage
     final case class ErrorMessage(source: GstObject, code: Int, message: String)
         extends InternalMessage
-    final case class SetLocalDescription(offer: String) extends InternalMessage
   }
 
   object ExternalMessage {
