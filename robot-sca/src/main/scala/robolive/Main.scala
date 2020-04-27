@@ -3,6 +3,7 @@ package robolive
 import io.circe
 import org.freedesktop.gstreamer._
 import org.freedesktop.gstreamer.webrtc.{WebRTCBin, WebRTCSDPType, WebRTCSessionDescription}
+import robolive.Models.ExternalMessage
 import robolive.bindings.GstWebRTCDataChannel
 import zio.console.Console
 import zio._
@@ -82,6 +83,7 @@ final class WebRTCController(
         externalOut.offer(ExternalMessage.Ice(candidate, sdpMLineIndex))
       case InternalMessage.OnOfferCreated(offer) =>
         Task {
+          offer.disown()
           val offerMessage = offer.getSDPMessage.toString
           webRTCBin.setLocalDescription(offer)
           offerMessage
@@ -197,13 +199,13 @@ object Application {
           bus.connect(logic: Bus.EOS)
           bus.connect(logic: Bus.ERROR)
 
-//          val channel = sendReceive.createDataChannel("server-channel")
-//          println(s"CHANNEL CREATED: ${channel.getName}")
-//          println(s"CHANNEL CREATED: ${channel.getTypeName}")
-//          channel.connect { (elem: Element, message: String) =>
-//            println(s"MESSAGE RECEIVED: $message")
-//          }
-//          println(channel)
+          val channel = sendReceive.createDataChannel("server-channel")
+          println(s"CHANNEL CREATED: ${channel.getName}")
+          println(s"CHANNEL CREATED: ${channel.getTypeName}")
+          channel.connect { (message: String) =>
+            println(s"MESSAGE RECEIVED: $message")
+          }
+          println(channel)
 
           pipeline.setState(State.PLAYING)
         }.toManaged_
@@ -223,6 +225,7 @@ object Main extends zio.App {
   import sttp.model.ws.WebSocketFrame
   import zio.Task
 
+  // NOTE: signalling with connected client should be started before application
   override def run(args: List[String]): ZIO[zio.ZEnv, Nothing, Int] = {
     AsyncHttpClientZioBackend
       .managed()
@@ -257,13 +260,17 @@ object Main extends zio.App {
                       _ <- ws
                         .receiveText()
                         .flatMap(m => zio.console.putStrLn(s"ASD: $m")) // ROBOT_OK
-                      _ <- connectionEstablished.await.zipRight {
-                        externalOut.take.flatMap { message =>
-                          zio.console.putStrLn(s"Sending: $message").map(_ => message)
-                        }.flatMap { message =>
-                          ws.send(WebSocketFrame.text(Models.ExternalMessage.toWire(message)))
+                      _ <- externalOut.take
+                        .tap(message => zio.console.putStrLn(s"Sending: $message"))
+                        .flatMap {
+                          // temporary workaround sending two SDP messages
+                          case ExternalMessage.Sdp(t, sdp) if !sdp.contains("datachannel") =>
+                            Task.unit
+                          case message =>
+                            ws.send(WebSocketFrame.text(Models.ExternalMessage.toWire(message)))
                         }
-                      }.fork
+                        .doUntilM(_ => killSwitch.isKilled)
+                        .fork
                       _ <- ws
                         .receiveText()
                         .flatMap {

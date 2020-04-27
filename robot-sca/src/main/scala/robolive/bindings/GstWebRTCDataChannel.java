@@ -18,7 +18,7 @@ public class GstWebRTCDataChannel extends GstObject {
     }
 
     public static interface ON_MESSAGE_STRING {
-        public void onMessageString(Element elem, String message);
+        public void onMessageString(String message);
     }
 
     public void connect(final ON_MESSAGE_STRING listener) {
@@ -26,7 +26,7 @@ public class GstWebRTCDataChannel extends GstObject {
         connect(ON_MESSAGE_STRING.class, listener, new GstAPI.GstCallback() {
             @SuppressWarnings("unused")
             public void callback(Element elem, String message) {
-                listener.onMessageString(elem, message);
+                listener.onMessageString(message);
             }
         });
     }
