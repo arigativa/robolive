@@ -3,6 +3,7 @@ package robolive
 import io.circe
 import org.freedesktop.gstreamer._
 import org.freedesktop.gstreamer.webrtc.{WebRTCBin, WebRTCSDPType, WebRTCSessionDescription}
+import robolive.bindings.GstWebRTCDataChannel
 import zio.console.Console
 import zio._
 
@@ -78,7 +79,7 @@ final class WebRTCController(
           sendReceive.createOffer(handler)
         }.unit
       case InternalMessage.OnIceCandidate(sdpMLineIndex, candidate) =>
-        Task.unit
+        externalOut.offer(ExternalMessage.Ice(candidate, sdpMLineIndex))
       case InternalMessage.OnOfferCreated(offer) =>
         Task {
           val offerMessage = offer.getSDPMessage.toString
@@ -126,10 +127,16 @@ final class WebRTCController(
 object Application {
   private val PipelineDescription =
     """webrtcbin name=sendrecv bundle-policy=max-bundle stun-server=stun://stun.l.google.com:19302
-      | autovideosrc ! videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay !
+      | videotestsrc is-live=true pattern=ball ! videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay !
       | queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! sendrecv.
-      | autoaudiosrc ! audioconvert ! audioresample ! queue ! opusenc ! rtpopuspay !
+      | audiotestsrc is-live=true wave=red-noise ! audioconvert ! audioresample ! queue ! opusenc ! rtpopuspay !
       | queue ! application/x-rtp,media=audio,encoding-name=OPUS,payload=96 ! sendrecv.""".stripMargin
+
+  implicit final class WebRTCBinOps(webRTCBin: WebRTCBin) {
+    def createDataChannel(name: String): GstWebRTCDataChannel = {
+      webRTCBin.emit(classOf[GstWebRTCDataChannel], "create-data-channel", name, null)
+    }
+  }
 
   case object GSTInit
 
@@ -176,12 +183,27 @@ object Application {
         pipeline <- parseDescription
         sendReceive <- getWebRTCBin(pipeline, "sendrecv")
         stateChange <- Task {
+          import org.slf4j.bridge.SLF4JBridgeHandler
+          SLF4JBridgeHandler.removeHandlersForRootLogger()
+          SLF4JBridgeHandler.install()
+
           println("BEFORE READY")
           pipeline.setState(State.READY)
 
           sendReceive.connect(logic: WebRTCBin.ON_NEGOTIATION_NEEDED)
           sendReceive.connect(logic: WebRTCBin.ON_ICE_CANDIDATE)
           sendReceive.createOffer(logic)
+          val bus = pipeline.getBus
+          bus.connect(logic: Bus.EOS)
+          bus.connect(logic: Bus.ERROR)
+
+//          val channel = sendReceive.createDataChannel("server-channel")
+//          println(s"CHANNEL CREATED: ${channel.getName}")
+//          println(s"CHANNEL CREATED: ${channel.getTypeName}")
+//          channel.connect { (elem: Element, message: String) =>
+//            println(s"MESSAGE RECEIVED: $message")
+//          }
+//          println(channel)
 
           pipeline.setState(State.PLAYING)
         }.toManaged_
@@ -237,6 +259,8 @@ object Main extends zio.App {
                         .flatMap(m => zio.console.putStrLn(s"ASD: $m")) // ROBOT_OK
                       _ <- connectionEstablished.await.zipRight {
                         externalOut.take.flatMap { message =>
+                          zio.console.putStrLn(s"Sending: $message").map(_ => message)
+                        }.flatMap { message =>
                           ws.send(WebSocketFrame.text(Models.ExternalMessage.toWire(message)))
                         }
                       }.fork

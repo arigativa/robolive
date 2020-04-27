@@ -18,6 +18,7 @@ libraryDependencies ++= Seq(
   "io.circe" %% "circe-parser" % circeVersion,
   "io.circe" %% "circe-generic-extras" % "0.13.0",
   "ch.qos.logback" % "logback-classic" % "1.2.3",
+  "org.slf4j" % "jul-to-slf4j" % "1.7.30",
   "dev.zio" %% "zio-test" % zioVersion % Test,
   "dev.zio" %% "zio-test-sbt" % zioVersion % Test,
 )
