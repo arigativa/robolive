@@ -194,7 +194,6 @@ object Application {
 
           sendReceive.connect(logic: WebRTCBin.ON_NEGOTIATION_NEEDED)
           sendReceive.connect(logic: WebRTCBin.ON_ICE_CANDIDATE)
-          sendReceive.createOffer(logic)
           val bus = pipeline.getBus
           bus.connect(logic: Bus.EOS)
           bus.connect(logic: Bus.ERROR)
@@ -225,7 +224,6 @@ object Main extends zio.App {
   import sttp.model.ws.WebSocketFrame
   import zio.Task
 
-  // NOTE: signalling with connected client should be started before application
   override def run(args: List[String]): ZIO[zio.ZEnv, Nothing, Int] = {
     AsyncHttpClientZioBackend
       .managed()
@@ -262,12 +260,10 @@ object Main extends zio.App {
                         .flatMap(m => zio.console.putStrLn(s"ASD: $m")) // ROBOT_OK
                       _ <- externalOut.take
                         .tap(message => zio.console.putStrLn(s"Sending: $message"))
-                        .flatMap {
-                          // temporary workaround sending two SDP messages
-                          case ExternalMessage.Sdp(t, sdp) if !sdp.contains("datachannel") =>
-                            Task.unit
-                          case message =>
+                        .flatMap { message =>
+                          connectionEstablished.await.zipRight(
                             ws.send(WebSocketFrame.text(Models.ExternalMessage.toWire(message)))
+                          )
                         }
                         .doUntilM(_ => killSwitch.isKilled)
                         .fork
