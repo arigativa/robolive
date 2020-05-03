@@ -1,4 +1,4 @@
-package robolive.bindings;
+package robolive.gstreamer.bindings;
 
 import org.freedesktop.gstreamer.Element;
 import org.freedesktop.gstreamer.GstObject;

@@ -2,7 +2,9 @@ package robolive
 
 import org.freedesktop.gstreamer._
 import org.freedesktop.gstreamer.webrtc.{WebRTCBin, WebRTCSDPType, WebRTCSessionDescription}
-import robolive.bindings.GstWebRTCDataChannel
+import robolive.gstreamer.{GstManaged, PipelineManaged, WebRTCBinManaged}
+import robolive.gstreamer.GstManaged.GSTInit
+import robolive.gstreamer.bindings.GstWebRTCDataChannel
 import zio.console.Console
 import zio._
 
@@ -75,61 +77,15 @@ object Application {
       | autoaudiosrc ! audioconvert ! audioresample ! queue ! opusenc ! rtpopuspay !
       | queue ! application/x-rtp,media=audio,encoding-name=OPUS,payload=96 ! sendrecv.""".stripMargin
 
-  implicit final class WebRTCBinOps(webRTCBin: WebRTCBin) {
-    def createDataChannel(name: String): GstWebRTCDataChannel = {
-      webRTCBin.emit(classOf[GstWebRTCDataChannel], "create-data-channel", name, null)
-    }
-  }
-
-  case object GSTInit
-
-  def gstInit(name: String): ZManaged[Any, Throwable, GSTInit.type] =
-    ZManaged.make(Task {
-      Gst.init(new Version(1, 14), name)
-      Gst.setSegTrap(false)
-      GSTInit
-    })(_ =>
-      UIO {
-        Gst.deinit()
-        Gst.quit()
-      }
-    )
-
-  def parseDescription(implicit ev: GSTInit.type): ZManaged[Console, Throwable, Pipeline] =
-    ZManaged.make(Task {
-      val process = Gst.parseBinFromDescription(PipelineDescription, false)
-      val pipeline = new Pipeline("robolive-robot-pipeline")
-      val added = pipeline.add(process)
-      assert(added, "Can not add bin to pipeline")
-      pipeline
-    })(pipeline =>
-      UIO {
-        pipeline.stop()
-        pipeline.dispose()
-      }
-    )
-
-  def getWebRTCBin(pipeline: Pipeline, name: String)(
-    implicit ev: GSTInit.type
-  ): ZManaged[Console, Throwable, WebRTCBin] =
-    ZManaged.make(Task {
-      val sendrcv = pipeline.getElementByName(name).asInstanceOf[WebRTCBin]
-      assert(sendrcv != null, "Can not find sendrecv")
-      sendrcv
-    })(webrtc => UIO(webrtc.dispose()))
-
   def init(
     logic: WebRTCMessageHandler
-  ): ZManaged[Console, Throwable, (StateChangeReturn, WebRTCBin)] = {
-    gstInit("robolive-robot").flatMap { implicit token =>
+  ): ZManaged[Console, Throwable, WebRTCBin] = {
+    GstManaged("robolive-robot", new Version(1, 14)).flatMap { implicit token =>
       for {
-        pipeline <- parseDescription
-        sendReceive <- getWebRTCBin(pipeline, "sendrecv")
+        pipeline <- PipelineManaged("robolive-robot-pipeline", PipelineDescription)
+        sendReceive <- WebRTCBinManaged(pipeline, "sendrecv")
         stateChange <- Task {
-          import org.slf4j.bridge.SLF4JBridgeHandler
-          SLF4JBridgeHandler.removeHandlersForRootLogger()
-          SLF4JBridgeHandler.install()
-
+          import WebRTCBinManaged.WebRTCBinOps
           println("BEFORE READY")
           pipeline.setState(State.READY)
 
@@ -145,12 +101,14 @@ object Application {
           channel.connect { (message: String) =>
             println(s"MESSAGE RECEIVED: $message")
           }
-          println(channel)
 
           pipeline.setState(State.PLAYING)
         }.toManaged_
+        _ <- ZManaged.when(stateChange != StateChangeReturn.SUCCESS)(
+          ZIO.fail(new RuntimeException(s"Wrong pipeline state change: $stateChange")).toManaged_
+        )
       } yield {
-        stateChange -> sendReceive // completely bad idea, but for now OK
+        sendReceive
       }
     }
   }
@@ -166,6 +124,10 @@ object Main extends zio.App {
   import zio.Task
 
   override def run(args: List[String]): ZIO[zio.ZEnv, Nothing, Int] = {
+    import org.slf4j.bridge.SLF4JBridgeHandler
+    SLF4JBridgeHandler.removeHandlersForRootLogger()
+    SLF4JBridgeHandler.install()
+
     AsyncHttpClientZioBackend
       .managed()
       .use { implicit backend =>
@@ -183,53 +145,46 @@ object Main extends zio.App {
                 .map(new ImpureWorldAdapter.ZioQueueChannel(_, internal))
                 .map(new WebRTCMessageHandler(_))
               killSwitch <- zio.Promise.make[Nothing, Unit].map(new KillSwitch.PromiseKillSwitch(_))
-              _ <- Application.init(webRTCHandler).use {
-                case (stateChange, bin) =>
-                  if (stateChange != StateChangeReturn.SUCCESS) {
-                    zio.console
-                      .putStrLn(s"Wrong pipeline state change: $stateChange")
-                      .zipRight(killSwitch.kill())
-                  } else {
-                    for {
-                      connectionEstablished <- zio.Promise.make[Nothing, Unit]
-                      _ <- ws.send(WebSocketFrame.text("ROBOT"))
-                      _ <- ws
-                        .receiveText()
-                        .flatMap(m => zio.console.putStrLn(s"ASD: $m")) // ROBOT_OK
-                      _ <- ws
-                        .receiveText()
-                        .flatMap {
-                          case Right(message) =>
-                            if (message == "READY")
-                              zio.console
-                                .putStrLn("Received `READY` message. Connection established.")
-                                .zipRight(connectionEstablished.succeed(()))
-                            else
-                              zio.console
-                                .putStrLn(s"Received `$message`. Waiting for `READY` message")
-                          case Left(error) =>
-                            zio.console
-                              .putStrLn(s"Error: $error")
-                              .zipRight(ws.close)
-                              .zipRight(killSwitch.kill())
-                        }
-                        .doUntilM(_ =>
-                          connectionEstablished.isDone
-                            .tap(_ => UIO(println("FINISH WAITING FOR CONN")))
-                        )
-                      _ <- sendChannel(externalOut, connectionEstablished, ws)
-                        .doUntilM(_ => killSwitch.isKilled)
-                        .fork
-                      _ <- receiveChannel(ws, externalIn, killSwitch)
-                        .doUntilM(_ => killSwitch.isKilled)
-                        .fork
-                      // .process not working if moved upper, need to figure out why
-                      _ <- new WebRTCController(bin, externalIn, externalOut, internal, killSwitch).process
-                        .doUntilM(_ => killSwitch.isKilled)
-                        .fork
-                      _ <- killSwitch.await.tap(_ => UIO(println("GStreamer teared down")))
-                    } yield ()
-                  }
+              _ <- Application.init(webRTCHandler).use { bin =>
+                for {
+                  connectionEstablished <- zio.Promise.make[Nothing, Unit]
+                  _ <- ws.send(WebSocketFrame.text("ROBOT"))
+                  _ <- ws
+                    .receiveText()
+                    .flatMap(m => zio.console.putStrLn(s"ASD: $m")) // ROBOT_OK
+                  _ <- ws
+                    .receiveText()
+                    .flatMap {
+                      case Right(message) =>
+                        if (message == "READY")
+                          zio.console
+                            .putStrLn("Received `READY` message. Connection established.")
+                            .zipRight(connectionEstablished.succeed(()))
+                        else
+                          zio.console
+                            .putStrLn(s"Received `$message`. Waiting for `READY` message")
+                      case Left(error) =>
+                        zio.console
+                          .putStrLn(s"Error: $error")
+                          .zipRight(ws.close)
+                          .zipRight(killSwitch.kill())
+                    }
+                    .doUntilM(_ =>
+                      connectionEstablished.isDone
+                        .tap(_ => UIO(println("FINISH WAITING FOR CONN")))
+                    )
+                  _ <- sendChannel(externalOut, connectionEstablished, ws)
+                    .doUntilM(_ => killSwitch.isKilled)
+                    .fork
+                  _ <- receiveChannel(ws, externalIn, killSwitch)
+                    .doUntilM(_ => killSwitch.isKilled)
+                    .fork
+                  // .process not working if moved upper, need to figure out why
+                  _ <- new WebRTCController(bin, externalIn, externalOut, internal, killSwitch).process
+                    .doUntilM(_ => killSwitch.isKilled)
+                    .fork
+                  _ <- killSwitch.await.tap(_ => UIO(println("GStreamer teared down")))
+                } yield ()
               }
             } yield ()
           }
