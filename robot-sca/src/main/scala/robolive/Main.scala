@@ -1,65 +1,10 @@
 package robolive
 
-import io.circe
 import org.freedesktop.gstreamer._
 import org.freedesktop.gstreamer.webrtc.{WebRTCBin, WebRTCSDPType, WebRTCSessionDescription}
-import robolive.Models.ExternalMessage
 import robolive.bindings.GstWebRTCDataChannel
 import zio.console.Console
 import zio._
-
-sealed trait ImpureAdapter {
-  protected def run[T](task: Task[T]): Unit = zio.Runtime.global.unsafeRunAsync_(task)
-}
-
-sealed trait OutputChannel[T] {
-  def put(value: T): Unit
-}
-
-final class ZioQueueChannel[T](
-  console: zio.console.Console.Service,
-  outgoingMessages: zio.Queue[T],
-) extends OutputChannel[T] with ImpureAdapter {
-  override def put(value: T): Unit = run {
-    outgoingMessages
-      .offer(value)
-      .tap { isSubmitted =>
-        ZIO.when(!isSubmitted)(console.putStrLn("Can not submit message to queue"))
-      }
-  }
-}
-
-sealed trait KillSwitch {
-  def kill(): UIO[Unit]
-  def isKilled: UIO[Boolean]
-}
-
-final class PromiseKillSwitch(quit: zio.Promise[Nothing, Unit])
-    extends KillSwitch with ImpureAdapter {
-  override def kill(): UIO[Unit] = quit.succeed(()).unit
-  override def isKilled: UIO[Boolean] = quit.isDone
-}
-
-final class WebRTCMessageHandler(
-  outputChannel: OutputChannel[Models.InternalMessage],
-) extends WebRTCBin.ON_NEGOTIATION_NEEDED with WebRTCBin.ON_ICE_CANDIDATE
-    with WebRTCBin.CREATE_OFFER with Bus.EOS with Bus.ERROR {
-  import Models.InternalMessage._
-  override def onNegotiationNeeded(elem: Element): Unit =
-    outputChannel.put(OnNegotiationNeeded(elem, this))
-
-  override def onIceCandidate(sdpMLineIndex: Int, candidate: String): Unit =
-    outputChannel.put(OnIceCandidate(sdpMLineIndex, candidate))
-
-  override def onOfferCreated(offer: WebRTCSessionDescription): Unit =
-    outputChannel.put(OnOfferCreated(offer))
-
-  override def endOfStream(source: GstObject): Unit =
-    outputChannel.put(EndOfStream(source))
-
-  override def errorMessage(source: GstObject, code: Int, message: String): Unit =
-    outputChannel.put(ErrorMessage(source, code, message))
-}
 
 final class WebRTCController(
   webRTCBin: WebRTCBin,
@@ -92,7 +37,7 @@ final class WebRTCController(
         }.unit
       case InternalMessage.EndOfStream(source) => killSwitch.kill()
       case InternalMessage.ErrorMessage(source: GstObject, code: Int, message: String) =>
-        killSwitch.kill()
+        Task.unit // distinguis between fatals and non fatals?
     }
     val externalProcessingTask = externalIn.take.tap { message =>
       zio.console.putStrLn(s"External: $message")
@@ -100,10 +45,6 @@ final class WebRTCController(
       case ExternalMessage.Sdp(tp, sdp) =>
         Task {
           val tpe = WebRTCSDPType.ANSWER
-          // causes:
-          // ** (robolive-robot:9694): WARNING **: 22:49:45.548: Unexpected item 0x7f4b20006370 dequeued from queue queue4 (refcounting problem?)
-          // seems like we need to dispose it somehow, but I don't know the moment when it should be done
-          // potential memory leak
           val sdpMessage = new SDPMessage()
           sdpMessage.parseBuffer(sdp)
           val description = new WebRTCSessionDescription(tpe, sdpMessage)
@@ -129,9 +70,9 @@ final class WebRTCController(
 object Application {
   private val PipelineDescription =
     """webrtcbin name=sendrecv bundle-policy=max-bundle stun-server=stun://stun.l.google.com:19302
-      | videotestsrc is-live=true pattern=ball ! videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay !
+      | autovideosrc is-live=true pattern=ball ! videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay !
       | queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! sendrecv.
-      | audiotestsrc is-live=true wave=red-noise ! audioconvert ! audioresample ! queue ! opusenc ! rtpopuspay !
+      | autoaudiosrc ! audioconvert ! audioresample ! queue ! opusenc ! rtpopuspay !
       | queue ! application/x-rtp,media=audio,encoding-name=OPUS,payload=96 ! sendrecv.""".stripMargin
 
   implicit final class WebRTCBinOps(webRTCBin: WebRTCBin) {
@@ -239,9 +180,9 @@ object Main extends zio.App {
               internal <- ZQueue.unbounded[Models.InternalMessage]
               webRTCHandler <- ZIO
                 .access[zio.console.Console](_.get[zio.console.Console.Service])
-                .map(new ZioQueueChannel(_, internal))
+                .map(new ImpureWorldAdapter.ZioQueueChannel(_, internal))
                 .map(new WebRTCMessageHandler(_))
-              killSwitch <- zio.Promise.make[Nothing, Unit].map(new PromiseKillSwitch(_))
+              killSwitch <- zio.Promise.make[Nothing, Unit].map(new KillSwitch.PromiseKillSwitch(_))
               _ <- Application.init(webRTCHandler).use {
                 case (stateChange, bin) =>
                   if (stateChange != StateChangeReturn.SUCCESS) {
@@ -250,65 +191,43 @@ object Main extends zio.App {
                       .zipRight(killSwitch.kill())
                   } else {
                     for {
-                      // temporary measure, seems like it is the task of signalling to correctly handle messages
-                      // in case client is not connected yet
                       connectionEstablished <- zio.Promise.make[Nothing, Unit]
-                      _ <- new WebRTCController(bin, externalIn, externalOut, internal, killSwitch).process
                       _ <- ws.send(WebSocketFrame.text("ROBOT"))
                       _ <- ws
                         .receiveText()
                         .flatMap(m => zio.console.putStrLn(s"ASD: $m")) // ROBOT_OK
-                      _ <- externalOut.take
-                        .tap(message => zio.console.putStrLn(s"Sending: $message"))
-                        .flatMap { message =>
-                          connectionEstablished.await.zipRight(
-                            ws.send(WebSocketFrame.text(Models.ExternalMessage.toWire(message)))
-                          )
-                        }
-                        .doUntilM(_ => killSwitch.isKilled)
-                        .fork
                       _ <- ws
                         .receiveText()
                         .flatMap {
+                          case Right(message) =>
+                            if (message == "READY")
+                              zio.console
+                                .putStrLn("Received `READY` message. Connection established.")
+                                .zipRight(connectionEstablished.succeed(()))
+                            else
+                              zio.console
+                                .putStrLn(s"Received `$message`. Waiting for `READY` message")
                           case Left(error) =>
                             zio.console
                               .putStrLn(s"Error: $error")
                               .zipRight(ws.close)
                               .zipRight(killSwitch.kill())
-                          case Right(message) =>
-                            message match {
-                              case "READY" =>
-                                zio.console
-                                  .putStrLn("Received `READY` message. Connection established.")
-                                  .zipRight(connectionEstablished.succeed(()))
-                              case other =>
-                                Models.ExternalMessage.fromWire(other) match {
-                                  case Left(error) =>
-                                    zio.console.putStr(s"Error while decoding message: $error")
-                                  case Right(message) =>
-                                    println(s"Right($message)")
-                                    externalIn
-                                      .offer(message)
-                                      .tap { isOffered =>
-                                        if (isOffered)
-                                          zio.console.putStrLn("Incoming message put in a queue")
-                                        else
-                                          zio.console
-                                            .putStrLn("Can not put incoming message in a queue")
-                                      }
-                                      .unit
-                                }
-                            }
                         }
                         .doUntilM(_ =>
-                          killSwitch.isKilled.tap { isDone =>
-                            if (isDone) {
-                              UIO(println("GStreamer teared down"))
-                            } else {
-                              UIO(())
-                            }
-                          }
+                          connectionEstablished.isDone
+                            .tap(_ => UIO(println("FINISH WAITING FOR CONN")))
                         )
+                      _ <- sendChannel(externalOut, connectionEstablished, ws)
+                        .doUntilM(_ => killSwitch.isKilled)
+                        .fork
+                      _ <- receiveChannel(ws, externalIn, killSwitch)
+                        .doUntilM(_ => killSwitch.isKilled)
+                        .fork
+                      // .process not working if moved upper, need to figure out why
+                      _ <- new WebRTCController(bin, externalIn, externalOut, internal, killSwitch).process
+                        .doUntilM(_ => killSwitch.isKilled)
+                        .fork
+                      _ <- killSwitch.await.tap(_ => UIO(println("GStreamer teared down")))
                     } yield ()
                   }
               }
@@ -320,59 +239,46 @@ object Main extends zio.App {
         1
       }, _ => 0)
   }
-}
 
-object Models {
-  import io.circe.{Decoder, Encoder}
-
-  sealed trait Message
-  sealed trait InternalMessage extends Message
-  sealed trait ExternalMessage extends Message
-
-  object InternalMessage {
-    final case class OnNegotiationNeeded(elem: Element, handler: WebRTCBin.CREATE_OFFER)
-        extends InternalMessage
-    final case class OnIceCandidate(sdpMLineIndex: Int, candidate: String) extends InternalMessage
-    final case class OnOfferCreated(offer: WebRTCSessionDescription) extends InternalMessage
-    final case class EndOfStream(source: GstObject) extends InternalMessage
-    final case class ErrorMessage(source: GstObject, code: Int, message: String)
-        extends InternalMessage
+  private def receiveChannel(
+    ws: WebSocket[Task],
+    externalIn: Queue[Models.ExternalMessage],
+    killSwitch: KillSwitch,
+  ) = {
+    ws.receiveText().flatMap {
+      case Left(error) =>
+        zio.console
+          .putStrLn(s"Error: $error")
+          .zipRight(ws.close)
+          .zipRight(killSwitch.kill())
+      case Right(message) =>
+        Models.ExternalMessage.fromWire(message) match {
+          case Left(error) => zio.console.putStr(s"Error while decoding message: $error")
+          case Right(message) =>
+            externalIn
+              .offer(message)
+              .tap { isOffered =>
+                if (isOffered)
+                  zio.console.putStrLn("Incoming message put in a queue")
+                else
+                  zio.console
+                    .putStrLn("Can not put incoming message in a queue")
+              }
+              .unit
+        }
+    }
   }
-
-  object ExternalMessage {
-
-    import io.circe.generic.extras.Configuration
-    import io.circe.generic.extras.semiauto._
-
-    private implicit val customConfig: Configuration = {
-      val lowerFirstCharacter = (s: String) => s.head.toLower + s.substring(1)
-      val default = Configuration.default
-      default.copy(transformConstructorNames =
-        default.transformConstructorNames.andThen(lowerFirstCharacter)
-      )
-    }
-
-    import io.circe.parser._
-    import io.circe.syntax._
-
-    def toWire(message: ExternalMessage): String = message.asJson.noSpaces
-
-    def fromWire(message: String): Either[circe.Error, ExternalMessage] =
-      parse(message).flatMap(_.as[ExternalMessage])
-
-    implicit val encoder: Encoder[ExternalMessage] = deriveConfiguredEncoder
-    implicit val decoder: Decoder[ExternalMessage] = deriveConfiguredDecoder
-
-    final case class Sdp(`type`: String, sdp: String) extends ExternalMessage
-    object Sdp {
-      implicit val encoder: Encoder[Sdp] = deriveConfiguredEncoder
-      implicit val decoder: Decoder[Sdp] = deriveConfiguredDecoder
-    }
-
-    final case class Ice(candidate: String, sdpMLineIndex: Int) extends ExternalMessage
-    object Ice {
-      implicit val encoder: Encoder[Ice] = deriveConfiguredEncoder
-      implicit val decoder: Decoder[Ice] = deriveConfiguredDecoder
-    }
+  private def sendChannel(
+    externalOut: Queue[Models.ExternalMessage],
+    canSend: zio.Promise[Nothing, Unit],
+    ws: WebSocket[Task]
+  ): ZIO[Console, Throwable, Unit] = {
+    externalOut.take
+      .tap(message => zio.console.putStrLn(s"Sending: $message"))
+      .flatMap { message =>
+        canSend.await.zipRight(
+          ws.send(WebSocketFrame.text(Models.ExternalMessage.toWire(message)))
+        )
+      }
   }
 }
