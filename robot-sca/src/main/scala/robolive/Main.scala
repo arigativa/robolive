@@ -3,8 +3,6 @@ package robolive
 import org.freedesktop.gstreamer._
 import org.freedesktop.gstreamer.webrtc.{WebRTCBin, WebRTCSDPType, WebRTCSessionDescription}
 import robolive.gstreamer.{GstManaged, PipelineManaged, WebRTCBinManaged}
-import robolive.gstreamer.GstManaged.GSTInit
-import robolive.gstreamer.bindings.GstWebRTCDataChannel
 import zio.console.Console
 import zio._
 
@@ -39,7 +37,7 @@ final class WebRTCController(
         }.unit
       case InternalMessage.EndOfStream(source) => killSwitch.kill()
       case InternalMessage.ErrorMessage(source: GstObject, code: Int, message: String) =>
-        Task.unit // distinguis between fatals and non fatals?
+        Task.unit // distinguish between fatals and non fatals?
     }
     val externalProcessingTask = externalIn.take.tap { message =>
       zio.console.putStrLn(s"External: $message")
@@ -66,51 +64,6 @@ final class WebRTCController(
           .fork
       }
       .unit
-  }
-}
-
-object Application {
-  private val PipelineDescription =
-    """webrtcbin name=sendrecv bundle-policy=max-bundle stun-server=stun://stun.l.google.com:19302
-      | autovideosrc is-live=true pattern=ball ! videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay !
-      | queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! sendrecv.
-      | autoaudiosrc ! audioconvert ! audioresample ! queue ! opusenc ! rtpopuspay !
-      | queue ! application/x-rtp,media=audio,encoding-name=OPUS,payload=96 ! sendrecv.""".stripMargin
-
-  def init(
-    logic: WebRTCMessageHandler
-  ): ZManaged[Console, Throwable, WebRTCBin] = {
-    GstManaged("robolive-robot", new Version(1, 14)).flatMap { implicit token =>
-      for {
-        pipeline <- PipelineManaged("robolive-robot-pipeline", PipelineDescription)
-        sendReceive <- WebRTCBinManaged(pipeline, "sendrecv")
-        stateChange <- Task {
-          import WebRTCBinManaged.WebRTCBinOps
-          println("BEFORE READY")
-          pipeline.setState(State.READY)
-
-          sendReceive.connect(logic: WebRTCBin.ON_NEGOTIATION_NEEDED)
-          sendReceive.connect(logic: WebRTCBin.ON_ICE_CANDIDATE)
-          val bus = pipeline.getBus
-          bus.connect(logic: Bus.EOS)
-          bus.connect(logic: Bus.ERROR)
-
-          val channel = sendReceive.createDataChannel("server-channel")
-          println(s"CHANNEL CREATED: ${channel.getName}")
-          println(s"CHANNEL CREATED: ${channel.getTypeName}")
-          channel.connect { (message: String) =>
-            println(s"MESSAGE RECEIVED: $message")
-          }
-
-          pipeline.setState(State.PLAYING)
-        }.toManaged_
-        _ <- ZManaged.when(stateChange != StateChangeReturn.SUCCESS)(
-          ZIO.fail(new RuntimeException(s"Wrong pipeline state change: $stateChange")).toManaged_
-        )
-      } yield {
-        sendReceive
-      }
-    }
   }
 }
 
@@ -145,38 +98,15 @@ object Main extends zio.App {
                 .map(new ImpureWorldAdapter.ZioQueueChannel(_, internal))
                 .map(new WebRTCMessageHandler(_))
               killSwitch <- zio.Promise.make[Nothing, Unit].map(new KillSwitch.PromiseKillSwitch(_))
-              _ <- Application.init(webRTCHandler).use { bin =>
+              _ <- init(webRTCHandler).use { bin =>
                 for {
                   connectionEstablished <- zio.Promise.make[Nothing, Unit]
-                  _ <- ws.send(WebSocketFrame.text("ROBOT"))
-                  _ <- ws
-                    .receiveText()
-                    .flatMap(m => zio.console.putStrLn(s"ASD: $m")) // ROBOT_OK
-                  _ <- ws
-                    .receiveText()
-                    .flatMap {
-                      case Right(message) =>
-                        if (message == "READY")
-                          zio.console
-                            .putStrLn("Received `READY` message. Connection established.")
-                            .zipRight(connectionEstablished.succeed(()))
-                        else
-                          zio.console
-                            .putStrLn(s"Received `$message`. Waiting for `READY` message")
-                      case Left(error) =>
-                        zio.console
-                          .putStrLn(s"Error: $error")
-                          .zipRight(ws.close)
-                          .zipRight(killSwitch.kill())
-                    }
-                    .doUntilM(_ =>
-                      connectionEstablished.isDone
-                        .tap(_ => UIO(println("FINISH WAITING FOR CONN")))
-                    )
+                  _ <- establishConnection(ws, connectionEstablished)
+                    .doUntilM(_ => connectionEstablished.isDone)
                   _ <- sendChannel(externalOut, connectionEstablished, ws)
                     .doUntilM(_ => killSwitch.isKilled)
                     .fork
-                  _ <- receiveChannel(ws, externalIn, killSwitch)
+                  _ <- receiveChannel(ws, externalIn)
                     .doUntilM(_ => killSwitch.isKilled)
                     .fork
                   // .process not working if moved upper, need to figure out why
@@ -195,17 +125,43 @@ object Main extends zio.App {
       }, _ => 0)
   }
 
+  private def establishConnection(
+    ws: WebSocket[Task],
+    connectionEstablished: zio.Promise[Nothing, Unit],
+  ) = {
+    for {
+      _ <- ws.send(WebSocketFrame.text("ROBOT"))
+      _ <- ws
+        .receiveText()
+        .flatMap(m => zio.console.putStrLn(s"ASD: $m")) // ROBOT_OK
+      _ <- ws
+        .receiveText()
+        .flatMap {
+          case Right(message) =>
+            if (message == "READY")
+              zio.console
+                .putStrLn("Received `READY` message. Connection established.")
+                .zipRight(connectionEstablished.succeed(()))
+            else
+              zio.console
+                .putStrLn(s"Received `$message`. Waiting for `READY` message")
+          case Left(error) =>
+            zio.console
+              .putStrLn(s"Error receiving message: $error")
+              .zipRight(ws.close)
+        }
+    } yield ()
+  }
+
   private def receiveChannel(
     ws: WebSocket[Task],
     externalIn: Queue[Models.ExternalMessage],
-    killSwitch: KillSwitch,
   ) = {
     ws.receiveText().flatMap {
       case Left(error) =>
         zio.console
-          .putStrLn(s"Error: $error")
+          .putStrLn(s"Error receiving message: $error")
           .zipRight(ws.close)
-          .zipRight(killSwitch.kill())
       case Right(message) =>
         Models.ExternalMessage.fromWire(message) match {
           case Left(error) => zio.console.putStr(s"Error while decoding message: $error")
@@ -226,14 +182,61 @@ object Main extends zio.App {
   private def sendChannel(
     externalOut: Queue[Models.ExternalMessage],
     canSend: zio.Promise[Nothing, Unit],
-    ws: WebSocket[Task]
+    ws: WebSocket[Task],
   ): ZIO[Console, Throwable, Unit] = {
     externalOut.take
       .tap(message => zio.console.putStrLn(s"Sending: $message"))
       .flatMap { message =>
-        canSend.await.zipRight(
-          ws.send(WebSocketFrame.text(Models.ExternalMessage.toWire(message)))
-        )
+        canSend.await
+          .zipRight(
+            ws.send(WebSocketFrame.text(Models.ExternalMessage.toWire(message)))
+          )
+          .catchAll { error =>
+            zio.console.putStrLn(s"error sending message: $error")
+          }
       }
+  }
+
+  private val PipelineDescription =
+    """webrtcbin name=sendrecv bundle-policy=max-bundle stun-server=stun://stun.l.google.com:19302
+      | autovideosrc is-live=true pattern=ball ! videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay !
+      | queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! sendrecv.
+      | autoaudiosrc ! audioconvert ! audioresample ! queue ! opusenc ! rtpopuspay !
+      | queue ! application/x-rtp,media=audio,encoding-name=OPUS,payload=96 ! sendrecv.""".stripMargin
+
+  private def init(
+    logic: WebRTCMessageHandler
+  ): ZManaged[Console, Throwable, WebRTCBin] = {
+    GstManaged("robolive-robot", new Version(1, 14)).flatMap { implicit token =>
+      for {
+        pipeline <- PipelineManaged("robolive-robot-pipeline", PipelineDescription)
+        sendReceive <- WebRTCBinManaged(pipeline, "sendrecv")
+        stateChange <- Task {
+          import WebRTCBinManaged.WebRTCBinOps
+          println("BEFORE READY")
+          pipeline.setState(State.READY)
+
+          sendReceive.connect(logic: WebRTCBin.ON_NEGOTIATION_NEEDED)
+          sendReceive.connect(logic: WebRTCBin.ON_ICE_CANDIDATE)
+          val bus = pipeline.getBus
+          bus.connect(logic: Bus.EOS)
+          bus.connect(logic: Bus.ERROR)
+
+          val channel = sendReceive.createDataChannel("server-channel")
+          println(s"CHANNEL CREATED: ${channel.getName}")
+          println(s"CHANNEL CREATED: ${channel.getTypeName}")
+          channel.connect { (message: String) =>
+            println(s"MESSAGE RECEIVED: $message")
+          }
+
+          pipeline.setState(State.PLAYING)
+        }.toManaged_
+        _ <- ZManaged.when(stateChange != StateChangeReturn.SUCCESS)(
+          ZIO.fail(new RuntimeException(s"Wrong pipeline state change: $stateChange")).toManaged_
+        )
+      } yield {
+        sendReceive
+      }
+    }
   }
 }
