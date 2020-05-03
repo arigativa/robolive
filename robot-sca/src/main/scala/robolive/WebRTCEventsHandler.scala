@@ -2,24 +2,24 @@ package robolive
 
 import org.freedesktop.gstreamer.{Bus, Element, GstObject}
 import org.freedesktop.gstreamer.webrtc.{WebRTCBin, WebRTCSessionDescription}
+import robolive.Event._
 
-final class WebRTCMessageHandler(
-  outputChannel: ImpureWorldAdapter.OutputChannel[Models.InternalMessage],
+final class WebRTCEventsHandler(
+  events: ImpureWorldAdapter.OutputChannel[Event]
 ) extends WebRTCBin.ON_NEGOTIATION_NEEDED with WebRTCBin.ON_ICE_CANDIDATE
     with WebRTCBin.CREATE_OFFER with Bus.EOS with Bus.ERROR {
-  import Models.InternalMessage._
   override def onNegotiationNeeded(elem: Element): Unit =
-    outputChannel.put(OnNegotiationNeeded(elem, this))
+    events.put(OnNegotiationNeeded(elem, this))
 
   override def onIceCandidate(sdpMLineIndex: Int, candidate: String): Unit =
-    outputChannel.put(OnIceCandidate(sdpMLineIndex, candidate))
+    events.put(OnIceCandidate(sdpMLineIndex, candidate))
 
   override def onOfferCreated(offer: WebRTCSessionDescription): Unit =
-    outputChannel.put(OnOfferCreated(offer))
+    events.put(OnOfferCreated(offer))
 
   override def endOfStream(source: GstObject): Unit =
-    outputChannel.put(EndOfStream(source))
+    events.put(EndOfStream(source))
 
   override def errorMessage(source: GstObject, code: Int, message: String): Unit =
-    outputChannel.put(ErrorMessage(source, code, message))
+    events.put(ErrorMessage(source, code, message))
 }

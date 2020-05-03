@@ -9,12 +9,12 @@ object ImpureWorldAdapter {
 
   final class ZioQueueChannel[T](
     console: zio.console.Console.Service,
-    outgoingMessages: zio.Queue[T],
+    messagesOut: zio.Queue[T],
   ) extends OutputChannel[T] {
     protected def run[U](task: Task[U]): Unit = zio.Runtime.global.unsafeRunAsync_(task)
 
     override def put(value: T): Unit = run {
-      outgoingMessages
+      messagesOut
         .offer(value)
         .tap { isSubmitted =>
           ZIO.when(!isSubmitted)(console.putStrLn("Can not submit message to queue"))
