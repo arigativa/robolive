@@ -3,6 +3,7 @@ package robolive
 import org.freedesktop.gstreamer._
 import org.freedesktop.gstreamer.webrtc.{WebRTCBin, WebRTCSDPType, WebRTCSessionDescription}
 import robolive.gstreamer.{GstManaged, PipelineManaged, WebRTCBinManaged}
+import sttp.model.Uri
 import zio.console.Console
 import zio._
 
@@ -70,41 +71,54 @@ object Main extends zio.App {
     SLF4JBridgeHandler.removeHandlersForRootLogger()
     SLF4JBridgeHandler.install()
 
-    AsyncHttpClientZioBackend
-      .managed()
-      .use { implicit backend =>
-        basicRequest
-          .get(uri"ws://localhost:5000")
-          .openWebsocketF(ZioWebSocketHandler())
-          .flatMap { r =>
-            val ws: WebSocket[Task] = r.result
-            for {
-              messages <- ZQueue.unbounded[Message]
-              events <- ZQueue.unbounded[Event]
-              webRTCHandler <- ZIO
-                .access[zio.console.Console](_.get[zio.console.Console.Service])
-                .map(new ImpureWorldAdapter.ZioQueueChannel(_, events))
-                .map(new WebRTCEventsHandler(_))
-              killSwitch <- zio.Promise.make[Nothing, Unit].map(new KillSwitch.PromiseKillSwitch(_))
-              _ <- init(webRTCHandler).use { bin =>
+    zio.system
+      .env("SIGNALLING_URI")
+      .flatMap { uriRaw =>
+        ZIO.fromEither {
+          uriRaw
+            .toRight("Provide `SIGNALLING_URI` env")
+            .flatMap(Uri.parse)
+        }.mapError(error => new RuntimeException(error))
+      }
+      .flatMap { signallingUri =>
+        AsyncHttpClientZioBackend
+          .managed()
+          .use { implicit backend =>
+            basicRequest
+              .get(signallingUri)
+              .openWebsocketF(ZioWebSocketHandler())
+              .flatMap { r =>
+                val ws: WebSocket[Task] = r.result
                 for {
-                  connectionEstablished <- zio.Promise.make[Nothing, Unit]
-                  _ <- establishConnection(ws, connectionEstablished)
-                    .doUntilM(_ => connectionEstablished.isDone)
-                  _ <- sendChannel(messages, connectionEstablished, ws)
-                    .doUntilM(_ => killSwitch.isKilled)
-                    .fork
-                  _ <- receiveChannel(ws, events)
-                    .doUntilM(_ => killSwitch.isKilled)
-                    .fork
-                  // .process not working if moved upper, need to figure out why
-                  _ <- new WebRTCController(bin, messages, events, killSwitch).processEvent
-                    .doUntilM(_ => killSwitch.isKilled)
-                    .fork
-                  _ <- killSwitch.await.tap(_ => UIO(println("GStreamer teared down")))
+                  messages <- ZQueue.unbounded[Message]
+                  events <- ZQueue.unbounded[Event]
+                  webRTCHandler <- ZIO
+                    .access[zio.console.Console](_.get[zio.console.Console.Service])
+                    .map(new ImpureWorldAdapter.ZioQueueChannel(_, events))
+                    .map(new WebRTCEventsHandler(_))
+                  killSwitch <- zio.Promise
+                    .make[Nothing, Unit]
+                    .map(new KillSwitch.PromiseKillSwitch(_))
+                  _ <- init(webRTCHandler).use { bin =>
+                    for {
+                      connectionEstablished <- zio.Promise.make[Nothing, Unit]
+                      _ <- establishConnection(ws, connectionEstablished)
+                        .doUntilM(_ => connectionEstablished.isDone)
+                      _ <- sendChannel(messages, connectionEstablished, ws)
+                        .doUntilM(_ => killSwitch.isKilled)
+                        .fork
+                      _ <- receiveChannel(ws, events)
+                        .doUntilM(_ => killSwitch.isKilled)
+                        .fork
+                      // .process not working if moved upper, need to figure out why
+                      _ <- new WebRTCController(bin, messages, events, killSwitch).processEvent
+                        .doUntilM(_ => killSwitch.isKilled)
+                        .fork
+                      _ <- killSwitch.await.tap(_ => UIO(println("GStreamer teared down")))
+                    } yield ()
+                  }
                 } yield ()
               }
-            } yield ()
           }
       }
       .fold(error => {
@@ -191,9 +205,9 @@ object Main extends zio.App {
 
   private val PipelineDescription =
     """webrtcbin name=sendrecv bundle-policy=max-bundle stun-server=stun://stun.l.google.com:19302
-      | autovideosrc is-live=true pattern=ball ! videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay !
+      | videotestsrc is-live=true pattern=ball ! videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay !
       | queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! sendrecv.
-      | autoaudiosrc ! audioconvert ! audioresample ! queue ! opusenc ! rtpopuspay !
+      | audiotestsrc ! audioconvert ! audioresample ! queue ! opusenc ! rtpopuspay !
       | queue ! application/x-rtp,media=audio,encoding-name=OPUS,payload=96 ! sendrecv.""".stripMargin
 
   private def init(

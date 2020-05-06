@@ -1,3 +1,7 @@
+import com.typesafe.sbt.packager.docker.ExecCmd
+enablePlugins(DockerPlugin)
+enablePlugins(JavaServerAppPackaging)
+
 name := "robot-sca"
 
 version := "0.1"
@@ -22,5 +26,7 @@ libraryDependencies ++= Seq(
   "dev.zio" %% "zio-test" % zioVersion % Test,
   "dev.zio" %% "zio-test-sbt" % zioVersion % Test,
 )
+
+dockerBaseImage := "openjdk:9"
 
 testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
