@@ -1,11 +1,8 @@
-enablePlugins(DockerPlugin)
-enablePlugins(JavaServerAppPackaging)
-
-name := "robot-sca"
-
-version := "0.1"
-
+organization := "ru.arigativa.robolive"
+name := "robot"
+version := "1.0"
 scalaVersion := "2.13.1"
+
 javacOptions ++= Seq("-source", "1.9", "-target", "1.9")
 
 val zioVersion = "1.0.0-RC18-2"

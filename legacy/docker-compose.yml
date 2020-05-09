@@ -22,7 +22,7 @@ services:
     volumes:
       - ./robot/:/code
   static_cnt:
-    build: static
+    build: ../static
     container_name: static_cnt
     ports:
       - "8080:80"
