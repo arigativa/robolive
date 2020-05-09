@@ -141,10 +141,7 @@ object Main extends zio.App {
     connectionEstablished: zio.Promise[Nothing, Unit],
   ) = {
     for {
-      _ <- ws.send(WebSocketFrame.text("ROBOT"))
-      _ <- ws
-        .receiveText()
-        .flatMap(m => zio.console.putStrLn(s"ASD: $m")) // ROBOT_OK
+      _ <- ws.send(WebSocketFrame.text("JOIN 1"))
       _ <- ws
         .receiveText()
         .flatMap {
@@ -225,11 +222,15 @@ object Main extends zio.App {
 
   private def init(
     webRTCEventsHandler: WebRTCEventsHandler,
-    videoSrcPipeline: String, audioSrcPipeline: String,
+    videoSrcPipeline: String,
+    audioSrcPipeline: String,
   ): ZManaged[Console, Throwable, WebRTCBin] = {
     GstManaged("robolive-robot", new Version(1, 14)).flatMap { implicit token =>
       for {
-        pipeline <- PipelineManaged("robolive-robot-pipeline", pipelineDescription(videoSrcPipeline, audioSrcPipeline))
+        pipeline <- PipelineManaged(
+          "robolive-robot-pipeline",
+          pipelineDescription(videoSrcPipeline, audioSrcPipeline)
+        )
         sendReceive <- WebRTCBinManaged(pipeline, "sendrecv")
         stateChange <- Task {
           import WebRTCBinManaged.WebRTCBinOps

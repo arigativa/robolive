@@ -107,38 +107,33 @@ function onIncomingICE(ice) {
 
 function onServerMessage(event) {
     console.log("Received " + event.data);
-    switch (event.data) {
-        case "CLIENT_OK":
-            setStatus("Registered with server, waiting for call");
-            return;
-        default:
-            if (event.data.startsWith("ERROR")) {
-                handleIncomingError(event.data);
-                return;
-            }
-            // Handle incoming JSON SDP and ICE messages
-            try {
-                msg = JSON.parse(event.data);
-            } catch (e) {
-                if (e instanceof SyntaxError) {
-                    handleIncomingError("Error parsing incoming JSON: " + event.data);
-                } else {
-                    handleIncomingError("Unknown error parsing response: " + event.data);
-                }
-                return;
-            }
 
-            // Incoming JSON signals the beginning of a call
-            if (!peer_connection)
-                createCall(msg);
+    if (event.data.startsWith("ERROR")) {
+        handleIncomingError(event.data);
+        return;
+    }
+    // Handle incoming JSON SDP and ICE messages
+    try {
+        msg = JSON.parse(event.data);
+    } catch (e) {
+        if (e instanceof SyntaxError) {
+            handleIncomingError("Error parsing incoming JSON: " + event.data);
+        } else {
+            handleIncomingError("Unknown error parsing response: " + event.data);
+        }
+        return;
+    }
 
-            if (msg.sdp != null) {
-                onIncomingSDP(msg.sdp);
-            } else if (msg.ice != null) {
-                onIncomingICE(msg.ice);
-            } else {
-                handleIncomingError("Unknown incoming JSON: " + msg);
-            }
+    // Incoming JSON signals the beginning of a call
+    if (!peer_connection)
+        createCall(msg);
+
+    if (msg.sdp != null) {
+        onIncomingSDP(msg.sdp);
+    } else if (msg.ice != null) {
+        onIncomingICE(msg.ice);
+    } else {
+        handleIncomingError("Unknown incoming JSON: " + msg);
     }
 }
 
@@ -206,7 +201,8 @@ function websocketServerConnect() {
     /* When connected, immediately register with the server */
     ws_conn.addEventListener('open', (event) => {
         document.getElementById("peer-id").textContent = peer_id;
-        ws_conn.send('CLIENT');
+        ws_conn.send('JOIN 1');
+        ws_conn.send('READY');
         setStatus("Registering with server");
     });
     ws_conn.addEventListener('error', onServerError);
