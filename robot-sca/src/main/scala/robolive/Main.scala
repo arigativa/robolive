@@ -6,6 +6,7 @@ import robolive.gstreamer.{GstManaged, PipelineManaged, WebRTCBinManaged}
 import sttp.model.Uri
 import zio.console.Console
 import zio._
+import zio.system.System
 
 final class WebRTCController(
   webRTCBin: WebRTCBin,
@@ -71,6 +72,9 @@ object Main extends zio.App {
     SLF4JBridgeHandler.removeHandlersForRootLogger()
     SLF4JBridgeHandler.install()
 
+    def getEnv(name: String, default: String): ZIO[System, Any, String] =
+      zio.system.env(name).map(_.getOrElse(default))
+
     zio.system
       .env("SIGNALLING_URI")
       .flatMap { uriRaw =>
@@ -96,10 +100,12 @@ object Main extends zio.App {
                     .access[zio.console.Console](_.get[zio.console.Console.Service])
                     .map(new ImpureWorldAdapter.ZioQueueChannel(_, events))
                     .map(new WebRTCEventsHandler(_))
+                  videoSrc <- getEnv("VIDEO_SRC", DefaultVideoSrcPipeline)
+                  audioSrc <- getEnv("AUDIO_SRC", DefaultAudioSrcPipeline)
                   killSwitch <- zio.Promise
                     .make[Nothing, Unit]
                     .map(new KillSwitch.PromiseKillSwitch(_))
-                  _ <- init(webRTCHandler).use { bin =>
+                  _ <- init(webRTCHandler, videoSrc, audioSrc).use { bin =>
                     for {
                       connectionEstablished <- zio.Promise.make[Nothing, Unit]
                       _ <- establishConnection(ws, connectionEstablished)
@@ -122,7 +128,10 @@ object Main extends zio.App {
           }
       }
       .fold(error => {
-        println(error)
+        error match {
+          case error: Throwable => error.printStackTrace()
+          case _ => println(error)
+        }
         1
       }, _ => 0)
   }
@@ -203,19 +212,24 @@ object Main extends zio.App {
       }
   }
 
-  private val PipelineDescription =
-    """webrtcbin name=sendrecv bundle-policy=max-bundle stun-server=stun://stun.l.google.com:19302
-      | autovideosrc is-live=true pattern=ball ! videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay !
+  private val DefaultVideoSrcPipeline = "autovideosrc is-live=true pattern=ball ! videoconvert"
+  private val DefaultAudioSrcPipeline = "audiotestsrc ! audioconvert ! audioresample"
+
+  private def pipelineDescription(videoSrc: String, audioSrc: String): String = {
+    s"""webrtcbin name=sendrecv bundle-policy=max-bundle stun-server=stun://stun.l.google.com:19302
+      | $videoSrc ! queue ! vp8enc deadline=1 ! rtpvp8pay !
       | queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! sendrecv.
-      | audiotestsrc ! audioconvert ! audioresample ! queue ! opusenc ! rtpopuspay !
+      | $audioSrc ! queue ! opusenc ! rtpopuspay !
       | queue ! application/x-rtp,media=audio,encoding-name=OPUS,payload=96 ! sendrecv.""".stripMargin
+  }
 
   private def init(
-    webRTCEventsHandler: WebRTCEventsHandler
+    webRTCEventsHandler: WebRTCEventsHandler,
+    videoSrcPipeline: String, audioSrcPipeline: String,
   ): ZManaged[Console, Throwable, WebRTCBin] = {
     GstManaged("robolive-robot", new Version(1, 14)).flatMap { implicit token =>
       for {
-        pipeline <- PipelineManaged("robolive-robot-pipeline", PipelineDescription)
+        pipeline <- PipelineManaged("robolive-robot-pipeline", pipelineDescription(videoSrcPipeline, audioSrcPipeline))
         sendReceive <- WebRTCBinManaged(pipeline, "sendrecv")
         stateChange <- Task {
           import WebRTCBinManaged.WebRTCBinOps
@@ -228,14 +242,18 @@ object Main extends zio.App {
           bus.connect(webRTCEventsHandler: Bus.EOS)
           bus.connect(webRTCEventsHandler: Bus.ERROR)
 
-          val channel = sendReceive.createDataChannel("server-channel")
-          println(s"CHANNEL CREATED: ${channel.getName}")
-          println(s"CHANNEL CREATED: ${channel.getTypeName}")
-          channel.connect { (message: String) =>
-            println(s"MESSAGE RECEIVED: $message")
-          }
+          sendReceive.createDataChannel("server-channel") match {
+            case Some(channel) =>
+              println(s"CHANNEL CREATED: ${channel.getName}")
+              println(s"CHANNEL CREATED: ${channel.getTypeName}")
+              channel.connect { (message: String) =>
+                println(s"MESSAGE RECEIVED: $message")
+              }
 
-          pipeline.setState(State.PLAYING)
+              pipeline.setState(State.PLAYING)
+            case None =>
+              throw new Exception("data channel was not created: null returned")
+          }
         }.toManaged_
         _ <- ZManaged.when(stateChange != StateChangeReturn.SUCCESS)(
           ZIO.fail(new RuntimeException(s"Wrong pipeline state change: $stateChange")).toManaged_

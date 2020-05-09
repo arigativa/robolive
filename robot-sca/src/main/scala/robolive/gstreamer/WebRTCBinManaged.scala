@@ -18,8 +18,8 @@ object WebRTCBinManaged {
     })(webrtc => UIO(webrtc.dispose()))
 
   implicit final class WebRTCBinOps(webRTCBin: WebRTCBin) {
-    def createDataChannel(name: String): GstWebRTCDataChannel = {
-      webRTCBin.emit(classOf[GstWebRTCDataChannel], "create-data-channel", name, null)
+    def createDataChannel(name: String): Option[GstWebRTCDataChannel] = {
+      Option(webRTCBin.emit(classOf[GstWebRTCDataChannel], "create-data-channel", name, null))
     }
   }
 }
