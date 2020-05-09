@@ -250,11 +250,11 @@ object Main extends zio.App {
               channel.connect { (message: String) =>
                 println(s"MESSAGE RECEIVED: $message")
               }
-
-              pipeline.setState(State.PLAYING)
             case None =>
-              throw new Exception("data channel was not created: null returned")
+              println("WARNING: data channel was not created: null returned")
           }
+
+          pipeline.setState(State.PLAYING)
         }.toManaged_
         _ <- ZManaged.when(stateChange != StateChangeReturn.SUCCESS)(
           ZIO.fail(new RuntimeException(s"Wrong pipeline state change: $stateChange")).toManaged_
