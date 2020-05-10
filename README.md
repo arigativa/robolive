@@ -5,6 +5,9 @@
 [GStreamer parts](https://habr.com/en/post/178813/)
 [GStreamer sources](https://habr.com/ru/post/179167/)
 [GStreamer sinks](https://habr.com/en/post/204014/)
+[WebRTC Basics] (https://www.html5rocks.com/en/tutorials/webrtc/basics/)  
+[WebRTC Signalling] (https://www.html5rocks.com/en/tutorials/webrtc/infrastructure/)
+[Sample frontend applciaiton] (https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Signaling_and_video_calling)
 
 # Demos and samples
 [GStreamer WebRTC](https://github.com/centricular/gstwebrtc-demos)  
