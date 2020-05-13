@@ -1,6 +1,6 @@
 // build from https://github.com/arigativa/http4s/tree/websocket-with-one-pipe
 // with command: sbt publishLocal
-val Http4sVersion = "1.0.0-M0+348-a8753366-SNAPSHOT"
+val Http4sVersion = "1.0.0-M0+251-a8753366-SNAPSHOT"
 val CirceVersion = "0.13.0"
 val Specs2Version = "4.8.3"
 val LogbackVersion = "1.2.3"

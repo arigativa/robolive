@@ -3,7 +3,7 @@ name := "robot"
 version := "1.0"
 scalaVersion := "2.13.1"
 
-javacOptions ++= Seq("-source", "1.9", "-target", "1.9")
+javacOptions ++= Seq("-source", "1.8", "-target", "1.8")
 
 val zioVersion = "1.0.0-RC18-2"
 val sttpVersion = "2.0.7"

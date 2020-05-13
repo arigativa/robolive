@@ -13,18 +13,18 @@ services:
       timeout: 10s
       retries: 3
   robot:
-    build: robot
+    build: ../robot
     environment:
-      - SERVER=ws://signaling:5000
+      - SIGNALLING_URI=ws://192.168.1.68:9999 # TODO use singalling
     container_name: robot
-    depends_on:
-      - "signaling"
+#    depends_on:
+#      - "signaling"
     volumes:
-      - ./robot/:/code
+      - ../robot/:/code
   static_cnt:
     build: ../static
     container_name: static_cnt
     ports:
       - "8080:80"
     volumes:
-      - ./static/:/usr/share/nginx/html
+      - ../static/:/usr/share/nginx/html

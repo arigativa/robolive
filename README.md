@@ -55,3 +55,20 @@ cd deployment/production
 terraform init
 terraform apply
 ```
+
+# Running on Jetson Nano
+
+To run robot on Jetson Nano with CSI camera you can override video/audio source:
+```shell script
+export AUDIO_SRC='audiotestsrc wave=silence ! audioconvert'
+export VIDEO_SRC='nvarguscamerasrc sensor_mode=3 ! video/x-raw(memory:NVMM),width=1280, height=720, framerate=60/1, format=NV12 ! nvvidconv flip-method=2 ! videoconvert'
+```
+
+| # | Resolution  | FPS | Exposure, us |  
+|---|:-----------:| ---:| ------------:|
+| 0 | 3264 x 2464 |  21 |     47619048 |
+| 1 | 3264 x 1848 |  28 |     35714284 |
+| 2 | 1920 x 1080 |  30 |     33333334 |
+| 3 | 1280 x 720  |  60 |     16666667 |
+| 4 | 1280 x 720  | 120 |      8333333 |
+
