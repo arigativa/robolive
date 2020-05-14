@@ -137,8 +137,11 @@ function onServerMessage(event) {
     }
 }
 
+var connectionTries = 0;
+
 function onServerClose(event) {
-    setStatus('Disconnected from server');
+    console.log(event);
+    setStatus('Disconnected from server, code ' + event.code);
     resetVideo();
 
     if (peer_connection) {
@@ -146,14 +149,13 @@ function onServerClose(event) {
         peer_connection = null;
     }
 
-    // Reset after a second
-    window.setTimeout(websocketServerConnect, 1000);
-}
-
-function onServerError(event) {
-    setError("Unable to connect to server, did you add an exception for the certificate?")
-    // Retry after 3 seconds
-    window.setTimeout(websocketServerConnect, 3000);
+    let waitTime = 0;
+    if (connectionTries < 10) {
+        waitTime = connectionTries * 100;
+    } else {
+        waitTime = 1000;
+    }
+    window.setTimeout(websocketServerConnect, waitTime);
 }
 
 function getLocalStream() {
@@ -177,6 +179,7 @@ function getLocalStream() {
 }
 
 function websocketServerConnect() {
+    connectionTries += 1;
     // Clear errors in the status span
     var span = document.getElementById("status");
     span.classList.remove('error');
@@ -187,25 +190,16 @@ function websocketServerConnect() {
         textarea.value = JSON.stringify(default_constraints);
     // Fetch the peer id to use
     peer_id = default_peer_id || getOurId();
-    ws_port = ws_port || '5000';
-    if (window.location.protocol.startsWith ("file")) {
-        ws_server = ws_server || "127.0.0.1";
-    } else if (window.location.protocol.startsWith ("http")) {
-        ws_server = ws_server || window.location.hostname;
-    } else {
-        throw new Error ("Don't know how to connect to the signalling server with uri" + window.location);
-    }
-    var ws_url = 'ws://' + ws_server + ':' + ws_port
     setStatus("Connecting to server " + ws_url);
     ws_conn = new WebSocket(ws_url);
     /* When connected, immediately register with the server */
     ws_conn.addEventListener('open', (event) => {
+        connectionTries = 0;
         document.getElementById("peer-id").textContent = peer_id;
         ws_conn.send('JOIN 1');
         ws_conn.send('READY');
         setStatus("Registering with server");
     });
-    ws_conn.addEventListener('error', onServerError);
     ws_conn.addEventListener('message', onServerMessage);
     ws_conn.addEventListener('close', onServerClose);
 }
