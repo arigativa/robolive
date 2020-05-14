@@ -40,6 +40,7 @@ object ServerApp extends IOApp {
           WebSocketBuilder[IO].build(
             WSMessageExchange.websocketHandler[IO, String](messageExchange),
           )
+        case GET -> Root / "health" => Ok()
       }
       .orNotFound
   }

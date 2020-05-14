@@ -8,8 +8,7 @@
  */
 
 // Set this to override the automatic detection in websocketServerConnect()
-var ws_server;
-var ws_port;
+var ws_url = '__WS_URL__';
 // Set this to use a specific peer id instead of a random one
 var default_peer_id;
 // Override with your own STUN servers if you want
