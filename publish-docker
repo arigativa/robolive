@@ -1,0 +1,8 @@
+#!/bin/bash
+
+docker build -t hsslbch/robolive-ui:latest static/
+docker push hsslbch/robolive-ui:latest
+
+docker build -t hsslbch/ws-relay:latest ws-relay/
+docker push hsslbch/ws-relay:latest
+
