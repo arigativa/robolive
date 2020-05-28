@@ -11,6 +11,14 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "devDependencies": {
-    "parcel-bundler": "^1.12.4"
+    "@typescript-eslint/eslint-plugin": "^3.0.2",
+    "@typescript-eslint/parser": "^3.0.2",
+    "elm-analyse": "^0.16.5",
+    "elm-format": "^0.8.3",
+    "elm-hot": "^1.1.4",
+    "elm-test": "^0.19.1-revision2",
+    "eslint": "^7.1.0",
+    "parcel-bundler": "^1.12.4",
+    "typescript": "^3.9.3"
   }
 }
