@@ -1,0 +1,16 @@
+{
+  "private": true,
+  "name": "robolive",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "clean": "rm -rf build",
+    "prestart": "npm run clean",
+    "start": "parcel public/index.html --out-dir=build --port=3000",
+    "build": "parcel build public/index.html --out-dir=build --no-cache",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+    "parcel-bundler": "^1.12.4"
+  }
+}
