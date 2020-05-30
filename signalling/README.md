@@ -37,7 +37,7 @@ run it:
 stop it:
 > pkill kamailio
 
-**P.S.** you may need _sudo_ privelege for run
+**P.S.** you may need **sudo** privelege for run
 ## coturn
 
 apt-get install coturn
