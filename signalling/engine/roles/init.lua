@@ -5,5 +5,6 @@ return {
     nathandle   = require "roles.nathandle",
     registrar   = require "roles.registrar",
     auth        = require "roles.auth",
-    locate      = require "roles.locate"
+    locate      = require "roles.locate",
+    http        = require "roles.http"
 }

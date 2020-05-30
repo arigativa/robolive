@@ -94,3 +94,11 @@ end
 
 -- function failure_route_wrapper()
 -- end
+
+function ksr_xhttp_wrapper()
+
+    if type(roles.http) == "function" then
+        type(roles.http)
+    end
+
+end
