@@ -14,6 +14,8 @@ local function request()
         KSR.err("Malformed SIP message from ".. KSR.kx.get_srcip() .. ":" .. KSR.kx.get_srcport() .."\n");
         return false
     end
+
+    return true
     
 end
 

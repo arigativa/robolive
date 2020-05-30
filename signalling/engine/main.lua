@@ -5,10 +5,10 @@ end
 
 local roles = require "roles.init"
 
-
 function ksr_request_route()
     
     KSR.log("info",KSR.pv.get("$rm").." arrived\n")
+    
     local result,err = roles.check.request()
     
     if not result then
@@ -19,7 +19,7 @@ function ksr_request_route()
     end
 
     if KSR.is_OPTIONS() and KSR.is_myself_ruri() and KSR.corex.has_ruri_user() < 0 then
-        KSR.sl.sl_send_reply(200,"Keepalive")
+        KSR.sl.send_reply(200,"Keepalive")
         KSR.x.exit()
     end
 
@@ -45,12 +45,12 @@ function ksr_request_route()
         
         -- request with to_tag but does not belongs to any transaction and it is not an ACK
         if result == 3 then
-            KSR.sl.ls_send_reply(404,"Not found")
+            KSR.sl.send_reply(404,"Not found")
         end
         KSR.x.exit()
     
     end
-    
+    KSR.log("info","is initial\n")
     KSR.hdr.remove("Route");
 	
 	if KSR.is_method_in("IS") then
@@ -59,25 +59,22 @@ function ksr_request_route()
 
     roles.nathandle.sip()
     
-    if not roles.auth() then
-        
-        KSR.sl.sl_reply_error()
+    if not roles.auth(KSR.pv.get("$fU"),KSR.pv.get("$si")..":"..KSR.pv.get("$sp")) then
+        KSR.sl.sl_send_reply("403","Forbidden")
         KSR.x.exit()
-    
     end
 
     if KSR.is_REGISTER() then
-    
         if not roles.registrar() then
-            KSR.sl.sl_reply_error()
+            KSR.sl.sl_send_reply("503","Can't register")
         end
 
         KSR.x.exit()
     
     end
     
-    if not roles.locate.user() then
-        KSR.ls.ls_send_reply("404","Not found")
+    if not roles.locate.user(KSR.pv.get("$rU")) then
+        KSR.sl.sl_send_reply("404","Not found")
         KSR.x.exit()
     end
 
@@ -100,7 +97,7 @@ end
 function ksr_xhttp_wrapper()
 
     if type(roles.http) == "function" then
-        type(roles.http)
+        roles.http()
     end
 
 end

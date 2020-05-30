@@ -1,7 +1,7 @@
 return {
 
     locationStorage = "location",
-    allowedUsernames = {
+    allowedUnames = {
         robohuman = true,
         robomachine = true
     }

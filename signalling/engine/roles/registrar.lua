@@ -5,6 +5,7 @@ local function registrar()
     if KSR.registrar.save(config.locationStorage, 0) < 0 then
         return false
     end
+    KSR.log("info","Registration successfull\n")
     return true
 end
 
