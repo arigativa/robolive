@@ -2,7 +2,7 @@
 
 ## kamailio
 
-Istnall deps
+Install deps
 > apt-get install git bison gcc g++ flex default-libmysqlclient-dev make autoconf libssl-dev libcurl4-openssl-dev libxml2-dev libpcre3-dev libunistring-dev 
 
 install lua deps
