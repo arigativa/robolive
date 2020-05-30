@@ -1,5 +1,7 @@
 local function isWS()
-    if KSR.hdr.get("Upgrade")=~"websocket" and KSR.hdr.get("Connection")=~"Upgrade" and KSR.is_method_in("G") then
+    local upgrade = KSR.hdr.get("Upgrade")
+    local connection = KSR.hdr.get("Connection")
+    if string.sub(upgrade,"websocket") and string.sub(connection,"Upgrade") and KSR.is_method_in("G") then
         return true
     end
     return false
@@ -7,8 +9,10 @@ local function isWS()
 end
 
 local function handleWS()
+    
     local host = KSR.hdr.get("Host")
-    if not host || not KSR.is_myself("sip:"..host) end
+    
+    if not host or not KSR.is_myself("sip:"..host) then
         KSR.xlog("L_WARN", "Bad host "..host.."\n")
         KSR.xhttp.xhttp_reply("403", "Forbidden", "", "")
         return false

@@ -1,4 +1,4 @@
-local function sip
+local function sip()
     
     KSR.force_rport()
 	

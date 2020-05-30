@@ -18,5 +18,5 @@ local function request()
 end
 
 return {
-    check = check
+    request = request
 }

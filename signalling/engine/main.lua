@@ -5,8 +5,10 @@ end
 
 local roles = require "roles.init"
 
-ksr_request_route()
 
+function ksr_request_route()
+    
+    KSR.log("info",KSR.pv.get("$rm").." arrived\n")
     local result,err = roles.check.request()
     
     if not result then
