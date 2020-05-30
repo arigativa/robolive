@@ -29,7 +29,7 @@ build and install
 
 open *setup.cfg*
 uncomment commented **#!define TEST**
-uncomment commented **#!define LUA_SCRIPT_PATH ... ** and fill *<your_repo_dir_absolute_pass>* with absolute pass to signalling
+uncomment commented **#!define LUA_SCRIPT_PATH ...** and fill **<your_repo_dir_absolute_pass>** with absolute pass to signalling
 
 run it:
 > kamailio -f *<absolute_path_to>/kamailio.cfg*
