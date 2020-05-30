@@ -2,57 +2,66 @@ module Main exposing (main)
 
 import Browser
 import Browser.Navigation
-import Html exposing (br, button, text)
-import Html.Events
+import Html
+import Login
 import Url exposing (Url)
 
 
+
+-- M O D E L
+
+
+type Page
+    = LoginPage Login.Model
+
+
 type alias Model =
-    { url : Url
-    , key : Browser.Navigation.Key
-    , count : Int
+    { key : Browser.Navigation.Key
+    , page : Page
     }
 
 
 init : () -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
-init () url key =
-    ( Model url key 0
+init _ _ key =
+    ( { key = key
+      , page = LoginPage Login.initial
+      }
     , Cmd.none
     )
 
 
+
+-- U P D A T E
+
+
 type Msg
-    = Decrement
-    | Increment
-    | UrlRequested Browser.UrlRequest
+    = UrlRequested Browser.UrlRequest
     | UrlChanged Url.Url
+    | LoginMsg Login.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg of
-        Decrement ->
-            ( { model | count = model.count - 1 }
-            , Cmd.none
-            )
-
-        Increment ->
-            ( { model | count = model.count + 1 }
-            , Cmd.none
-            )
-
-        UrlRequested (Browser.Internal url) ->
+    case ( msg, model.page ) of
+        ( UrlRequested (Browser.Internal url), _ ) ->
             ( model
             , Browser.Navigation.pushUrl model.key (Url.toString url)
             )
 
-        UrlRequested (Browser.External href) ->
+        ( UrlRequested (Browser.External href), _ ) ->
             ( model, Browser.Navigation.load href )
 
-        UrlChanged url ->
-            ( { model | url = url }
+        ( UrlChanged _, _ ) ->
+            ( model, Cmd.none )
+
+        ( LoginMsg msgOfLogin, LoginPage login ) ->
+            ( { model | page = LoginPage (Login.update msgOfLogin login) }
             , Cmd.none
             )
+
+
+
+-- S U B S C R I P T I O N S
 
 
 subscriptions : Model -> Sub Msg
@@ -60,16 +69,16 @@ subscriptions _ =
     Sub.none
 
 
+
+-- V I E W
+
+
 view : Model -> Browser.Document Msg
 view model =
     Browser.Document "Robolive"
-        [ text "Welcome to the counter app"
-        , br [] []
-        , text ("Current Url is " ++ Url.toString model.url)
-        , br [] []
-        , button [Html.Events.onClick Decrement] [ text "-" ]
-        , text (String.fromInt model.count)
-        , button [Html.Events.onClick Increment] [ text "+" ]
+        [ case model.page of
+            LoginPage login ->
+                Html.map LoginMsg (Login.view login)
         ]
 
 
