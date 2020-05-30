@@ -1,0 +1,13 @@
+apt-get install git bison gcc g++ flex default-libmysqlclient-dev make autoconf libssl-dev libcurl4-openssl-dev libxml2-dev libpcre3-dev apt-get install lua5.1 liblua5.1-dev luarocks
+apt-get install lua5.1 liblua5.1-dev luarocks libunistring-dev
+
+git clone -b 5.3 https://github.com/kamailio/kamailio
+
+make cfg
+modules.lst: 
+include_modules= websocket app_lua xhttp db_mysql
+
+make all
+make install
+
+apt-get install coturn
