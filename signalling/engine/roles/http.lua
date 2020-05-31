@@ -1,3 +1,5 @@
+local config = require "config"
+
 local function isWS()
     local upgrade = KSR.hdr.get("Upgrade")
     local connection = KSR.hdr.get("Connection")
@@ -28,7 +30,13 @@ end
 
 local function http()
 
-   if isWS() then
+    local port = KSR.pv.get("$sp")
+    
+    if port ~= config.wsport then
+        KSR.x.exit()
+    end
+
+    if isWS() then
         -- if will add API then need to handle retur states 
         handleWS() 
         KSR.x.exit()
