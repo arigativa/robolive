@@ -1,13 +1,14 @@
+declare type Value
+    = undefined
+    | null
+    | string
+    | number
+    | boolean
+    | { [key: string]: Value }
+    | Array<Value>
+    ;
+
 declare module "*.elm" {
-    type Value
-        = undefined
-        | null
-        | string
-        | number
-        | boolean
-        | { [key: string]: Value }
-        | Array<Value>
-        ;
 
     interface ElmInterop {
         send<T = Value>(value?: T): void;
