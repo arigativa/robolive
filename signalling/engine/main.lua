@@ -65,7 +65,7 @@ function ksr_request_route()
     end
 
     if KSR.is_REGISTER() then
-        if not roles.registrar() then
+        if not roles.registrar.save() then
             KSR.sl.sl_send_reply("503","Can't register")
         end
 
@@ -100,4 +100,10 @@ function ksr_xhttp_wrapper()
         roles.http()
     end
 
+end
+
+function ksr_websocket_event_wrapper(evname)
+    local ip = KSR.pv.get("$si")
+    local port = KSR.pv.get("$sp")
+    KSR.info("===== websocket module triggered event: " .. evname .. " for "..ip..":"..port.."\n");
 end

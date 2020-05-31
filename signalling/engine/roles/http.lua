@@ -3,7 +3,7 @@ local config = require "config"
 local function isWS()
     local upgrade = KSR.hdr.get("Upgrade")
     local connection = KSR.hdr.get("Connection")
-    if string.sub(upgrade,"websocket") and string.sub(connection,"Upgrade") and KSR.is_method_in("G") then
+    if string.find(upgrade,"websocket") and string.find(connection,"Upgrade") and KSR.is_method_in("G") then
         return true
     end
     return false
@@ -12,10 +12,11 @@ end
 
 local function handleWS()
     
+    KSR.log("info","HTTP received\n")
     local host = KSR.hdr.get("Host")
     
     if not host or not KSR.is_myself("sip:"..host) then
-        KSR.xlog("L_WARN", "Bad host "..host.."\n")
+        KSR.log("L_WARN", "Bad host "..host.."\n")
         KSR.xhttp.xhttp_reply("403", "Forbidden", "", "")
         return false
     end
@@ -30,9 +31,10 @@ end
 
 local function http()
 
-    local port = KSR.pv.get("$sp")
-    
-    if port ~= config.wsport then
+    local port = KSR.pv.get("$Rp")
+    KSR.log("info","received HTTP request on port: "..port.."\n")
+
+    if port ~= config.websocket.port then
         KSR.x.exit()
     end
 

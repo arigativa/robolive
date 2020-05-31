@@ -1,0 +1,52 @@
+<!doctype html>
+<html>
+
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+		<title></title>
+		<meta name="description" content="">
+	</head>
+
+	<body>
+		
+		<div>
+			<input id='uname' placeholder = 'your name'/>
+        </div>
+        
+        <div>
+			<input id='callee' placeholder = 'name who you gonna call'/>
+		</div>
+
+        <div>
+			<button id='login'>login</button>
+		</div>
+
+        <div>
+			<button id='call'>call</button>
+		</div>
+
+		<div>
+			<button id='hangup'>hangup</button>
+		</div>
+
+		<!--<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+		<script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/jquery-ui.min.js"></script>
+
+		<script src="js/bootstrap.min.js"></script>-->
+		<!--<script src="js/bootstrap-slider.js"></script>-->
+		<!--<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/9.8.1/bootstrap-slider.min.js"></script>-->
+		<!--<script src="js/moment.min.js"></script>-->
+		<!--<script src="js/mediastream-gain-controller.js"></script>-->
+		<video id='webRTCSelfView' autoplay muted="true" _hidden=true style='display: none'></video>
+		<video id='webRTCRemoteView' autoplay ></video>
+		<script src="js/jquery.min.js"></script>
+		<script src="js/jssip.min.js"></script>
+		<script src="js/phone.js"></script>
+		<script src="js/phoneView.js"></script>
+		<script src="js/jwt-decode.js"></script>
+		<script>JsSIP.debug.enable('JsSIP:*');</script>
+
+	</body>
+
+</html>

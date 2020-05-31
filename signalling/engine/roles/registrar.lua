@@ -1,7 +1,6 @@
 local config = require "config"
 
-local function registrar()
-    -- Handle SIP registrations    
+local function save()   
     if KSR.registrar.save(config.locationStorage, 0) < 0 then
         return false
     end
@@ -9,4 +8,11 @@ local function registrar()
     return true
 end
 
-return registrar
+local function remove()
+    
+end
+
+return {
+    save = save,
+    remove = remove
+}
