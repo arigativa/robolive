@@ -288,7 +288,7 @@ let phoneEngine = {
       console.log(to);
       webCallSession = webPhoneUA.call('sip:' + to + '@' +server, {
         //mediaStream: microphoneStream,
-        mediaConstraints: {audio: true, video: false},
+        mediaConstraints: {audio: true, video: true},
         pcConfig: {rtcpMuxPolicy: 'negotiate'},
         extraHeaders: extraHeaders
       });
