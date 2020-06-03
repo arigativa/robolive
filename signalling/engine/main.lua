@@ -4,6 +4,7 @@ if not string.match(package.path, myPath) then
 end
 
 local roles = require "roles.init"
+local sockets = require "sockets.init"
 
 function ksr_request_route()
     
@@ -104,7 +105,8 @@ function ksr_xhttp_wrapper()
 end
 
 function ksr_websocket_event_wrapper(evname)
-    local ip = KSR.pv.get("$si")
-    local port = KSR.pv.get("$sp")
-    KSR.info("===== websocket module triggered event: " .. evname .. " for "..ip..":"..port.."\n");
+    
+    local event = string.match(evname,".*:(.*)")
+    sockets.websocket[event]()
+
 end
