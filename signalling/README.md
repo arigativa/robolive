@@ -1,7 +1,14 @@
 # Run in the docker
 
-just run 
-> docker-compose up
+Build:
+```shell script
+docker build -t robolive-kamailio .
+```
+
+And run: 
+```shell script
+docker-compose up
+```
 
 run client and connect it to *127.0.0.1:4443* via websocket or tcp
 
@@ -9,6 +16,8 @@ run client and connect it to *127.0.0.1:4443* via websocket or tcp
 # Installation on local machine:
 
 ## kamailio
+
+### Manual build
 
 Install deps
 > apt-get install git bison gcc g++ flex default-libmysqlclient-dev make autoconf libssl-dev libcurl4-openssl-dev libxml2-dev libpcre3-dev libunistring-dev 
