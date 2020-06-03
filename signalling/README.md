@@ -18,7 +18,7 @@ create initial config:
 > make cfg
 
 open *src/modules.lst* and add to *include_modules*: 
-> websocket app_lua xhttp db_mysql
+> websocket app_lua xhttp db_mysql tls
 
 add to *skip_modules*:
 > app_sqlang
