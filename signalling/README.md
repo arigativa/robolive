@@ -1,4 +1,12 @@
-# Installation:
+# Run in the docker
+
+just run 
+> docker-compose up
+
+run client and connect it to *127.0.0.1:4443* via websocket or tcp
+
+
+# Installation on local machine:
 
 ## kamailio
 
@@ -48,5 +56,6 @@ apt-get install coturn
 ## TODO:
  - cover .lua with tests
  - add coturn configuration here
- - create docker
  - wrappup all into ansible
+ - add tls
+
