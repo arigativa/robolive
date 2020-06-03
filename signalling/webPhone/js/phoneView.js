@@ -71,6 +71,10 @@ $("#call").click( () => {
 	    phoneEngine.startCall(callee,{})
 })
 
+$("#answer").click( () => {
+    phoneEngine.startCall(null,{})
+})
+
 $("#hangup").click( () => {
 	phoneEngine.finishCall()
 })

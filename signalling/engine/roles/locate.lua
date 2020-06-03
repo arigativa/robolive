@@ -9,8 +9,8 @@ local function user(username)
     if rc < 0 then
         KSR.log("info","Unable to locate "..username.."\n")
         return false
-	end
-    KSR.info("user "..username.." found\n")
+    end
+
     return true
 end
 
