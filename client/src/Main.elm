@@ -11,20 +11,20 @@ import Url exposing (Url)
 -- M O D E L
 
 
-type Page
-    = LoginPage Login.Model
+type Screen
+    = LoginScreen Login.Model
 
 
 type alias Model =
     { key : Browser.Navigation.Key
-    , page : Page
+    , screen : Screen
     }
 
 
 init : () -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
 init _ _ key =
     ( { key = key
-      , page = LoginPage Login.initial
+      , screen = LoginScreen Login.initial
       }
     , Cmd.none
     )
@@ -42,7 +42,7 @@ type Msg
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case ( msg, model.page ) of
+    case ( msg, model.screen ) of
         ( UrlRequested (Browser.Internal url), _ ) ->
             ( model
             , Browser.Navigation.pushUrl model.key (Url.toString url)
@@ -54,9 +54,13 @@ update msg model =
         ( UrlChanged _, _ ) ->
             ( model, Cmd.none )
 
-        ( LoginMsg msgOfLogin, LoginPage login ) ->
-            ( { model | page = LoginPage (Login.update msgOfLogin login) }
-            , Cmd.none
+        ( LoginMsg msgOfLogin, LoginScreen login ) ->
+            let
+                ( nextLogin, cmdOfLogin ) =
+                    Login.update msgOfLogin login
+            in
+            ( { model | screen = LoginScreen nextLogin }
+            , Cmd.map LoginMsg cmdOfLogin
             )
 
 
@@ -76,8 +80,8 @@ subscriptions _ =
 view : Model -> Browser.Document Msg
 view model =
     Browser.Document "Robolive"
-        [ case model.page of
-            LoginPage login ->
+        [ case model.screen of
+            LoginScreen login ->
                 Html.map LoginMsg (Login.view login)
         ]
 

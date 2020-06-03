@@ -1,3 +1,6 @@
 import { Elm } from './src/Main.elm';
+import { register as registerJsSIP } from './src/JsSIP/index';
 
-Elm.Main.init();
+const { ports } = Elm.Main.init();
+
+registerJsSIP(ports);

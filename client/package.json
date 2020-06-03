@@ -7,6 +7,7 @@
     "clean": "rm -rf build",
     "prestart": "npm run clean",
     "start": "parcel public/index.html --out-dir=build --port=3000",
+    "prebuild": "npm run clean",
     "build": "parcel build public/index.html --out-dir=build --no-cache",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -20,5 +21,8 @@
     "eslint": "^7.1.0",
     "parcel-bundler": "^1.12.4",
     "typescript": "^3.9.3"
+  },
+  "dependencies": {
+    "jssip": "^3.5.0"
   }
 }

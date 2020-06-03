@@ -8,18 +8,18 @@ declare type Value
     | Array<Value>
     ;
 
+declare interface ElmCmdPort<T = Value> {
+    subscribe(listener: (value: T) => void): void;
+    unsubscribe(listener: (value: T) => void): void;
+}
+
+declare interface ElmSubPort<T = Value> {
+    send(value?: T): void;
+}
+
 declare module "*.elm" {
-
-    interface ElmInterop {
-        send<T = Value>(value?: T): void;
-
-        subscribe<T = Value>(listener: (value: T) => void): void;
-
-        unsubscribe<T = Value>(listener: (value: T) => void): void;
-    }
-
     interface ElmApp {
-        ports: { [key: string]: ElmInterop };
+        ports: { [key: string]: ElmCmdPort | ElmSubPort };
     }
 
     interface ElmModule {
