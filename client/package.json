@@ -9,6 +9,7 @@
     "start": "parcel public/index.html --out-dir=build --port=3000",
     "prebuild": "npm run clean",
     "build": "parcel build public/index.html --out-dir=build --no-cache",
+    "lint": "eslint ./ --config=.eslintrc.prod.json --ext=ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "devDependencies": {

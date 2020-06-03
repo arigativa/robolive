@@ -28,5 +28,62 @@
     "SharedArrayBuffer": "readonly"
   },
 
-  "rules": {}
+  "rules": {
+    // Possible Errors
+    "no-extra-parens": "warn", // https://eslint.org/docs/rules/no-extra-parens
+    "no-template-curly-in-string": "error", // https://eslint.org/docs/rules/no-template-curly-in-string
+
+    // Best Practices
+    "array-callback-return": "error", // https://eslint.org/docs/rules/array-callback-return
+    "class-methods-use-this": "error", // https://eslint.org/docs/rules/class-methods-use-this
+    "consistent-return": "error", // https://eslint.org/docs/rules/consistent-return
+    "curly": "error", // https://eslint.org/docs/rules/curly
+    "default-case-last": "error", // https://eslint.org/docs/rules/default-case-last
+    "default-param-last": "error", // https://eslint.org/docs/rules/default-param-last
+    "dot-location": [ "warn", "property" ], // https://eslint.org/docs/rules/dot-location
+    "dot-notation": [ "error", { "allowKeywords": false }], // https://eslint.org/docs/rules/dot-notation
+    "eqeqeq": [ "error", "always", { "null": "ignore" }], // https://eslint.org/docs/rules/eqeqeq
+    "guard-for-in": "error", // https://eslint.org/docs/rules/guard-for-in
+    "no-alert": "error", // https://eslint.org/docs/rules/no-alert
+    "no-caller": "error", // https://eslint.org/docs/rules/no-caller
+    "no-constructor-return": "error", // https://eslint.org/docs/rules/no-constructor-return
+    "no-else-return": "warn", // https://eslint.org/docs/rules/no-else-return
+    "no-empty-function": [ "warn", { "allow": [ "constructors" ] }], // https://eslint.org/docs/rules/no-empty-function
+    "no-eval": "error", // https://eslint.org/docs/rules/no-eval
+    "no-extend-native": "error", // https://eslint.org/docs/rules/no-extend-native
+    "no-extra-bind": "error", // https://eslint.org/docs/rules/no-extra-bind
+    "no-floating-decimal": "error", // https://eslint.org/docs/rules/no-floating-decimal
+    "no-implicit-coercion": "error", // https://eslint.org/docs/rules/no-implicit-coercion
+    "no-implied-eval": "error", // https://eslint.org/docs/rules/no-implied-eval
+    "no-invalid-this": "error", // https://eslint.org/docs/rules/no-invalid-this
+    "no-iterator": "error", // https://eslint.org/docs/rules/no-iterator
+    "no-labels": "error", // https://eslint.org/docs/rules/no-labels
+    "no-lone-blocks": "error", // https://eslint.org/docs/rules/no-lone-blocks
+    "no-loop-func": "error", // https://eslint.org/docs/rules/no-loop-func
+    "no-multi-spaces": "warn", // https://eslint.org/docs/rules/no-multi-spaces
+    "no-multi-str": "warn", // https://eslint.org/docs/rules/no-multi-str
+    "no-new": "error", // https://eslint.org/docs/rules/no-new
+    "no-new-func": "error", // https://eslint.org/docs/rules/no-new-func
+    "no-new-wrappers": "warn", // https://eslint.org/docs/rules/no-new-wrappers
+    "no-octal-escape": "warn", // https://eslint.org/docs/rules/no-octal-escape
+    "no-param-reassign": "error", // https://eslint.org/docs/rules/no-param-reassign
+    "no-proto": "error", // https://eslint.org/docs/rules/no-proto
+    "no-return-assign": "error", // https://eslint.org/docs/rules/no-return-assign
+    "no-script-url": "error", // https://eslint.org/docs/rules/no-script-url
+    "no-self-compare": "warn", // https://eslint.org/docs/rules/no-self-compare
+    "no-sequences": "error", // https://eslint.org/docs/rules/no-sequences
+    "no-unmodified-loop-condition": "error", // https://eslint.org/docs/rules/no-unmodified-loop-condition
+    "no-useless-call": "warn", // https://eslint.org/docs/rules/no-useless-call
+    "no-useless-concat": "warn", // https://eslint.org/docs/rules/no-useless-concat
+    "no-useless-return": "warn", // https://eslint.org/docs/rules/no-useless-return
+    "no-void": "error", // https://eslint.org/docs/rules/no-void
+    "no-warning-comments": "warn", // https://eslint.org/docs/rules/no-warning-comments
+    "radix": "error", // https://eslint.org/docs/rules/radix
+    "require-await": "warn", // https://eslint.org/docs/rules/require-await
+
+    // Variables
+
+    // ECMAScript 6
+    "no-var": "error" // https://eslint.org/docs/rules/no-var
+  }
 }
