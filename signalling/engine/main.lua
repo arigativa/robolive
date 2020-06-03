@@ -82,8 +82,9 @@ function ksr_request_route()
 
 end
 
--- function ksr_reply_route()
--- end
+function ksr_reply_route()
+    roles.nathandle.sip() 
+end
 
 -- function branch_route_wrapper()
 -- end
