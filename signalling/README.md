@@ -8,6 +8,9 @@ Install deps
 install lua deps
 > apt-get install lua5.1 liblua5.1-dev luarocks 
 
+install lua packets
+> luarocks install lua-cjson
+
 clone kamailio 5.3
 > git clone -b 5.3 https://github.com/kamailio/kamailio
 
