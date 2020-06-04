@@ -82,6 +82,37 @@
     "require-await": "warn", // https://eslint.org/docs/rules/require-await
 
     // Variables
+    "init-declarations": "error", // https://eslint.org/docs/rules/init-declarations
+    "no-shadow": "error", // https://eslint.org/docs/rules/no-shadow
+    "no-undefined": "error", // https://eslint.org/docs/rules/no-undefined
+
+    // Stylistic Issues
+    "array-bracket-newline": [ "error", "consistent" ], // https://eslint.org/docs/rules/array-bracket-newline
+    "array-bracket-spacing": [ "error", "always", { "objectsInArrays": false, "arraysInArrays": false }], // https://eslint.org/docs/rules/array-bracket-spacing
+    "array-element-newline": [ "error", "consistent" ], // https://eslint.org/docs/rules/array-element-newline
+    "block-spacing": [ "error", "always" ], // https://eslint.org/docs/rules/block-spacing
+    "brace-style": [ "error", "1tbs", { "allowSingleLine": true } ], // https://eslint.org/docs/rules/brace-style
+    "comma-dangle": [ "error", "never" ], // https://eslint.org/docs/rules/comma-dangle
+    "comma-spacing": [ "error", { "before": false, "after": true }], // https://eslint.org/docs/rules/comma-spacing
+    "comma-style": [ "error", "last" ], // https://eslint.org/docs/rules/comma-style
+    "computed-property-spacing": [ "error", "always" ], // https://eslint.org/docs/rules/computed-property-spacing
+    "consistent-this": [ "warn", "that" ], // https://eslint.org/docs/rules/consistent-this
+    "eol-last": [ "error", "always" ], // https://eslint.org/docs/rules/eol-last
+    "func-call-spacing": [ "error", "never" ], // https://eslint.org/docs/rules/func-call-spacing
+    "func-style": [ "error", "declaration", { "allowArrowFunctions": true }], // https://eslint.org/docs/rules/func-style
+    "function-call-argument-newline": [ "error", "consistent" ], // https://eslint.org/docs/rules/function-call-argument-newline
+    "function-paren-newline": [ "error", "multiline" ], // https://eslint.org/docs/rules/function-paren-newline
+    "implicit-arrow-linebreak": [ "error", "beside" ], // https://eslint.org/docs/rules/implicit-arrow-linebreak
+    "indent": [ "error", 4, {
+      "SwitchCase": 1,
+      "MemberExpression": 1,
+      "ArrayExpression": 1,
+      "ObjectExpression": 1,
+      "FunctionDeclaration": { "body": 1, "parameters": 2 },
+      "CallExpression": { "arguments": 1 },
+      "ImportDeclaration": 1,
+      "offsetTernaryExpressions": true
+    }], // https://eslint.org/docs/rules/indent
 
     // ECMAScript 6
     "no-var": "error" // https://eslint.org/docs/rules/no-var
