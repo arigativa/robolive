@@ -15,11 +15,11 @@ interface CreatePhoneInstanceError {
 }
 
 export const register = (ports: {
-    js_sip__create_phone_instance?: ElmCmdPort<CreatePhoneInstanceOptions>;
-    js_sip__on_phone_instance_registred_err?: ElmSubPort<CreatePhoneInstanceError>;
-    js_sip__on_phone_instance_registred_ok?: ElmSubPort<null>;
+    js_sip__register?: ElmCmdPort<CreatePhoneInstanceOptions>;
+    js_sip__on_registred_err?: ElmSubPort<CreatePhoneInstanceError>;
+    js_sip__on_registred_ok?: ElmSubPort<null>;
 }): void => {
-    ports.js_sip__create_phone_instance?.subscribe((options: CreatePhoneInstanceOptions): void => {
+    ports.js_sip__register?.subscribe((options: CreatePhoneInstanceOptions): void => {
         const uaConfig: UAConfiguration = {
             sockets: [
                 new WebSocketInterface(options.web_socket_url)
@@ -37,7 +37,7 @@ export const register = (ports: {
         const ua = new UA(uaConfig);
 
         ua.on('registrationFailed', ({ response }) => {
-            ports.js_sip__on_phone_instance_registred_err?.send({
+            ports.js_sip__on_registred_err?.send({
                 code: response.status_code,
                 reason: response.reason_phrase
             })
@@ -46,11 +46,7 @@ export const register = (ports: {
         })
 
         ua.on('registered', () => {
-            ports.js_sip__on_phone_instance_registred_ok?.send(null);
-        });
-
-        ua.on('newMessage', () => {
-            console.log('newMessage');
+            ports.js_sip__on_registred_ok?.send(null);
         });
 
         ua.on('newRTCSession', () => {

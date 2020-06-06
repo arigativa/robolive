@@ -40,7 +40,7 @@ initial =
 type Msg
     = ChangeName String
     | SignIn
-    | Register (Result JsSIP.PhoneInstanceRegistredError ())
+    | Register (Result JsSIP.RegistrationError ())
 
 
 type Stage
@@ -76,7 +76,7 @@ update msg model =
             else
                 Updated
                     ( { model | registration = RemoteData.Loading }
-                    , JsSIP.createPhoneInstance
+                    , JsSIP.register
                         { protocol = JsSIP.WebSocket
                         , server = "127.0.0.1"
                         , port_ = Just 4443
@@ -103,7 +103,7 @@ update msg model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     if RemoteData.isLoading model.registration then
-        JsSIP.onPhoneInstanceRegistred Register
+        JsSIP.onRegistred Register
 
     else
         Sub.none

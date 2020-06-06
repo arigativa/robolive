@@ -1,8 +1,8 @@
 port module JsSIP exposing
-    ( PhoneInstanceRegistredError
-    , Protocol(..)
-    , createPhoneInstance
-    , onPhoneInstanceRegistred
+    ( Protocol(..)
+    , RegistrationError
+    , onRegistred
+    , register
     )
 
 
@@ -21,7 +21,7 @@ protocolToString protocol =
             "wss"
 
 
-port js_sip__create_phone_instance :
+port js_sip__register :
     { web_socket_url : String
     , uri : String
     , register : Bool
@@ -31,7 +31,7 @@ port js_sip__create_phone_instance :
     -> Cmd msg
 
 
-createPhoneInstance :
+register :
     { protocol : Protocol
     , server : String
     , port_ : Maybe Int
@@ -40,7 +40,7 @@ createPhoneInstance :
     , password : Maybe String
     }
     -> Cmd msg
-createPhoneInstance options =
+register options =
     { web_socket_url =
         String.concat
             [ protocolToString options.protocol
@@ -55,24 +55,24 @@ createPhoneInstance options =
     , username = options.username
     , password = options.password
     }
-        |> js_sip__create_phone_instance
+        |> js_sip__register
 
 
-port js_sip__on_phone_instance_registred_ok : (() -> msg) -> Sub msg
+port js_sip__on_registred_ok : (() -> msg) -> Sub msg
 
 
-type alias PhoneInstanceRegistredError =
+type alias RegistrationError =
     { code : Int
     , reason : String
     }
 
 
-port js_sip__on_phone_instance_registred_err : (PhoneInstanceRegistredError -> msg) -> Sub msg
+port js_sip__on_registred_err : (RegistrationError -> msg) -> Sub msg
 
 
-onPhoneInstanceRegistred : (Result PhoneInstanceRegistredError () -> msg) -> Sub msg
-onPhoneInstanceRegistred tagger =
+onRegistred : (Result RegistrationError () -> msg) -> Sub msg
+onRegistred tagger =
     Sub.batch
-        [ js_sip__on_phone_instance_registred_ok (\_ -> tagger (Ok ()))
-        , js_sip__on_phone_instance_registred_err (tagger << Err)
+        [ js_sip__on_registred_ok (\_ -> tagger (Ok ()))
+        , js_sip__on_registred_err (tagger << Err)
         ]
