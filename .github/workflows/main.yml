@@ -18,10 +18,10 @@ jobs:
       run: docker build -t kamailio-build --target builder .
     
     - name: Extract artifact
-      run: docker run --rm kamailio-build:latest cat /kamailio-distr.tar.gz > kamailio-distr.tar.gz
+      run: docker run --rm kamailio-build:latest cat /kamailio-distr.tar.gz > /tmp/kamailio-distr.tar.gz
 
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v2
       with:
         name: kamailio-distr.tar.gz
-        path: kamailio-distr.tar.gz
+        path: /tmp/kamailio-distr.tar.gz
