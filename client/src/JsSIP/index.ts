@@ -9,8 +9,15 @@ interface CreatePhoneInstanceOptions {
     password: null | string
 }
 
+interface CreatePhoneInstanceError {
+    code: number;
+    reason: string;
+}
+
 export const register = (ports: {
     js_sip__create_phone_instance?: ElmCmdPort<CreatePhoneInstanceOptions>;
+    js_sip__on_phone_instance_registred_err?: ElmSubPort<CreatePhoneInstanceError>;
+    js_sip__on_phone_instance_registred_ok?: ElmSubPort<null>;
 }): void => {
     ports.js_sip__create_phone_instance?.subscribe((options: CreatePhoneInstanceOptions): void => {
         const uaConfig: UAConfiguration = {
@@ -29,8 +36,17 @@ export const register = (ports: {
 
         const ua = new UA(uaConfig);
 
+        ua.on('registrationFailed', ({ response }) => {
+            ports.js_sip__on_phone_instance_registred_err?.send({
+                code: response.status_code,
+                reason: response.reason_phrase
+            })
+
+            ua.stop();
+        })
+
         ua.on('registered', () => {
-            console.log('registred');
+            ports.js_sip__on_phone_instance_registred_ok?.send(null);
         });
 
         ua.on('newMessage', () => {

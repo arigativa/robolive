@@ -55,13 +55,14 @@ update msg model =
             ( model, Cmd.none )
 
         ( LoginMsg msgOfLogin, LoginScreen login ) ->
-            let
-                ( nextLogin, cmdOfLogin ) =
-                    Login.update msgOfLogin login
-            in
-            ( { model | screen = LoginScreen nextLogin }
-            , Cmd.map LoginMsg cmdOfLogin
-            )
+            case Login.update msgOfLogin login of
+                Login.Updated ( nextLogin, cmdOfLogin ) ->
+                    ( { model | screen = LoginScreen nextLogin }
+                    , Cmd.map LoginMsg cmdOfLogin
+                    )
+
+                Login.Registred username ->
+                    ( model, Cmd.none )
 
 
 
@@ -69,8 +70,10 @@ update msg model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
-    Sub.none
+subscriptions model =
+    case model.screen of
+        LoginScreen login ->
+            Sub.map LoginMsg (Login.subscriptions login)
 
 
 

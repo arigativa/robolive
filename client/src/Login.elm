@@ -1,10 +1,19 @@
-module Login exposing (Model, Msg, initial, update, view)
+module Login exposing (Model, Msg, Stage(..), initial, subscriptions, update, view)
 
-import Html exposing (Html, button, form, input, text)
+import Html exposing (Html, button, form, h1, input, p, strong, text)
 import Html.Attributes
 import Html.Events
 import JsSIP
+import Regex
 import RemoteData exposing (RemoteData)
+
+
+hasWhitespaces : String -> Bool
+hasWhitespaces =
+    ".*\\s+.*"
+        |> Regex.fromString
+        |> Maybe.withDefault Regex.never
+        |> Regex.contains
 
 
 
@@ -13,14 +22,14 @@ import RemoteData exposing (RemoteData)
 
 type alias Model =
     { name : String
-    , signingIn : RemoteData String Never
+    , registration : RemoteData String Never
     }
 
 
 initial : Model
 initial =
     { name = ""
-    , signingIn = RemoteData.NotAsked
+    , registration = RemoteData.NotAsked
     }
 
 
@@ -31,27 +40,73 @@ initial =
 type Msg
     = ChangeName String
     | SignIn
+    | Register (Result JsSIP.PhoneInstanceRegistredError ())
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+type Stage
+    = Updated ( Model, Cmd Msg )
+    | Registred String
+
+
+update : Msg -> Model -> Stage
 update msg model =
     case msg of
         ChangeName nextName ->
-            ( { model | name = nextName }
-            , Cmd.none
-            )
+            Updated
+                ( { model
+                    | name = nextName
+                    , registration = RemoteData.NotAsked
+                  }
+                , Cmd.none
+                )
 
         SignIn ->
-            ( { model | signingIn = RemoteData.Loading }
-            , JsSIP.createPhoneInstance
-                { protocol = JsSIP.WebSocket
-                , server = "127.0.0.1"
-                , port_ = Just 4443
-                , register = True
-                , username = model.name
-                , password = Nothing
-                }
-            )
+            if hasWhitespaces model.name then
+                Updated
+                    ( { model | registration = RemoteData.Failure "Username must have no white spaces" }
+                    , Cmd.none
+                    )
+
+            else if String.isEmpty model.name then
+                Updated
+                    ( { model | registration = RemoteData.Failure "Username must be not empty" }
+                    , Cmd.none
+                    )
+
+            else
+                Updated
+                    ( { model | registration = RemoteData.Loading }
+                    , JsSIP.createPhoneInstance
+                        { protocol = JsSIP.WebSocket
+                        , server = "127.0.0.1"
+                        , port_ = Just 4443
+                        , register = True
+                        , username = model.name
+                        , password = Nothing
+                        }
+                    )
+
+        Register (Err error) ->
+            Updated
+                ( { model | registration = RemoteData.Failure error.reason }
+                , Cmd.none
+                )
+
+        Register (Ok _) ->
+            Registred model.name
+
+
+
+-- S U B S C R I P T I O N S
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    if RemoteData.isLoading model.registration then
+        JsSIP.onPhoneInstanceRegistred Register
+
+    else
+        Sub.none
 
 
 
@@ -61,15 +116,29 @@ update msg model =
 view : Model -> Html Msg
 view model =
     let
-        busy =
-            RemoteData.isLoading model.signingIn
+        ( busy, error ) =
+            case model.registration of
+                RemoteData.Loading ->
+                    ( True, Nothing )
+
+                RemoteData.Failure reason ->
+                    ( False, Just reason )
+
+                _ ->
+                    ( False, Nothing )
     in
     form
         [ Html.Events.onSubmit SignIn
         ]
-        [ input
+        [ h1
+            []
+            [ text "Registration"
+            ]
+
+        --
+        , input
             [ Html.Attributes.type_ "text"
-            , Html.Attributes.placeholder "Your Name"
+            , Html.Attributes.placeholder "Username"
             , Html.Attributes.value model.name
             , Html.Attributes.readonly busy
             , Html.Attributes.tabindex 0
@@ -78,10 +147,22 @@ view model =
             ]
             []
         , button
-            [ Html.Attributes.type_ "button"
-            , Html.Attributes.disabled (busy || String.isEmpty (String.trim model.name))
+            [ Html.Attributes.type_ "submit"
+            , Html.Attributes.disabled busy
             , Html.Attributes.tabindex 0
             ]
             [ text "Sign In"
             ]
+
+        --
+        , case error of
+            Nothing ->
+                text ""
+
+            Just reason ->
+                p
+                    []
+                    [ strong [] [ text "Registration failed: " ]
+                    , text reason
+                    ]
         ]

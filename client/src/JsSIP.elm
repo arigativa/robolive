@@ -1,4 +1,9 @@
-port module JsSIP exposing (Protocol(..), createPhoneInstance)
+port module JsSIP exposing
+    ( PhoneInstanceRegistredError
+    , Protocol(..)
+    , createPhoneInstance
+    , onPhoneInstanceRegistred
+    )
 
 
 type Protocol
@@ -11,6 +16,7 @@ protocolToString protocol =
     case protocol of
         WebSocket ->
             "ws"
+
         WebSocketSecure ->
             "wss"
 
@@ -50,3 +56,23 @@ createPhoneInstance options =
     , password = options.password
     }
         |> js_sip__create_phone_instance
+
+
+port js_sip__on_phone_instance_registred_ok : (() -> msg) -> Sub msg
+
+
+type alias PhoneInstanceRegistredError =
+    { code : Int
+    , reason : String
+    }
+
+
+port js_sip__on_phone_instance_registred_err : (PhoneInstanceRegistredError -> msg) -> Sub msg
+
+
+onPhoneInstanceRegistred : (Result PhoneInstanceRegistredError () -> msg) -> Sub msg
+onPhoneInstanceRegistred tagger =
+    Sub.batch
+        [ js_sip__on_phone_instance_registred_ok (\_ -> tagger (Ok ()))
+        , js_sip__on_phone_instance_registred_err (tagger << Err)
+        ]
