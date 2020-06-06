@@ -1,19 +1,13 @@
 module Login exposing (Model, Msg, Stage(..), initial, subscriptions, update, view)
 
-import Html exposing (Html, button, form, h1, input, p, strong, text)
+import Credentials exposing (Credentials)
+import Html exposing (Html, button, div, form, h1, input, p, strong, text)
 import Html.Attributes
 import Html.Events
 import JsSIP
-import Regex
+import Json.Encode exposing (Value)
 import RemoteData exposing (RemoteData)
-
-
-hasWhitespaces : String -> Bool
-hasWhitespaces =
-    ".*\\s+.*"
-        |> Regex.fromString
-        |> Maybe.withDefault Regex.never
-        |> Regex.contains
+import Utils exposing (hasWhitespaces)
 
 
 
@@ -40,12 +34,12 @@ initial =
 type Msg
     = ChangeUsername String
     | SignIn
-    | Register (Result JsSIP.RegistrationError ())
+    | Register (Result JsSIP.RegistrationError Value)
 
 
 type Stage
     = Updated ( Model, Cmd Msg )
-    | Registred String
+    | Registred Credentials
 
 
 update : Msg -> Model -> Stage
@@ -92,8 +86,11 @@ update msg model =
                 , Cmd.none
                 )
 
-        Register (Ok _) ->
-            Registred model.username
+        Register (Ok userAgent) ->
+            Registred
+                { userAgent = userAgent
+                , username = model.username
+                }
 
 
 
@@ -127,31 +124,34 @@ view model =
                 _ ->
                     ( False, Nothing )
     in
-    form
-        [ Html.Events.onSubmit SignIn
-        ]
+    div
+        []
         [ h1
             []
             [ text "Registration"
             ]
 
         --
-        , input
-            [ Html.Attributes.type_ "text"
-            , Html.Attributes.placeholder "Username"
-            , Html.Attributes.value model.username
-            , Html.Attributes.readonly busy
-            , Html.Attributes.tabindex 0
-            , Html.Attributes.autofocus True
-            , Html.Events.onInput ChangeUsername
+        , form
+            [ Html.Events.onSubmit SignIn
             ]
-            []
-        , button
-            [ Html.Attributes.type_ "submit"
-            , Html.Attributes.disabled busy
-            , Html.Attributes.tabindex 0
-            ]
-            [ text "Sign In"
+            [ input
+                [ Html.Attributes.type_ "text"
+                , Html.Attributes.placeholder "Username"
+                , Html.Attributes.value model.username
+                , Html.Attributes.readonly busy
+                , Html.Attributes.tabindex 0
+                , Html.Attributes.autofocus True
+                , Html.Events.onInput ChangeUsername
+                ]
+                []
+            , button
+                [ Html.Attributes.type_ "submit"
+                , Html.Attributes.disabled busy
+                , Html.Attributes.tabindex 0
+                ]
+                [ text "Sign In"
+                ]
             ]
 
         --

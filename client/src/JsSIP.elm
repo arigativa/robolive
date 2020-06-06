@@ -5,6 +5,8 @@ port module JsSIP exposing
     , register
     )
 
+import Json.Encode exposing (Value)
+
 
 generateUri : String -> String -> String
 generateUri username server =
@@ -63,7 +65,7 @@ register options =
         |> js_sip__register
 
 
-port js_sip__on_registred_ok : (() -> msg) -> Sub msg
+port js_sip__on_registred_ok : (Value -> msg) -> Sub msg
 
 
 type alias RegistrationError =
@@ -75,9 +77,9 @@ type alias RegistrationError =
 port js_sip__on_registred_err : (RegistrationError -> msg) -> Sub msg
 
 
-onRegistred : (Result RegistrationError () -> msg) -> Sub msg
+onRegistred : (Result RegistrationError Value -> msg) -> Sub msg
 onRegistred tagger =
     Sub.batch
-        [ js_sip__on_registred_ok (\_ -> tagger (Ok ()))
+        [ js_sip__on_registred_ok (tagger << Ok)
         , js_sip__on_registred_err (tagger << Err)
         ]

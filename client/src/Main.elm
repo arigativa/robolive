@@ -2,6 +2,7 @@ module Main exposing (main)
 
 import Browser
 import Browser.Navigation
+import Credentials exposing (Credentials)
 import Html
 import Login
 import Room
@@ -14,7 +15,7 @@ import Url exposing (Url)
 
 type Screen
     = LoginScreen Login.Model
-    | RoomScreen Room.Model
+    | RoomScreen Credentials Room.Model
 
 
 type alias Model =
@@ -64,20 +65,20 @@ update msg model =
                     , Cmd.map LoginMsg cmdOfLogin
                     )
 
-                Login.Registred username ->
-                    ( { model | screen = RoomScreen (Room.init username) }
+                Login.Registred credentials ->
+                    ( { model | screen = RoomScreen credentials Room.initial }
                     , Cmd.none
                     )
 
         ( LoginMsg _, _ ) ->
             ( model, Cmd.none )
 
-        ( RoomMsg msgOfRoom, RoomScreen room ) ->
+        ( RoomMsg msgOfRoom, RoomScreen credentials room ) ->
             let
                 ( nextRoom, cmdOfRoom ) =
                     Room.update msgOfRoom room
             in
-            ( { model | screen = RoomScreen nextRoom }
+            ( { model | screen = RoomScreen credentials nextRoom }
             , Cmd.map RoomMsg cmdOfRoom
             )
 
@@ -95,8 +96,8 @@ subscriptions model =
         LoginScreen login ->
             Sub.map LoginMsg (Login.subscriptions login)
 
-        RoomScreen room ->
-            Sub.map RoomMsg (Room.subscriptions room)
+        _ ->
+            Sub.none
 
 
 
@@ -110,8 +111,8 @@ view model =
             LoginScreen login ->
                 Html.map LoginMsg (Login.view login)
 
-            RoomScreen room ->
-                Html.map RoomMsg (Room.view room)
+            RoomScreen credentials room ->
+                Html.map RoomMsg (Room.view credentials room)
         ]
 
 
