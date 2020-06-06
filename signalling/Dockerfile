@@ -17,6 +17,9 @@ RUN make all
 RUN mkdir /kamailio-distr
 RUN make prefix=/kamailio-distr install
 
+# Package archive
+RUN tar -czf /kamailio-distr.tar.gz -C /kamailio-distr/ .
+
 ################################
 # Stage 1: Kamalio runtime image
 
