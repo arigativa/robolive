@@ -6,6 +6,11 @@ port module JsSIP exposing
     )
 
 
+generateUri : String -> String -> String
+generateUri username server =
+    "sip:" ++ username ++ "@" ++ server
+
+
 type Protocol
     = WebSocket
     | WebSocketSecure
@@ -50,7 +55,7 @@ register options =
                 |> Maybe.map ((++) ":" << String.fromInt)
                 |> Maybe.withDefault ""
             ]
-    , uri = "sip:" ++ options.username ++ "@" ++ options.server
+    , uri = generateUri options.username options.server
     , register = options.register
     , username = options.username
     , password = options.password

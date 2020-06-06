@@ -21,14 +21,14 @@ hasWhitespaces =
 
 
 type alias Model =
-    { name : String
+    { username : String
     , registration : RemoteData String Never
     }
 
 
 initial : Model
 initial =
-    { name = ""
+    { username = ""
     , registration = RemoteData.NotAsked
     }
 
@@ -38,7 +38,7 @@ initial =
 
 
 type Msg
-    = ChangeName String
+    = ChangeUsername String
     | SignIn
     | Register (Result JsSIP.RegistrationError ())
 
@@ -51,23 +51,23 @@ type Stage
 update : Msg -> Model -> Stage
 update msg model =
     case msg of
-        ChangeName nextName ->
+        ChangeUsername nextUsername ->
             Updated
                 ( { model
-                    | name = nextName
+                    | username = nextUsername
                     , registration = RemoteData.NotAsked
                   }
                 , Cmd.none
                 )
 
         SignIn ->
-            if hasWhitespaces model.name then
+            if hasWhitespaces model.username then
                 Updated
                     ( { model | registration = RemoteData.Failure "Username must have no white spaces" }
                     , Cmd.none
                     )
 
-            else if String.isEmpty model.name then
+            else if String.isEmpty model.username then
                 Updated
                     ( { model | registration = RemoteData.Failure "Username must be not empty" }
                     , Cmd.none
@@ -81,7 +81,7 @@ update msg model =
                         , server = "127.0.0.1"
                         , port_ = Just 4443
                         , register = True
-                        , username = model.name
+                        , username = model.username
                         , password = Nothing
                         }
                     )
@@ -93,7 +93,7 @@ update msg model =
                 )
 
         Register (Ok _) ->
-            Registred model.name
+            Registred model.username
 
 
 
@@ -139,11 +139,11 @@ view model =
         , input
             [ Html.Attributes.type_ "text"
             , Html.Attributes.placeholder "Username"
-            , Html.Attributes.value model.name
+            , Html.Attributes.value model.username
             , Html.Attributes.readonly busy
             , Html.Attributes.tabindex 0
             , Html.Attributes.autofocus True
-            , Html.Events.onInput ChangeName
+            , Html.Events.onInput ChangeUsername
             ]
             []
         , button

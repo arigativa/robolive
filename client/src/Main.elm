@@ -4,6 +4,7 @@ import Browser
 import Browser.Navigation
 import Html
 import Login
+import Room
 import Url exposing (Url)
 
 
@@ -13,6 +14,7 @@ import Url exposing (Url)
 
 type Screen
     = LoginScreen Login.Model
+    | RoomScreen Room.Model
 
 
 type alias Model =
@@ -38,6 +40,7 @@ type Msg
     = UrlRequested Browser.UrlRequest
     | UrlChanged Url.Url
     | LoginMsg Login.Msg
+    | RoomMsg Room.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -62,7 +65,24 @@ update msg model =
                     )
 
                 Login.Registred username ->
-                    ( model, Cmd.none )
+                    ( { model | screen = RoomScreen (Room.init username) }
+                    , Cmd.none
+                    )
+
+        ( LoginMsg _, _ ) ->
+            ( model, Cmd.none )
+
+        ( RoomMsg msgOfRoom, RoomScreen room ) ->
+            let
+                ( nextRoom, cmdOfRoom ) =
+                    Room.update msgOfRoom room
+            in
+            ( { model | screen = RoomScreen nextRoom }
+            , Cmd.map RoomMsg cmdOfRoom
+            )
+
+        ( RoomMsg _, _ ) ->
+            ( model, Cmd.none )
 
 
 
@@ -75,6 +95,9 @@ subscriptions model =
         LoginScreen login ->
             Sub.map LoginMsg (Login.subscriptions login)
 
+        RoomScreen room ->
+            Sub.map RoomMsg (Room.subscriptions room)
+
 
 
 -- V I E W
@@ -86,6 +109,9 @@ view model =
         [ case model.screen of
             LoginScreen login ->
                 Html.map LoginMsg (Login.view login)
+
+            RoomScreen room ->
+                Html.map RoomMsg (Room.view room)
         ]
 
 
