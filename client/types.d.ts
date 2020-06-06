@@ -1,3 +1,5 @@
+/* eslint-disable init-declarations */
+
 declare type Value
     = undefined
     | null
