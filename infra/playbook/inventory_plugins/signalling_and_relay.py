@@ -68,5 +68,5 @@ class InventoryModule(BaseInventoryPlugin):
         json_out = json.loads(out)
         return json_out[variable]['value']
 
-    def log(self, *args):
-        print(*args)
+    def log(self, message):
+        print(message)
