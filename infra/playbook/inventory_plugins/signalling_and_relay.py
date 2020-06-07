@@ -3,10 +3,7 @@ import re
 
 from ansible.plugins.inventory import BaseInventoryPlugin
 from python_terraform import Terraform
-import python_terraform
-from logging import DEBUG, FileHandler
 import json
-import tempfile
 import traceback
 
 DOCUMENTATION = r'''
@@ -19,9 +16,6 @@ DOCUMENTATION = r'''
           description: Path to Terraform sources (`terraform output` will be invoked there)
           required: true
 '''
-
-python_terraform.log.setLevel(DEBUG)
-python_terraform.log.addHandler(FileHandler('/dev/stderr'))
 
 
 class InventoryModule(BaseInventoryPlugin):
@@ -78,9 +72,6 @@ class InventoryModule(BaseInventoryPlugin):
 
         if ret != 0:
             raise RuntimeError(err)
-
-        # fix log in Github Actions
-        out = re.sub(r'^[^\\[{]+([\\[{])', '\\1', out)
 
         json_out = json.loads(out)
         return json_out[variable]['value']
