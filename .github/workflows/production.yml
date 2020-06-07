@@ -57,16 +57,16 @@ jobs:
       - name: Setting up dependencies tooling
         run: sudo apt-get install python python-pip python-setuptools python-wheel ansible
 
-      - name: Fix Ansible bug
+      - name: Fix Ansible bug (https://github.com/ansible/ansible/issues/27793)
         run: rm -rf ~/.ansible/cp
 
       - name: Setting up Ansible environment
         run: pip install -r requirements.txt && ansible-galaxy role install -r requirements.yml
 
       - name: Check Ansible playbook
-        run: ansible-playbook -i inventory/ playbook.yml -C -vvvv
+        run: ansible-playbook -i inventory/ playbook.yml -C -vv
         if: github.ref != 'refs/heads/master' || github.event_name != 'push'
 
       - name: Run Ansible playbook
         if: github.ref == 'refs/heads/master' && github.event_name == 'push'
-        run: ansible-playbook -i inventory/ playbook.yml -vvvv
+        run: ansible-playbook -i inventory/ playbook.yml -vv
