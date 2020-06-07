@@ -1,3 +1,5 @@
+import re
+
 from ansible.plugins.inventory import BaseInventoryPlugin
 from python_terraform import *
 import json
@@ -29,7 +31,7 @@ class InventoryModule(BaseInventoryPlugin):
             self.populate(self.get_inventory())
         except Exception as exc:
             self.log("parse() failed with " + str(exc))
-
+            raise exc
 
     def populate(self, inventory):
         for item in inventory:
@@ -64,9 +66,14 @@ class InventoryModule(BaseInventoryPlugin):
     def _get_terraform_output(self, path, variable):
         terraform = Terraform(working_dir=path)
         ret, out, err = terraform.cmd('output', '-json')
+
         if ret != 0:
             self.log("terraform failed: " + out + "\n\terr:" + err)
             raise RuntimeError(err)
+
+        # fix log in Github Actions
+        out = re.sub(r'^[^\\[{]+([\\[{])', '\\1', out)
+
         self.log("terraform output: " + out)
         json_out = json.loads(out)
         return json_out[variable]['value']
