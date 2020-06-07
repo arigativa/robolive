@@ -38,12 +38,25 @@
     - signalling
     - kamailio
 
-- name: Extract Kamailio
-  unarchive:
+- name: Copy Kamailio package
+  copy:
     src: "{{ signalling_kamailio_package }}"
-    dest: "{{ signalling_package_dir }}"
+    dest: "{{ signalling_kamailio_package_local }}"
     owner: root
     group: root
+  tags:
+    - signalling
+    - kamailio
+  register: kamilio_package
+
+- name: Extract Kamailio
+  unarchive:
+    src: "{{ signalling_kamailio_package_local }}"
+    dest: "{{ signalling_package_dir }}"
+    remote_src: yes
+    owner: root
+    group: root
+  when: kamilio_package.changed
   notify:
     - Start Kamailio
   tags:
@@ -51,6 +64,23 @@
     - kamailio
 
 # Configuration
+
+# TODO pre-uploaded keys are used here
+- name: Copy certificates
+  copy:
+    src: "{{ item.src }}"
+    remote_src: yes
+    dest: "{{ item.dest }}"
+    owner: "{{ kamailio_user }}"
+    group: "{{ kamailio_group }}"
+    mode: '0600'
+  with_items:
+    - { src: "/etc/letsencrypt/live/rl.arigativa.ru/privkey.pem", dest: "{{ kamailio_private_key }}" }
+    - { src: "/etc/letsencrypt/live/rl.arigativa.ru/cert.pem", dest: "{{ kamailio_certificate }}" }
+    - { src: "/etc/letsencrypt/live/rl.arigativa.ru/fullchain.pem", dest: "{{ kamailio_ca_list }}" }
+  tags:
+    - signalling
+    - kamailio
 
 - name: Ensure configuration directory
   file:
@@ -82,6 +112,17 @@
   with_items:
     - "kamailio.cfg"
     - "tls.cfg"
+  tags:
+    - signalling
+    - kamailio
+
+- name: Ensure run directory exists
+  file:
+    path: "{{ kamailio_run_directory }}"
+    state: directory
+    mode: '0755'
+    owner: "{{ kamailio_user }}"
+    group: "{{ kamailio_group }}"
   tags:
     - signalling
     - kamailio

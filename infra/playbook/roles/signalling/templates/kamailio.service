@@ -10,12 +10,11 @@ StartLimitIntervalSec=60
 Type=forking
 WorkingDirectory={{ signalling_conf_dir }}
 Environment=LD_LIBRARY_PATH={{ signalling_package_dir }}/lib64/kamailio
-Environment='PIDFILE=/var/run/kamailio.pid'
 User={{ kamailio_user }}
 Group={{ kamailio_group }}
-PIDFile=$PIDFILE
-ExecStart={{ signalling_package_dir }}/sbin/kamailio -P $PIDFILE -m {{ kamailio_shared_memory }} -M {{ kamailio_private_memory }} -f kamailio.cfg
-ExecStopPost=/bin/rm -f $PIDFILE
+PIDFile={{ kamailio_pid_file }}
+ExecStart={{ signalling_package_dir }}/sbin/kamailio -P {{ kamailio_pid_file }} -m {{ kamailio_shared_memory }} -M {{ kamailio_private_memory }} -f {{ signalling_conf_dir }}/kamailio.cfg
+ExecStopPost=/bin/rm -f {{ kamailio_pid_file }}
 Restart=always
 RestartSec=3
 

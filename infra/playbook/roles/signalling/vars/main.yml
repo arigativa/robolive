@@ -10,9 +10,16 @@ signalling_public_ip: "{{ host_public_ip }}"
 #     |   * signalling/Dockerfile, README.md
 #     |   * .github/workflows/kamailio-build.yml
 signalling_kamailio_package: kamailio-distr.tar.gz
+signalling_kamailio_package_local: /opt/kamailio-distr.tar.gz
 
 kamailio_home_directory: /home/kamailio
+kamailio_run_directory: "/var/run/kamailio"
+kamailio_pid_file: "{{ kamailio_run_directory }}/kamailio.pid"
 kamailio_user: kamailio
 kamailio_group: kamailio
 kamailio_private_memory: 256 # megabytes
 kamailio_shared_memory: 256 #megabytes
+
+kamailio_private_key: "{{ kamailio_home_directory }}/privkey.pem"
+kamailio_certificate: "{{ kamailio_home_directory }}/cert.pem"
+kamailio_ca_list: "{{ kamailio_home_directory }}/fullchain.pem"

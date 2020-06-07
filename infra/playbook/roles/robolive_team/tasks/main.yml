@@ -18,3 +18,13 @@
   when: item['ssh_key'] is defined
   tags:
     - robolive_team
+
+- name: Make team sudo
+  template:
+    src: sudoers
+    dest: /etc/sudoers.d/robolive-team
+    owner: root
+    group: root
+    mode: '0440'
+  tags:
+    - robolive_team
