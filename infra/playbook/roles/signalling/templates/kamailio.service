@@ -14,8 +14,6 @@ Environment='PIDFILE=/var/run/kamailio.pid'
 User={{ kamailio_user }}
 Group={{ kamailio_group }}
 PIDFile=$PIDFILE
-# ExecStart requires a full absolute path
-ExecStart=/sbin/kamailio
 ExecStart={{ signalling_package_dir }}/sbin/kamailio -P $PIDFILE -m {{ kamailio_shared_memory }} -M {{ kamailio_private_memory }} -f kamailio.cfg
 ExecStopPost=/bin/rm -f $PIDFILE
 Restart=always

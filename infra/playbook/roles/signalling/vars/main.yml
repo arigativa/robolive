@@ -14,3 +14,5 @@ signalling_kamailio_package: kamailio-distr.tar.gz
 kamailio_home_directory: /home/kamailio
 kamailio_user: kamailio
 kamailio_group: kamailio
+kamailio_private_memory: 256 # megabytes
+kamailio_shared_memory: 256 #megabytes
