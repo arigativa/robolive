@@ -1,14 +1,25 @@
 [Unit]
 Description=Kamailio Signalling Server
-After=syslog.target network.target remote-fs.target nss-lookup.target
+After=syslog.target network.target
+
+# Attempt to start kamailio for 10 times during a 60 seconds interval.
+StartLimitBurst=10
+StartLimitIntervalSec=60
 
 [Service]
+Type=forking
 WorkingDirectory={{ signalling_conf_dir }}
 Environment=LD_LIBRARY_PATH={{ signalling_package_dir }}/lib64/kamailio
-ExecStart={{ signalling_package_dir }}/sbin/kamailio -DD -E -f kamailio.cfg
-ExecReload=/bin/kill -s HUP $MAINPID
-ExecStop=/bin/kill -s QUIT $MAINPID
-PrivateTmp=true
+Environment='PIDFILE=/var/run/kamailio.pid'
+User={{ kamailio_user }}
+Group={{ kamailio_group }}
+PIDFile=$PIDFILE
+# ExecStart requires a full absolute path
+ExecStart=/sbin/kamailio
+ExecStart={{ signalling_package_dir }}/sbin/kamailio -P $PIDFILE -m {{ kamailio_shared_memory }} -M {{ kamailio_private_memory }} -f kamailio.cfg
+ExecStopPost=/bin/rm -f $PIDFILE
+Restart=always
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target

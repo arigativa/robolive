@@ -1,3 +1,10 @@
+---
+- name: Create Kamailio group
+  group: name={{ kamailio_group }}
+
+- name: Create Kamailio user
+  user: name={{ kamailio_user }} home={{ kamailio_home_directory }} group={{ kamailio_group }}
+
 - name: Install Kamailio runtime dependencies [1/2]
   apt:
     pkg:

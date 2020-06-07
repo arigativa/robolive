@@ -10,3 +10,7 @@ signalling_public_ip: "{{ host_public_ip }}"
 #     |   * signalling/Dockerfile, README.md
 #     |   * .github/workflows/kamailio-build.yml
 signalling_kamailio_package: kamailio-distr.tar.gz
+
+kamailio_home_directory: /home/kamailio
+kamailio_user: kamailio
+kamailio_group: kamailio
