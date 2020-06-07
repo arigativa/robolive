@@ -1,9 +1,10 @@
+import os
 import re
 
 from ansible.plugins.inventory import BaseInventoryPlugin
 from python_terraform import Terraform
 import python_terraform
-from logging import DEBUG
+from logging import DEBUG, FileHandler
 import json
 import tempfile
 import traceback
@@ -20,6 +21,7 @@ DOCUMENTATION = r'''
 '''
 
 python_terraform.log.setLevel(DEBUG)
+python_terraform.log.addHandler(FileHandler('/dev/stderr'))
 
 
 class InventoryModule(BaseInventoryPlugin):
