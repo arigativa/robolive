@@ -1,0 +1,27 @@
+name: Build signalling server
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: signalling
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Build Kamailio using Docker
+      run: docker build -t kamailio-build --target builder .
+    
+    - name: Extract artifact
+      run: docker run --rm kamailio-build:latest cat /kamailio-distr.tar.gz > /tmp/kamailio-distr.tar.gz
+
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: kamailio-distr.tar.gz
+        path: /tmp/kamailio-distr.tar.gz
