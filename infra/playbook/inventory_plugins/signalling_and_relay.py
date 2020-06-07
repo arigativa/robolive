@@ -1,7 +1,9 @@
 import re
 
 from ansible.plugins.inventory import BaseInventoryPlugin
-from python_terraform import *
+from python_terraform import Terraform
+import python_terraform
+from logging import DEBUG
 import json
 import tempfile
 import traceback
@@ -16,6 +18,8 @@ DOCUMENTATION = r'''
           description: Path to Terraform sources (`terraform output` will be invoked there)
           required: true
 '''
+
+python_terraform.log.setLevel(DEBUG)
 
 
 class InventoryModule(BaseInventoryPlugin):
