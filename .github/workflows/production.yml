@@ -53,10 +53,10 @@ jobs:
       - run: terraform init
 
       - name: Setting up dependencies tooling
-        run: apt install python3 python3-pip ansible
+        run: sudo apt-get install python3 python3-pip ansible
 
       - name: Setting up Ansible environment
-        run: pip3 install -r requirements.txt && ansible-galaxy role install -r requirements.yml
+        run: sudo pip3 install -r requirements.txt && ansible-galaxy role install -r requirements.yml
 
       - name: Check Ansible playbook
         run: ansible-playbook -i inventory/ playbook.yml -C
