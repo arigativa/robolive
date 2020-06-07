@@ -61,9 +61,9 @@ jobs:
         run: pip install -r requirements.txt && ansible-galaxy role install -r requirements.yml
 
       - name: Check Ansible playbook
-        run: ansible-playbook -i inventory/ playbook.yml -C
+        run: ansible-playbook -i inventory/ playbook.yml -C -vvv
         if: github.ref != 'refs/heads/master' || github.event_name != 'push'
 
       - name: Run Ansible playbook
         if: github.ref == 'refs/heads/master' && github.event_name == 'push'
-        run: ansible-playbook -i inventory/ playbook.yml
+        run: ansible-playbook -i inventory/ playbook.yml -vvv
