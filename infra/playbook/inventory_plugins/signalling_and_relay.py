@@ -63,8 +63,9 @@ class InventoryModule(BaseInventoryPlugin):
         terraform = Terraform(working_dir=path)
         ret, out, err = terraform.cmd('output', '-json')
         if ret != 0:
-            self.log("terraform failed: " + out)
+            self.log("terraform failed: " + out + "\n\terr:" + err)
             raise RuntimeError(err)
+        self.log("terraform output: " + out)
         json_out = json.loads(out)
         return json_out[variable]['value']
 
