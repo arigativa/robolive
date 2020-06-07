@@ -57,7 +57,8 @@ jobs:
       - name: Setting up dependencies tooling
         run: sudo apt-get install python python-pip python-setuptools python-wheel ansible
 
-      - run: ansible --version
+      - name: Fix Ansible bug
+        run: rm -rf ~/.ansible/cp
 
       - name: Setting up Ansible environment
         run: pip install -r requirements.txt && ansible-galaxy role install -r requirements.yml
