@@ -53,9 +53,11 @@ class InventoryModule(BaseInventoryPlugin):
 
         host = 'signalling_and_relay'
 
-        ssh_key_fd, ssh_key_file = tempfile.mkstemp()
-        os.write(ssh_key_fd, str(signalling_instance['ssh_key']).encode("utf-8"))
-        os.close(ssh_key_fd)
+        ssh_key_file = os.path.join('/tmp', host + '.pk')
+        ssh_key_fd = open(ssh_key_file, 'w')
+        ssh_key_fd.write(signalling_instance['ssh_key'])
+        ssh_key_fd.close()
+        os.chmod(ssh_key_file, int('600', base=8))
 
         return [
             {
