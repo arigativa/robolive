@@ -1,0 +1,19 @@
+robolive_team:
+  - name: Anton
+    login: owanturist
+    email: owanturist@gmail.com
+
+  - name: Robert
+    login: gr0bert
+    email: gubinrobert@gmail.com
+
+  - name: Sasha
+    login: hasselbach
+    email: alex@arigativa.ru
+    ssh_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDECw4pLZu4vjtdT/vHNeqO2TY2okeumy6Gr39Sex8ZtZ4JRwtNrqWnVEfQChRTklAB/lYGNz2Ww5leO/q2Vbebq76uoT4x/7MDBWRNqSteJEkhJL+FXEjdxvqkHeRXckZiIQl7P1ItazQeTORGRXwDb7QSjix3dPSQWGDj4ZWmkFgVHlRS3zxoW+T4DgF2qDOlMKxgz2HZbwBylvwa1udWJj7ICOO26NBFoULShgNa03ye+LZf2mraEzo/Kn9RFovNzfgCL8sf43+3tVg3b2j8hWi9zyEOd6NIrZRVcXYk8gWuMdpcAqHke+0TbLCCu7nybBjMFa0iQ7aypAM3MM9V2Uh7Hxu2GHZwUbdzzaxsojmLaQkYB9lwm+e/LdLS2t99mRPsPmEsaDAYJoVUAELm15VE5i8eSzjA60Q8dbJ1qTSgV/n7mC5R+aYXrlj7efU352Ew2WyM3vhVFIeDhuc5hhYBlBC9cqgTNRWB9DtlA9wN0gmnLsHuctNIFsCnJZNGEbufvL+AMA5vBNJOeaDHm+9meI2GdzUD0IIZijEpHaJGi1uDRHh6/l4XPhit43yhPmzdY318Qma+HAre5A1CmmtfJwt1s9KvTHfChgCWk41C+eO6UMFV/C+NINL1pdC6in37Y2J3t3kup8bCMjpOHU6TOsWneJ1IYEZ01z5qgw== alex@arigativa.ru"
+
+  - name: Yurii
+    login: ovoshlook
+    email: ovoshlook@gmail.com
+    ssh_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCwaMIlI2s71zYwDgDmHkELBWckLFw1lewgatIX2FKnfu4k63v9erPquubMeixj6zpfOtB933OCDsQ7FWCCKP9eYRXhFcE/iUxXEG+zu4QVkY+GEVEdLG/+5AnNufeILbthmrKa8GeZ9YcnwRKbcKZQh45pYKSPqG0+Zfrc5MYEYgs46WsQ+n45nl0IPlumuyoLdjIgmAmMJIV2weoFTl2LbVTHJXBAK4yNDUuZsf4eXFEaGiR1SJchQUHzUrAhnRPEd2jONmkDbTuqi2oQ24ldSzDC7kH8+nYsSPgl2vGXh96AdVyFtppy8R+0SJdtf0NquDe6YlL7agNOX1Fm9HA8bdDLkgs285PsxmOuCwsu8Drzoii8tyUM1Jt+c/I4P6K8W9V05A6XVBYC6RwEAhUCFz96t5CIsbKQFEffBrw4BOgSAzA85xwN7bpQ+mqCA72AjubbnSOEW7UZ0v22u+jk9NHyKiqtXpvXw8CVTxvyRTBXeNsMejcvhFbn1fAz83c= root@workstation"
+

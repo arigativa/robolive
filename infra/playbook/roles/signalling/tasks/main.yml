@@ -10,9 +10,15 @@
       - libpcrecpp0v5
       - lua5.1
       - luarocks
+  tags:
+    - signalling
+    - kamailio
 
 - name: Install Kamailio runtime dependencies [2/2]
   command: luarocks install lua-cjson
+  tags:
+    - signalling
+    - kamailio
 
 - name: Ensure package directory
   file:
@@ -21,6 +27,9 @@
     mode: '0755'
     owner: root
     group: root
+  tags:
+    - signalling
+    - kamailio
 
 - name: Extract Kamailio
   unarchive:
@@ -30,6 +39,9 @@
     group: root
   notify:
     - Start Kamailio
+  tags:
+    - signalling
+    - kamailio
 
 # Configuration
 
@@ -40,6 +52,9 @@
     mode: '0755'
     owner: root
     group: root
+  tags:
+    - signalling
+    - kamailio
 
 - name: Extract engine scripts
   unarchive:
@@ -49,6 +64,9 @@
     group: root
   notify:
    - Start Kamailio
+  tags:
+    - signalling
+    - kamailio
 
 - name: Provide configuration files
   template:
@@ -57,6 +75,9 @@
   with_items:
     - "kamailio.cfg"
     - "tls.cfg"
+  tags:
+    - signalling
+    - kamailio
 
 # Service definition
 
@@ -68,3 +89,6 @@
     group: root
   notify:
     - Start Kamailio
+  tags:
+    - signalling
+    - kamailio
