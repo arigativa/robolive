@@ -1,0 +1,2 @@
+plugin: signalling_and_relay
+terraform_path: ../production

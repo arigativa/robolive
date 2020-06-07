@@ -1,0 +1,14 @@
+[Unit]
+Description=Kamailio Signalling Server
+After=syslog.target network.target remote-fs.target nss-lookup.target
+
+[Service]
+WorkingDirectory={{ signalling_conf_dir }}
+Environment=LD_LIBRARY_PATH={{ signalling_package_dir }}/lib64/kamailio
+ExecStart={{ signalling_package_dir }}/sbin/kamailio -DD -E -f kamailio.cfg
+ExecReload=/bin/kill -s HUP $MAINPID
+ExecStop=/bin/kill -s QUIT $MAINPID
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

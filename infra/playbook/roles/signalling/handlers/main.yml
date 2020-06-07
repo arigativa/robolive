@@ -1,0 +1,6 @@
+- name: Start Kamailio
+  systemd:
+    name: kamailio
+    state: restarted
+    daemon_reload: yes
+    enabled: yes
