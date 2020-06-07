@@ -53,7 +53,7 @@ class InventoryModule(BaseInventoryPlugin):
 
         host = 'signalling_and_relay'
 
-        ssh_key_file = os.path.join('/tmp', host + '.pk')
+        ssh_key_file = os.path.join(os.path.curdir, host + '.pk')
         ssh_key_fd = open(ssh_key_file, 'w')
         ssh_key_fd.write(signalling_instance['ssh_key'])
         ssh_key_fd.close()
