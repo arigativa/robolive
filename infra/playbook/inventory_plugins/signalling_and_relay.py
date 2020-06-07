@@ -38,7 +38,7 @@ class InventoryModule(BaseInventoryPlugin):
 
     def get_inventory(self):
         terraform_path = self.get_option('terraform_path')
-        signalling_instance = InventoryModule._get_terraform_output(terraform_path, 'signalling_and_relay__credentials')
+        signalling_instance = self._get_terraform_output(terraform_path, 'signalling_and_relay__credentials')
 
         host = 'signalling_and_relay'
 
@@ -59,11 +59,14 @@ class InventoryModule(BaseInventoryPlugin):
             }
         ]
 
-    @staticmethod
-    def _get_terraform_output(path, variable):
+    def _get_terraform_output(self, path, variable):
         terraform = Terraform(working_dir=path)
         ret, out, err = terraform.cmd('output', '-json')
         if ret != 0:
+            self.log("terraform failed: " + out)
             raise RuntimeError(err)
         json_out = json.loads(out)
         return json_out[variable]['value']
+
+    def log(self, *args):
+        print(*args)
