@@ -23,11 +23,13 @@ class InventoryModule(BaseInventoryPlugin):
 
     def parse(self, inventory, loader, path, cache=True):
         # call base method to ensure properties are available for use with other helper methods
-        super(InventoryModule, self).parse(inventory, loader, path, cache)
+        try:
+            super(InventoryModule, self).parse(inventory, loader, path, cache)
+            self._read_config_data(path)
+            self.populate(self.get_inventory())
+        except Exception as exc:
+            self.log("parse() failed with " + str(exc))
 
-        self._read_config_data(path)
-
-        self.populate(self.get_inventory())
 
     def populate(self, inventory):
         for item in inventory:
