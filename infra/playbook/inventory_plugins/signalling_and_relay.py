@@ -54,7 +54,7 @@ class InventoryModule(BaseInventoryPlugin):
         host = 'signalling_and_relay'
 
         ssh_key_fd, ssh_key_file = tempfile.mkstemp()
-        os.write(ssh_key_fd, bytes(signalling_instance['ssh_key'], encoding='utf8'))
+        os.write(ssh_key_fd, str(signalling_instance['ssh_key']).encode("utf-8"))
         os.close(ssh_key_fd)
 
         return [
@@ -75,13 +75,11 @@ class InventoryModule(BaseInventoryPlugin):
         ret, out, err = terraform.cmd('output', '-json')
 
         if ret != 0:
-            self.log("terraform failed: " + out + "\n\terr:" + err)
             raise RuntimeError(err)
 
         # fix log in Github Actions
         out = re.sub(r'^[^\\[{]+([\\[{])', '\\1', out)
 
-        self.log("terraform output: " + out)
         json_out = json.loads(out)
         return json_out[variable]['value']
 
