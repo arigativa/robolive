@@ -53,10 +53,10 @@ jobs:
       - run: terraform init
         working-directory: infra/production
 
-      - run: ansible --version
-
       - name: Setting up dependencies tooling
         run: sudo apt-get install python python-pip python-setuptools python-wheel ansible
+
+      - run: ansible --version
 
       - name: Setting up Ansible environment
         run: pip install -r requirements.txt && ansible-galaxy role install -r requirements.yml

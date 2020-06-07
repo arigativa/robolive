@@ -4,6 +4,7 @@ from ansible.plugins.inventory import BaseInventoryPlugin
 from python_terraform import *
 import json
 import tempfile
+import traceback
 
 DOCUMENTATION = r'''
     name: signalling_and_relay
@@ -29,9 +30,9 @@ class InventoryModule(BaseInventoryPlugin):
             super(InventoryModule, self).parse(inventory, loader, path, cache)
             self._read_config_data(path)
             self.populate(self.get_inventory())
-        except Exception as exc:
-            self.log("parse() failed with " + str(exc))
-            raise exc
+        except Exception:
+            self.log("parse() failed with")
+            traceback.print_exc()
 
     def populate(self, inventory):
         for item in inventory:
