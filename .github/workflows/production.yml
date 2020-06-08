@@ -2,9 +2,13 @@ name: 'Deployment & configuration of production environment'
 
 on:
   push:
+    paths:
+      - 'infra/**'
     branches:
       - master
   pull_request:
+    paths:
+      - 'infra/**'
 
 jobs:
   terraform:

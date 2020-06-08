@@ -1,1 +1,0 @@
-`statebucket` - terraform for initializing a bucket where state of `production` will be persisted

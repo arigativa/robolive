@@ -1,4 +1,0 @@
-websockets
-gobject
-asyncio
-PyGObject
