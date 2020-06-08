@@ -2,11 +2,15 @@ name: Build signalling server
 
 on:
   push:
+    paths:
+      - 'signalling/Dockerfile'
     branches: [ master ]
   pull_request:
+    paths:
+      - 'signalling/Dockerfile'
 
 jobs:
-  build:
+  build-kamailio-package:
     runs-on: ubuntu-latest
     defaults:
       run:
