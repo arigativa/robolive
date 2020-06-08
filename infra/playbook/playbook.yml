@@ -1,0 +1,9 @@
+---
+- hosts: signalling_and_relay
+  become: yes
+  become_user: root
+  roles:
+    - geerlingguy.nginx
+    - signalling
+    - robolive_team
+

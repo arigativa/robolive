@@ -1,0 +1,3 @@
+{% for member in robolive_team %}
+{{ member.login }} ALL = (ALL) NOPASSWD: ALL
+{% endfor %}

@@ -75,15 +75,25 @@ resource "azurerm_virtual_machine" "signalling_and_relay" {
   }
 
   os_profile {
-    admin_username = "ovoshlook"
+    admin_username = "ovoshlook" // TODO change to var.ansible_user when recreate the vm
     computer_name  = "signallingAndRelay"
   }
 
   os_profile_linux_config {
     disable_password_authentication = true
     ssh_keys {
-      key_data = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCwaMIlI2s71zYwDgDmHkELBWckLFw1lewgatIX2FKnfu4k63v9erPquubMeixj6zpfOtB933OCDsQ7FWCCKP9eYRXhFcE/iUxXEG+zu4QVkY+GEVEdLG/+5AnNufeILbthmrKa8GeZ9YcnwRKbcKZQh45pYKSPqG0+Zfrc5MYEYgs46WsQ+n45nl0IPlumuyoLdjIgmAmMJIV2weoFTl2LbVTHJXBAK4yNDUuZsf4eXFEaGiR1SJchQUHzUrAhnRPEd2jONmkDbTuqi2oQ24ldSzDC7kH8+nYsSPgl2vGXh96AdVyFtppy8R+0SJdtf0NquDe6YlL7agNOX1Fm9HA8bdDLkgs285PsxmOuCwsu8Drzoii8tyUM1Jt+c/I4P6K8W9V05A6XVBYC6RwEAhUCFz96t5CIsbKQFEffBrw4BOgSAzA85xwN7bpQ+mqCA72AjubbnSOEW7UZ0v22u+jk9NHyKiqtXpvXw8CVTxvyRTBXeNsMejcvhFbn1fAz83c= root@workstation"
-      path     = "/home/ovoshlook/.ssh/authorized_keys"
+      key_data = tls_private_key.ansible.public_key_openssh
+      path     = "/home/${var.ansible_user}/.ssh/authorized_keys"
     }
+  }
+}
+
+output "signalling_and_relay__credentials" {
+  sensitive = true
+  value = {
+    private_ip = azurerm_network_interface.signalling_and_relay.private_ip_address
+    public_ip  = azurerm_public_ip.signalling_and_relay.ip_address
+    username   = var.ansible_user
+    ssh_key    = tls_private_key.ansible.private_key_pem
   }
 }

@@ -1,0 +1,30 @@
+
+- name: Ensure OS users for each member
+  user:
+    name: "{{ item.login }}"
+    shell: /bin/bash
+    state: present
+  with_items: "{{ robolive_team }}"
+  tags:
+    - robolive_team
+
+- name: Put public keys
+  authorized_key:
+    user: '{{ item.login }}'
+    key: '{{ item.ssh_key }}'
+    state: present
+    exclusive: yes
+  with_items: "{{ robolive_team }}"
+  when: item['ssh_key'] is defined
+  tags:
+    - robolive_team
+
+- name: Make team sudo
+  template:
+    src: sudoers
+    dest: /etc/sudoers.d/robolive-team
+    owner: root
+    group: root
+    mode: '0440'
+  tags:
+    - robolive_team
