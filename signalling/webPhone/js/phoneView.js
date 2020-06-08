@@ -1,5 +1,5 @@
 let proto    = 'ws'
-let server 	 = '127.0.0.1'
+let addr 	 = '127.0.0.1'
 let port 	 = 4443
 let state 	 = 'notcalling'
 
@@ -57,13 +57,28 @@ let eventHandler = (e) => {
 $("#login").click( () => {
 
     let username = $('#uname').val()
+    let serverData = $("#server").val()
+    
+    if (serverData) {
+        serverData = serverData.split(":")
+        proto   = serverData[0]
+        addr    = serverData[1]
+        port    = serverData[2]
+    }
+    console.log(proto,addr,port)
+    if ( !proto || !addr || !port ) {
+        console.error("Server description does not match to pattern: proto:addr:port. Unable to connect...")
+        return
+    }
+
 	phoneEngine.createPhoneInstance({
         proto: proto, 
-		server: server, 
+		server: addr, 
 		port: port, 
 		username: username,
 		register: true,
-	})
+    })
+    
 })
 
 $("#call").click( () => {
