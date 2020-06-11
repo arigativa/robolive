@@ -71,8 +71,8 @@ update msg model =
                 Updated
                     ( { model | registration = RemoteData.Loading }
                     , JsSIP.register
-                        { protocol = JsSIP.WebSocket
-                        , server = "127.0.0.1"
+                        { protocol = JsSIP.WebSocketSecure
+                        , server = "rl.arigativa.ru"
                         , port_ = Just 4443
                         , register = True
                         , username = model.username

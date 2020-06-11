@@ -52,6 +52,82 @@ const WebRtcRemoteViewElement: Hybrids<WebRtcRemoteViewElement> = {
                 }
             });
 
+            session.on('peerconnection', event => {
+                console.log('peerconnection', event);
+            })
+            session.on('connecting', event => {
+                console.log('connecting', event);
+            })
+            session.on('sending', event => {
+                console.log('sending', event);
+            })
+            session.on('progress', event => {
+                console.log('progress', event);
+            })
+            session.on('accepted', event => {
+                console.log('accepted', event);
+            })
+            session.on('confirmed', event => {
+                console.log('confirmed', event);
+            })
+            session.on('ended', event => {
+                console.log('ended', event);
+            })
+            session.on('failed', event => {
+                console.log('failed', event);
+            })
+            session.on('newDTMF', event => {
+                console.log('newDTMF', event);
+            })
+            session.on('newInfo', event => {
+                console.log('newInfo', event);
+            })
+            session.on('hold', event => {
+                console.log('hold', event);
+            })
+            session.on('unhold', event => {
+                console.log('unhold', event);
+            })
+            session.on('muted', event => {
+                console.log('muted', event);
+            })
+            session.on('unmuted', event => {
+                console.log('unmuted', event);
+            })
+            session.on('reinvite', event => {
+                console.log('reinvite', event);
+            })
+            session.on('update', event => {
+                console.log('update', event);
+            })
+            session.on('refer', event => {
+                console.log('refer', event);
+            })
+            session.on('replaces', event => {
+                console.log('replaces', event);
+            })
+            session.on('sdp', event => {
+                console.log('sdp', event);
+            })
+            session.on('icecandidate', event => {
+                console.log('icecandidate', event);
+            })
+            session.on('getusermediafailed', event => {
+                console.log('getusermediafailed', event);
+            })
+            session.on('peerconnection:createofferfailed', event => {
+                console.log('peerconnection:createofferfailed', event);
+            })
+            session.on('peerconnection:createanswerfailed', event => {
+                console.log('peerconnection:createanswerfailed', event);
+            })
+            session.on('peerconnection:setlocaldescriptionfailed', event => {
+                console.log('peerconnection:setlocaldescriptionfailed', event);
+            })
+            session.on('peerconnection:setremotedescriptionfailed', event => {
+                console.log('peerconnection:setremotedescriptionfailed', event);
+            })
+
             session.connection.addEventListener('addstream', event => {
                 const { stream } = event as MediaStreamEvent
 
