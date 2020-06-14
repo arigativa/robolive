@@ -7,3 +7,8 @@
     - signalling
     - robolive_team
 
+- hosts: signalling_and_relay
+    become: yes
+    become_user: root
+    roles:
+      - relay
