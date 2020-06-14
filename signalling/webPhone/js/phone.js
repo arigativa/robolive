@@ -278,7 +278,7 @@ let phoneEngine = {
     }
 
     if (webCallSession) { 
-      webCallSession.answer({ /*mediaStream: microphoneStream,*/ mediaConstraints: { audio: true, video: false }}) 
+      webCallSession.answer({ /*mediaStream: microphoneStream,*/ mediaConstraints: { audio: false, video: true }})
     }
     else {
       // Start call
@@ -288,7 +288,7 @@ let phoneEngine = {
       console.log(to);
       webCallSession = webPhoneUA.call('sip:' + to + '@' +server, {
         //mediaStream: microphoneStream,
-        mediaConstraints: {audio: true, video: true},
+        mediaConstraints: {audio: false, video: true},
         pcConfig: {rtcpMuxPolicy: 'negotiate'},
         extraHeaders: extraHeaders
       });
@@ -341,7 +341,7 @@ let phoneEngine = {
           case "local":
             if (action === "mute" || action === "unmute") {
               console.log(action);
-              webCallSession[action]({audio: true, video: false});
+              webCallSession[action]({audio: false, video: true});
             }
             break;
           default:
