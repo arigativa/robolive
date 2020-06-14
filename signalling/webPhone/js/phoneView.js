@@ -1,95 +1,54 @@
-let proto    = 'ws'
-let addr 	 = '127.0.0.1'
-let port 	 = 4443
-let state 	 = 'notcalling'
-
-let timer, callStartTime, callDuration
-
-let viewHandleHeaders = (headers) => {
-	if (headers['X-role']) {
-
-    }
-
-	if (headers['X-room']) {
-
-	}
-}
-
-let eventHandler = (e) => {
-	let event = e.originalEvent
-	//console.log(e.originalEvent);
-	if (event.detail.direction) {
-		switch(event.detail.direction) {
-			case 'incoming':
-				
-				switch (event.detail.state) {
-					case 'message':
-						viewHandleHeaders(event.detail.headers)
-						if (event.detail.body) {
-							showBody(event.detail.body)
-						} 
-						break;
-					default:
-						break;
-				}
-				break;
-
-			case 'outgoing' :
-				switch (event.detail.state) {
-					case 'message':
-						if (event.detail.body) {
-							showBody(event.detail.body)
-						}
-						break;
-					default:
-						break;
-				}
-				break;
-
-			default:
-				break;
-		}			
-	} 
+(function () {
+const DEFAULT_SERVER = {
+    proto: 'ws',
+    host: '127.0.0.1',
+    port: 4443
 };
 
+const parseServer = str => {
+    const fragments = str.split(':');
 
-
-$("#login").click( () => {
-
-    let username = $('#uname').val()
-    let serverData = $("#server").val()
-    
-    if (serverData) {
-        serverData = serverData.split(":")
-        proto   = serverData[0]
-        addr    = serverData[1]
-        port    = serverData[2]
-    }
-    console.log(proto,addr,port)
-    if ( !proto || !addr || !port ) {
-        console.error("Server description does not match to pattern: proto:addr:port. Unable to connect...")
-        return
+    if (fragments.length !== 3) {
+        return DEFAULT_SERVER;
     }
 
-	phoneEngine.createPhoneInstance({
-        proto: proto, 
-		server: addr, 
-		port: port, 
-		username: username,
-		register: true,
-    })
+    return {
+        proto: fragments[0],
+        host: fragments[1],
+        port: fragments[2]
+    };
+};
+
+const readServerInputValue = () => parseServer($("#server").val());
+
+$("#login").click(() => {
+    const server = readServerInputValue()
+
+    phoneEngine.createPhoneInstance({
+        proto: server.proto,
+        server: server.host,
+        port: server.port,
+        username: $('#uname').val(),
+        register: true,
+    });
+});
+
+$("#call").click(() => {
+    const server = readServerInputValue()
     
+    phoneEngine.startCall(
+        $('#callee').val(),
+        {
+            server: server.host
+        }
+    )
 })
 
-$("#call").click( () => {
-        let callee = $('#callee').val()
-	    phoneEngine.startCall(callee,{})
+$("#answer").click(() => {
+    phoneEngine.startCall(null, {})
 })
 
-$("#answer").click( () => {
-    phoneEngine.startCall(null,{})
+$("#hangup").click(() => {
+    phoneEngine.finishCall()
 })
-
-$("#hangup").click( () => {
-	phoneEngine.finishCall()
-})
+})()
