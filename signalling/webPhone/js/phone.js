@@ -1,3 +1,4 @@
+(function() {
 let webCallSession = null;
 let incomingCustomHeaders = null; 
 let webCallDirection,webPhoneUA, webRTCSelfView, webRTCRemoteView;
@@ -58,12 +59,10 @@ let handleHeaders = (headers) => {
 }
 
 /*initialize*/  
-let phoneEngine = {
+window.phoneEngine = {
   
   /*options = {server, port, username, password, register: true}*/
   createPhoneInstance: (options)  => {
-
-   
     if (options.userAgent) {
         JsSIP.C.USER_AGENT = options.userAgent;
     }
@@ -286,7 +285,7 @@ let phoneEngine = {
       webRTCRemoteView =  document.getElementById('webRTCRemoteView');
 
       console.log(to);
-      webCallSession = webPhoneUA.call('sip:' + to + '@' +server, {
+      webCallSession = webPhoneUA.call('sip:' + to + '@' +options.server, {
         //mediaStream: microphoneStream,
         mediaConstraints: {audio: false, video: true},
         pcConfig: {rtcpMuxPolicy: 'negotiate'},
@@ -369,3 +368,4 @@ let phoneEngine = {
   }
 
 }
+})()
