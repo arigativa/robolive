@@ -166,7 +166,7 @@ view credentials model =
                     { userAgent = credentials.userAgent
                     , server = "rl.arigativa.ru"
                     , username = model.interlocutor
-                    , withAudio = False
-                    , withVideo = False
+                    , withAudio = True
+                    , withVideo = True
                     }
         ]
