@@ -34,7 +34,6 @@ const WebRtcRemoteViewElement: Hybrids<WebRtcRemoteViewElement> = {
                         audio: host.with_audio,
                         video: host.with_video
                     },
-                    anonymous: true,
                     pcConfig: {
                         rtcpMuxPolicy: 'negotiate'
                     }
