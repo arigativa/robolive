@@ -34,11 +34,38 @@ const WebRtcRemoteViewElement: Hybrids<WebRtcRemoteViewElement> = {
                         audio: host.with_audio,
                         video: host.with_video
                     },
+                    anonymous: true,
                     pcConfig: {
                         rtcpMuxPolicy: 'negotiate'
                     }
                 }
             );
+
+            session.on('peerconnection', () => console.log('peerconnection'))
+            session.on('connecting', () => console.log('connecting'))
+            session.on('sending', () => console.log('sending'))
+            session.on('progress', () => console.log('progress'))
+            session.on('accepted', () => console.log('accepted'))
+            session.on('confirmed', () => console.log('confirmed'))
+            session.on('ended', () => console.log('ended'))
+            session.on('failed', () => console.log('failed'))
+            session.on('newDTMF', () => console.log('newDTMF'))
+            session.on('newInfo', () => console.log('newInfo'))
+            session.on('hold', () => console.log('hold'))
+            session.on('unhold', () => console.log('unhold'))
+            session.on('muted', () => console.log('muted'))
+            session.on('unmuted', () => console.log('unmuted'))
+            session.on('reinvite', () => console.log('reinvite'))
+            session.on('update', () => console.log('update'))
+            session.on('refer', () => console.log('refer'))
+            session.on('replaces', () => console.log('replaces'))
+            session.on('sdp', () => console.log('sdp'))
+            session.on('icecandidate', () => console.log('icecandidate'))
+            session.on('getusermediafailed', () => console.log('getusermediafailed'))
+            session.on('peerconnection:createofferfailed', () => console.log('peerconnection:createofferfailed'))
+            session.on('peerconnection:createanswerfailed', () => console.log('peerconnection:createanswerfailed'))
+            session.on('peerconnection:setlocaldescriptionfailed', () => console.log('peerconnection:setlocaldescriptionfailed'))
+            session.on('peerconnection:setremotedescriptionfailed', () => console.log('peerconnection:setremotedescriptionfailed'))
 
             session.on('confirmed', () => {
                 const remoteStreams = session.connection.getRemoteStreams();

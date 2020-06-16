@@ -66,8 +66,12 @@ update msg model =
                     )
 
                 Login.Registred credentials ->
-                    ( { model | screen = RoomScreen credentials Room.initial }
-                    , Cmd.none
+                    let
+                        ( initialRoom, cmdOfRoom ) =
+                            Room.initial
+                    in
+                    ( { model | screen = RoomScreen credentials initialRoom }
+                    , Cmd.map RoomMsg cmdOfRoom
                     )
 
         ( LoginMsg _, _ ) ->

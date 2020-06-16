@@ -1,12 +1,19 @@
 module Room exposing (Model, Msg, initial, update, view)
 
+import Browser.Dom
 import Credentials exposing (Credentials)
 import Html exposing (Html, button, div, form, h1, i, input, p, strong, text)
 import Html.Attributes
 import Html.Events
 import Json.Encode as Encode exposing (Value)
 import RemoteData exposing (RemoteData)
+import Task
 import Utils exposing (hasWhitespaces)
+
+
+interlocutorInputID : String
+interlocutorInputID =
+    "__interlocutor_input__"
 
 
 
@@ -19,11 +26,13 @@ type alias Model =
     }
 
 
-initial : Model
+initial : ( Model, Cmd Msg )
 initial =
-    { interlocutor = ""
-    , call = RemoteData.NotAsked
-    }
+    ( { interlocutor = ""
+      , call = RemoteData.NotAsked
+      }
+    , Task.attempt (always NoOp) (Browser.Dom.focus interlocutorInputID)
+    )
 
 
 
@@ -31,13 +40,17 @@ initial =
 
 
 type Msg
-    = ChangeInterlocutor String
+    = NoOp
+    | ChangeInterlocutor String
     | Call
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        NoOp ->
+            ( model, Cmd.none )
+
         ChangeInterlocutor nextInterlocutor ->
             ( { model | interlocutor = nextInterlocutor }
             , Cmd.none
@@ -116,7 +129,8 @@ view credentials model =
                 [ text "Call to "
                 ]
             , input
-                [ Html.Attributes.type_ "text"
+                [ Html.Attributes.id interlocutorInputID
+                , Html.Attributes.type_ "text"
                 , Html.Attributes.placeholder "Interlocutor"
                 , Html.Attributes.value model.interlocutor
                 , Html.Attributes.readonly busy
@@ -150,9 +164,9 @@ view credentials model =
             _ ->
                 viewWebRtcRemote
                     { userAgent = credentials.userAgent
-                    , server = "127.0.0.1"
+                    , server = "rl.arigativa.ru"
                     , username = model.interlocutor
-                    , withAudio = True
-                    , withVideo = True
+                    , withAudio = False
+                    , withVideo = False
                     }
         ]
