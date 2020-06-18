@@ -3,7 +3,7 @@
   become: yes
   become_user: root
   roles:
-    - geerlingguy.nginx
+    - { role: geerlingguy.nginx, tags: nginx }
     - signalling
     - robolive_team
 

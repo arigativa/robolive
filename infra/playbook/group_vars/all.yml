@@ -1,0 +1,16 @@
+nginx_vhosts:
+  - listen: "443 ssl http2"
+    server_name: "rl.arigativa.ru"
+    root: "/var/www/rl.arigativa.ru"
+    index: "index.html index.htm"
+    state: "present"
+    filename: "rl.arigativa.ru.443.conf"
+    template: "{{ nginx_vhost_template }}"
+    extra_parameters: |
+      ssl_certificate     /etc/letsencrypt/live/rl.arigativa.ru/cert.pem;
+      ssl_certificate_key /etc/letsencrypt/live/rl.arigativa.ru/privkey.pem;
+      ssl_protocols       TLSv1.1 TLSv1.2;
+  - listen: "80"
+    server_name: "rl.arigativa.ru"
+    return: "301 https://rl.arigativa.ru$request_uri"
+    filename: "rl.arigativa.ru.80.conf"
