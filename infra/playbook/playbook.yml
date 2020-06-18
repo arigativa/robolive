@@ -4,11 +4,6 @@
   become_user: root
   roles:
     - { role: geerlingguy.nginx, tags: nginx }
-    - signalling
-    - robolive_team
-
-- hosts: signalling_and_relay
-    become: yes
-    become_user: root
-    roles:
-      - relay
+    - { role: relay, tags: relay }
+    - { role: signalling, tags: signalling }
+    - { role: robolive_team, tags: robolive_team }

@@ -1,11 +1,15 @@
 listening-port={{ turn_raw_port }}
 tls-listening-port={{ turn_secure_port }}
-{% if turn_setup_nat is defined %}
+
+{% if turn_setup_nat %}
+
 #nat model config
 listening-ip={{ turn_internal_ip }}
 external-ip={{ turn_external_ip }}/{{ turn_internal_ip }}
 relay-ip={{ turn_internal_ip }}
+
 {% else %}
+
 {% if turn_internal_ip is defined %}
 #birdge model config
 listening-ip={{ turn_internal_ip }}
@@ -14,7 +18,9 @@ relay-ip={{ turn_internal_ip }}
 listening-ip={{ turn_external_ip }}
 external-ip={{ turn_external_ip }}
 relay-ip={{ turn_external_ip }}
+
 {% endif %}
+
 min-port={{ turn_min_port }}
 max-port={{ turn_max_port }}
 lt-cred-mech
@@ -31,7 +37,7 @@ no-tlsv1
 no-tlsv1_1
 
 no-multicast-peers
-{% if inventory == 'local' %}  
+{% if turn_allow_loopback %}
 allow-loopback-peers
 {% else %}
 #deny localhost network
