@@ -1,0 +1,14 @@
+{
+  "eslint.enable": true,
+  "elm.formatCommand": "./node_modules/.bin/elm-format",
+  "elm.elmTestCompiler": "./node_modules/.bin/elm-test",
+  "elm.analyseEnabled": true,
+  "elm.analyseCommand": "./node_modules/.bin/elm-analyse",
+  "elm.analysePort": "3030",
+  "elm.includeUserFunctionDocumentation": true,
+  "elm.includeParamsInUserAutocomplete": true,
+  "elm.showSuggestionsInElmSyntax": true,
+  "[elm]": {
+    "editor.formatOnSave": true
+  }
+}

@@ -5,3 +5,12 @@
 .terraform/
 target/
 .idea/
+
+# dependencies
+**/node_modules
+**/elm-stuff
+
+# misc
+.DS_Store
+
+npm-debug.log*

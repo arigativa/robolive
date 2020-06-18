@@ -20,6 +20,11 @@ resource "azurerm_network_interface" "signalling_and_relay" {
   }
 }
 
+resource "azurerm_network_interface_security_group_association" "signalling_and_relay__web_security_group" {
+  network_interface_id      = azurerm_network_interface.signalling_and_relay.id
+  network_security_group_id = azurerm_network_security_group.web.id
+}
+
 resource "azurerm_storage_account" "signalling_and_relay__bootdiagnostics" {
   resource_group_name = azurerm_resource_group.robolive.name
   location            = azurerm_resource_group.robolive.location
@@ -36,6 +41,7 @@ data "azurerm_platform_image" "debian10" {
   publisher = "debian"
   offer     = "debian-10"
   sku       = "10"
+  version   = "0.20200511.260"
 }
 
 resource "azurerm_managed_disk" "signalling_and_relay__os" {
