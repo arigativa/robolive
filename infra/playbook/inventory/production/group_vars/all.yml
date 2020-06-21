@@ -26,8 +26,8 @@ signalling_public_ip: "{{ host_public_ip }}"
 turn_external_ip: "{{ host_public_ip }}"
 turn_internal_ip: "{{ host_private_ip }}"
 turn_realm: "{{ main_domain }}"
-turn_cert: "{{ main_domain_tls_cert }}adwedawe"
-turn_pkey: "{{ main_domain_tls_priv }}awedaweda"
+turn_cert: "{{ main_domain_tls_cert }}"
+turn_pkey: "{{ main_domain_tls_priv }}"
 turn_allow_loopback: false
 turn_raw_port: 8080
 turn_secure_port: 8443

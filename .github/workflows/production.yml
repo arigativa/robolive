@@ -73,4 +73,4 @@ jobs:
 
       - name: Run Ansible playbook
         if: github.ref == 'refs/heads/master' && github.event_name == 'push'
-        run: ansible-playbook -i inventory/ playbook.yml -vv
+        run: ansible-playbook -i inventory/production playbook.yml -vv
