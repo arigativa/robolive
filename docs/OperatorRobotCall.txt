@@ -14,24 +14,28 @@ Registry -> Robot: Hi here is your program #prog
 note over Robot: running #prog\nProgram is "SIP+webrtc control"
 
 
+
 Operator -> Registry: what robots do you have?
 Registry -> Operator: "list of available robots"
 Operator -> Registry: I want to connect to #id
 
 
+
 Registry -> SIP: create a call #C1
 activate SIP
-SIP -> Registry: "SIP credentials for particapant #P1 and #P2"
-Registry -> Robot: you are on #C1 call with #P1 credentials
-Registry -> Operator: you are on #C1 call with #P2
+  SIP -> Registry: "SIP credentials for particapant #P1 and #P2"
+  Registry -> Robot: you are on #C1 call with #P1 credentials
+  Registry -> Operator: you are on #C1 call with #P2
 
-Robot -> SIP: join a call #C1 as #P1
-Operator -> SIP: join a call #C1 as #P1
-note over Operator: operates robot via the call
+  Robot -> SIP: join a call #C1 as #P1
+  Operator -> SIP: join a call #C1 as #P1
+  note over Operator: operates robot via the call
 
-SIP -> Robot: (hang up)
-SIP -> Operator: (hang up)
+  SIP -> Robot: (hang up)
+  SIP -> Operator: (hang up)
 deactivate SIP
+
+
 
 Robot -> Registry: call ended
 note over Registry: one moment later...
