@@ -47,7 +47,7 @@ Ansible can be used only if Terraform is initialized as well.
 2. Deploy software on VMs:
 ```shell script
 cd infra/playbook
-ansible-playbook -i inventory/ playbook.yml
+ansible-playbook -i inventory/production playbook.yml
 ```
 
 ## Troubleshooting
@@ -55,5 +55,5 @@ ansible-playbook -i inventory/ playbook.yml
 ### Check inventory scrapped by Ansible from Terraform
 ```shell script
 cd infra/playbook
-ansible-inventory -i inventory/ --list --playbook-dir ./ -vvv
+ansible-inventory -i inventory/production --list --playbook-dir ./ -vvv
 ```

@@ -1,0 +1,33 @@
+
+main_domain: rl.arigativa.ru
+main_domain_tls_cert: /etc/letsencrypt/live/rl.arigativa.ru/cert.pem
+main_domain_tls_priv: /etc/letsencrypt/live/rl.arigativa.ru/privkey.pem
+
+nginx_vhosts:
+  - listen: "443 ssl http2"
+    server_name: "{{ main_domain }}"
+    root: "/var/www/{{ main_domain }}"
+    index: "index.html index.htm"
+    state: "present"
+    filename: "{{ main_domain }}.443.conf"
+    template: "{{ nginx_vhost_template }}"
+    extra_parameters: |
+      ssl_certificate     "{{ main_domain_tls_cert }}";
+      ssl_certificate_key "{{ main_domain_tls_priv }}";
+      ssl_protocols       TLSv1.1 TLSv1.2;
+  - listen: "80"
+    server_name: "{{ main_domain }}"
+    return: "301 https://{{ main_domain }}$request_uri"
+    filename: "{{ main_domain }}.80.conf"
+
+signalling_interface_ip: "{{ host_private_ip }}"
+signalling_public_ip: "{{ host_public_ip }}"
+
+turn_external_ip: "{{ host_public_ip }}"
+turn_internal_ip: "{{ host_private_ip }}"
+turn_realm: "{{ main_domain }}"
+turn_cert: "{{ main_domain_tls_cert }}"
+turn_pkey: "{{ main_domain_tls_priv }}"
+turn_allow_loopback: false
+turn_raw_port: 8080
+turn_secure_port: 8443

@@ -75,9 +75,9 @@ resource "azurerm_network_security_group" "web" {
     source_address_prefix      = "*"
     source_port_range          = "*"
     destination_address_prefix = "*"
-    destination_port_range     = "30000-30100"
+    destination_port_range     = "46000-46100"
     direction                  = "Inbound"
-    name                       = "UDP_RELAY"
+    name                       = "allowUdpForRelay"
     description                = ""
     priority                   = 330
     protocol                   = "UDP"
@@ -87,11 +87,23 @@ resource "azurerm_network_security_group" "web" {
     source_address_prefix      = "*"
     source_port_range          = "*"
     destination_address_prefix = "*"
-    destination_port_range     = "443"
+    destination_port_range     = "8080"
     direction                  = "Inbound"
-    name                       = "TCP_RELAY"
+    name                       = "allowTcpForRelay"
     description                = ""
     priority                   = 320
+    protocol                   = "TCP"
+  }
+  security_rule {
+    access                     = "Allow"
+    source_address_prefix      = "*"
+    source_port_range          = "*"
+    destination_address_prefix = "*"
+    destination_port_range     = "8443"
+    direction                  = "Inbound"
+    name                       = "allowTlsForRelay"
+    description                = ""
+    priority                   = 310
     protocol                   = "TCP"
   }
   security_rule {

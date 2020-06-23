@@ -2,8 +2,8 @@ signalling_enable_tls: true
 signalling_conf_dir: /etc/kamailio
 signalling_package_dir: /opt/kamailio
 
-signalling_interface_ip: "{{ host_private_ip }}"
-signalling_public_ip: "{{ host_public_ip }}"
+signalling_interface_ip: 127.0.0.1
+signalling_public_ip: 127.0.0.1
 
 # TODO: use dynamically set package built in this repository
 #     | see:
