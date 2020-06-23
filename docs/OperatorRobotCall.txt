@@ -1,0 +1,46 @@
+// View&edit https://sequencediagram.org/
+
+title Robot registry
+
+participant "Robot #id" as Robot
+database Registry
+actor Operator
+
+materialdesignicons f3f9 SIP
+
+Robot -> Registry: hi i'm robot #id of #desc type
+note over Registry: managing a list of connected devices
+Registry -> Robot: Hi here is your program #prog
+note over Robot: running #prog\nProgram is "SIP+webrtc control"
+
+
+
+Operator -> Registry: what robots do you have?
+Registry -> Operator: "list of available robots"
+Operator -> Registry: I want to connect to #id
+
+
+
+Registry -> SIP: create a call #C1
+activate SIP
+  SIP -> Registry: "SIP credentials for particapant #P1 and #P2"
+  Registry -> Robot: you are on #C1 call with #P1 credentials
+  Registry -> Operator: you are on #C1 call with #P2
+
+  Robot -> SIP: join a call #C1 as #P1
+  Operator -> SIP: join a call #C1 as #P1
+  
+  group #2f2e7b robot I/O #white [webrtc call]
+  	Operator -> Robot: input (commands, data)
+    Robot -> Operator: output (media, telemetry)
+  end
+
+  SIP -> Robot: (hang up)
+  SIP -> Operator: (hang up)
+deactivate SIP
+
+
+
+Robot -> Registry: call ended
+note over Registry: one moment later...
+Registry -> Robot: you are on #Cn call with #Pn credentials
