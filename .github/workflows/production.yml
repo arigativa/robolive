@@ -55,7 +55,7 @@ jobs:
           cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
           terraform_wrapper: false
 
-      - run: terraform init
+      - run: terraform init # terraform needed to create ansible inventory, see: `signalling_and_relay.py`
         working-directory: infra/production
 
       - name: Setting up dependencies tooling
