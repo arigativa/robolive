@@ -4,7 +4,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 
 import org.freedesktop.gstreamer.webrtc._
-import org.freedesktop.gstreamer.{Element, Pipeline, SDPMessage, StateChangeReturn}
+import org.freedesktop.gstreamer.{Element, Pad, Pipeline, SDPMessage, StateChangeReturn}
 import org.mjsip.sdp.SdpMessage
 import robolive.gstreamer.GstManaged.GSTInit
 import robolive.gstreamer.bindings.GstWebRTCDataChannel
@@ -135,6 +135,18 @@ final class WebRTCBinManaged(webRTCBin: WebRTCBin) extends AutoCloseable {
   def isPlaying = webRTCBin.isPlaying
 
   def dispose(): Unit = webRTCBin.dispose()
+
+  def link(element: Element): Unit = webRTCBin.link(element)
+
+  def onPadAdded(f: Pad => Unit): Unit = {
+    val callback = new Element.PAD_ADDED {
+      override def padAdded(
+        element: Element,
+        pad: Pad
+      ): Unit = f(pad)
+    }
+    webRTCBin.connect(callback)
+  }
 
   override def close(): Unit = dispose()
 }
