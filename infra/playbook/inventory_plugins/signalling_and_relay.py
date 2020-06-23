@@ -9,8 +9,8 @@ import traceback
 DOCUMENTATION = r'''
     name: signalling_and_relay
     plugin_type: inventory
-    short_description: Returns Ansible inventory from CSV
-    description: Returns Ansible inventory from CSV
+    short_description: Returns Ansible inventory from terraform json output
+    description: Returns Ansible inventory from terraform json output
     options:
       terraform_path:
           description: Path to Terraform sources (`terraform output` will be invoked there)
