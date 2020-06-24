@@ -5,6 +5,7 @@ import Credentials exposing (Credentials)
 import Html exposing (Html, button, div, form, h1, i, input, p, strong, text)
 import Html.Attributes
 import Html.Events
+import Json.Decode as Decode
 import Json.Encode as Encode exposing (Value)
 import RemoteData exposing (RemoteData)
 import Task
@@ -43,6 +44,7 @@ type Msg
     = NoOp
     | ChangeInterlocutor String
     | Call
+    | CallFailed String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -72,6 +74,11 @@ update msg model =
                 , Cmd.none
                 )
 
+        CallFailed reason ->
+            ( { model | call = RemoteData.Failure reason }
+            , Cmd.none
+            )
+
 
 
 -- V I E W
@@ -91,6 +98,7 @@ viewWebRtcRemote options =
         , Html.Attributes.property "uri" (Encode.string ("sip:" ++ options.username ++ "@" ++ options.server))
         , Html.Attributes.property "with_audio" (Encode.bool options.withAudio)
         , Html.Attributes.property "with_video" (Encode.bool options.withVideo)
+        , Html.Events.on "fail" (Decode.map CallFailed Decode.string)
         ]
         []
 

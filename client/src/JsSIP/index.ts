@@ -14,7 +14,8 @@ interface WebRtcRemoteViewElement extends HTMLVideoElement {
     uri: string;
     with_audio: boolean;
     with_video: boolean;
-    render(): HTMLElement;
+    elmFs?: {[ key: string ]: (event?: unknown) => void };
+    render(): ShadowRoot;
 }
 
 const WebRtcRemoteViewElement: Hybrids<WebRtcRemoteViewElement> = {
@@ -47,7 +48,6 @@ const WebRtcRemoteViewElement: Hybrids<WebRtcRemoteViewElement> = {
             session.on('accepted', () => console.log('accepted'))
             session.on('confirmed', () => console.log('confirmed'))
             session.on('ended', () => console.log('ended'))
-            session.on('failed', () => console.log('failed'))
             session.on('newDTMF', () => console.log('newDTMF'))
             session.on('newInfo', () => console.log('newInfo'))
             session.on('hold', () => console.log('hold'))
@@ -66,6 +66,8 @@ const WebRtcRemoteViewElement: Hybrids<WebRtcRemoteViewElement> = {
             session.on('peerconnection:setlocaldescriptionfailed', () => console.log('peerconnection:setlocaldescriptionfailed'))
             session.on('peerconnection:setremotedescriptionfailed', () => console.log('peerconnection:setremotedescriptionfailed'))
 
+            session.on('failed', event => host.elmFs?.fail(event.cause));
+
             session.on('confirmed', () => {
                 const remoteStreams = session.connection.getRemoteStreams();
 
@@ -81,7 +83,9 @@ const WebRtcRemoteViewElement: Hybrids<WebRtcRemoteViewElement> = {
             });
 
             return () => {
-                session.terminate();
+                if (!session.isEnded()) {
+                    session.terminate();
+                }
             };
         }
     },
@@ -89,7 +93,11 @@ const WebRtcRemoteViewElement: Hybrids<WebRtcRemoteViewElement> = {
     render() {
         return html`
             <video autoplay></video>
-        `;
+        `.style(`
+            video {
+                max-width: 100%;
+            }
+        `);
     }
 };
 
