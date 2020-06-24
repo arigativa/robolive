@@ -33,7 +33,7 @@ export const register = (ports: {
     js_sip__on_call_failed?: ElmSubPort<string>;
     js_sip__on_call_confirmed?: ElmSubPort<MediaStream>;
 
-    js_sip__stop?: ElmCmdPort<UA>;
+    js_sip__hangup?: ElmCmdPort;
 }): void => {
     ports.js_sip__register?.subscribe(options => {
         const uaConfig: UAConfiguration = {
@@ -114,10 +114,13 @@ export const register = (ports: {
             if (remoteStreams.length > 0) {
                 ports.js_sip__on_call_confirmed?.send(remoteStreams[ 0 ].clone())
             }
-        });
-    });
 
-    ports.js_sip__stop?.subscribe(userAgent => {
-        userAgent.stop();
+            const hangup = () => {
+                session.terminate();
+                ports.js_sip__hangup?.unsubscribe(hangup);
+            };
+
+            ports.js_sip__hangup?.subscribe(hangup);
+        });
     });
 };

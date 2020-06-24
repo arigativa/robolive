@@ -151,9 +151,9 @@ onCalled tagger =
         ]
 
 
-port js_sip__stop : Value -> Cmd msg
+port js_sip__hangup : () -> Cmd msg
 
 
-hangup : UserAgent -> Cmd msg
+hangup : Cmd msg
 hangup =
-    js_sip__stop << unwrapUserAgent
+    js_sip__hangup ()

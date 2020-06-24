@@ -44,7 +44,7 @@ type Msg
     | ChangeInterlocutor String
     | Call JsSIP.UserAgent
     | CallDone (Result String JsSIP.MediaStream)
-    | Hangup JsSIP.UserAgent
+    | Hangup
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -85,9 +85,9 @@ update msg model =
             , Cmd.none
             )
 
-        Hangup userAgent ->
+        Hangup ->
             ( { model | call = RemoteData.NotAsked }
-            , JsSIP.hangup userAgent
+            , JsSIP.hangup
             )
 
 
@@ -95,9 +95,13 @@ update msg model =
 -- S U B S C R I P T I O N S
 
 
-subscriptions : Sub Msg
-subscriptions =
-    JsSIP.onCalled CallDone
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    if RemoteData.isLoading model.call then
+        JsSIP.onCalled CallDone
+
+    else
+        Sub.none
 
 
 
@@ -145,6 +149,8 @@ view credentials model =
     div
         []
         [ h1 [] [ text "Room" ]
+
+        --
         , p []
             [ text "Hey "
             , b [] [ text credentials.username ]
@@ -169,7 +175,7 @@ view credentials model =
                         , button
                             [ Html.Attributes.type_ "button"
                             , Html.Attributes.tabindex 0
-                            , Html.Events.onClick (Hangup credentials.userAgent)
+                            , Html.Events.onClick Hangup
                             ]
                             [ text "Hangup" ]
                         ]
