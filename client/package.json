@@ -24,7 +24,6 @@
     "typescript": "^3.9.3"
   },
   "dependencies": {
-    "hybrids": "^4.2.1",
     "jssip": "^3.5.0"
   }
 }

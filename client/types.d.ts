@@ -16,7 +16,7 @@ declare interface ElmCmdPort<T = Value> {
 }
 
 declare interface ElmSubPort<T = Value> {
-    send(value?: T): void;
+    send(value: T): void;
 }
 
 declare module "*.elm" {

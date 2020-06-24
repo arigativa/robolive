@@ -1,11 +1,11 @@
-module Room exposing (Model, Msg, initial, update, view)
+module Room exposing (Model, Msg, initial, subscriptions, update, view)
 
 import Browser.Dom
 import Credentials exposing (Credentials)
-import Html exposing (Html, button, div, form, h1, i, input, p, strong, text)
+import Html exposing (Html, b, button, div, form, h1, input, p, strong, text, video)
 import Html.Attributes
 import Html.Events
-import Json.Encode as Encode exposing (Value)
+import JsSIP
 import RemoteData exposing (RemoteData)
 import Task
 import Utils exposing (hasWhitespaces)
@@ -22,7 +22,7 @@ interlocutorInputID =
 
 type alias Model =
     { interlocutor : String
-    , call : RemoteData String ()
+    , call : RemoteData String JsSIP.MediaStream
     }
 
 
@@ -42,7 +42,10 @@ initial =
 type Msg
     = NoOp
     | ChangeInterlocutor String
-    | Call
+    | Call JsSIP.UserAgent
+    | CallDone (Result String JsSIP.MediaStream)
+    | CallEnd
+    | Hangup
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -56,7 +59,7 @@ update msg model =
             , Cmd.none
             )
 
-        Call ->
+        Call userAgent ->
             if hasWhitespaces model.interlocutor then
                 ( { model | call = RemoteData.Failure "Interlocutor must have no white spaces" }
                 , Cmd.none
@@ -69,79 +72,75 @@ update msg model =
 
             else
                 ( { model | call = RemoteData.Loading }
-                , Cmd.none
+                , JsSIP.call
+                    { userAgent = userAgent
+                    , server = "rl.arigativa.ru"
+                    , username = model.interlocutor
+                    , withAudio = False
+                    , withVideo = True
+                    }
                 )
+
+        CallDone result ->
+            ( { model | call = RemoteData.fromResult result }
+            , Cmd.none
+            )
+
+        CallEnd ->
+            ( { model | call = RemoteData.NotAsked }
+            , Cmd.none
+            )
+
+        Hangup ->
+            ( { model | call = RemoteData.NotAsked }
+            , JsSIP.hangup
+            )
+
+
+
+-- S U B S C R I P T I O N S
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    case model.call of
+        RemoteData.Loading ->
+            JsSIP.onCalled CallDone
+
+        RemoteData.Success _ ->
+            JsSIP.onEnd CallEnd
+
+        _ ->
+            Sub.none
 
 
 
 -- V I E W
 
 
-viewWebRtcRemote :
-    { userAgent : Value
-    , server : String
-    , username : String
-    , withAudio : Bool
-    , withVideo : Bool
-    }
-    -> Html Msg
-viewWebRtcRemote options =
-    Html.node "web-rtc-remote-view"
-        [ Html.Attributes.property "user_agent" options.userAgent
-        , Html.Attributes.property "uri" (Encode.string ("sip:" ++ options.username ++ "@" ++ options.server))
-        , Html.Attributes.property "with_audio" (Encode.bool options.withAudio)
-        , Html.Attributes.property "with_video" (Encode.bool options.withVideo)
+viewCallForm : Credentials -> Bool -> Maybe String -> String -> Html Msg
+viewCallForm credentials busy error interlocutor =
+    form
+        [ Html.Events.onSubmit (Call credentials.userAgent)
         ]
-        []
-
-
-view : Credentials -> Model -> Html Msg
-view credentials model =
-    let
-        ( busy, error ) =
-            case model.call of
-                RemoteData.Loading ->
-                    ( True, Nothing )
-
-                RemoteData.Failure reason ->
-                    ( False, Just reason )
-
-                _ ->
-                    ( False, Nothing )
-    in
-    div
-        []
-        [ h1 [] [ text "Dashboard" ]
-        , p []
-            [ text "Hey "
-            , i [] [ text credentials.username ]
+        [ button
+            [ Html.Attributes.type_ "submit"
+            , Html.Attributes.disabled busy
+            , Html.Attributes.tabindex 0
             ]
-
-        --
-        , form
-            [ Html.Events.onSubmit Call
+            [ text "Call to "
             ]
-            [ button
-                [ Html.Attributes.type_ "submit"
-                , Html.Attributes.disabled busy
-                , Html.Attributes.tabindex 0
-                ]
-                [ text "Call to "
-                ]
-            , input
-                [ Html.Attributes.id interlocutorInputID
-                , Html.Attributes.type_ "text"
-                , Html.Attributes.placeholder "Interlocutor"
-                , Html.Attributes.value model.interlocutor
-                , Html.Attributes.readonly busy
-                , Html.Attributes.tabindex 0
-                , Html.Attributes.autofocus True
-                , Html.Events.onInput ChangeInterlocutor
-                ]
-                []
+        , input
+            [ Html.Attributes.id interlocutorInputID
+            , Html.Attributes.type_ "text"
+            , Html.Attributes.placeholder "Interlocutor"
+            , Html.Attributes.value interlocutor
+            , Html.Attributes.readonly busy
+            , Html.Attributes.tabindex 0
+            , Html.Attributes.autofocus True
+            , Html.Events.onInput ChangeInterlocutor
             ]
-
-        --
+            []
         , case error of
             Nothing ->
                 text ""
@@ -152,21 +151,48 @@ view credentials model =
                     [ strong [] [ text "Registration failed: " ]
                     , text reason
                     ]
+        ]
+
+
+view : Credentials -> Model -> Html Msg
+view credentials model =
+    div
+        []
+        [ h1 [] [ text "Room" ]
+
+        --
+        , p []
+            [ text "Hey "
+            , b [] [ text credentials.username ]
+            ]
 
         --
         , case model.call of
             RemoteData.NotAsked ->
-                text ""
+                viewCallForm credentials False Nothing model.interlocutor
 
-            RemoteData.Failure _ ->
-                text ""
+            RemoteData.Loading ->
+                viewCallForm credentials True Nothing model.interlocutor
 
-            _ ->
-                viewWebRtcRemote
-                    { userAgent = credentials.userAgent
-                    , server = "rl.arigativa.ru"
-                    , username = model.interlocutor
-                    , withAudio = False
-                    , withVideo = True
-                    }
+            RemoteData.Failure reason ->
+                viewCallForm credentials False (Just reason) model.interlocutor
+
+            RemoteData.Success stream ->
+                div []
+                    [ p []
+                        [ text "In call with "
+                        , b [] [ text model.interlocutor ]
+                        , button
+                            [ Html.Attributes.type_ "button"
+                            , Html.Attributes.tabindex 0
+                            , Html.Events.onClick Hangup
+                            ]
+                            [ text "Hangup" ]
+                        ]
+                    , video
+                        [ Html.Attributes.autoplay True
+                        , JsSIP.srcObject stream
+                        ]
+                        []
+                    ]
         ]

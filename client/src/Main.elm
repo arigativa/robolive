@@ -100,8 +100,8 @@ subscriptions model =
         LoginScreen login ->
             Sub.map LoginMsg (Login.subscriptions login)
 
-        _ ->
-            Sub.none
+        RoomScreen _ room ->
+            Sub.map RoomMsg (Room.subscriptions room)
 
 
 

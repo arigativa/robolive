@@ -5,7 +5,6 @@ import Html exposing (Html, button, div, form, h1, input, p, strong, text)
 import Html.Attributes
 import Html.Events
 import JsSIP
-import Json.Encode exposing (Value)
 import RemoteData exposing (RemoteData)
 import Utils exposing (hasWhitespaces)
 
@@ -34,7 +33,7 @@ initial =
 type Msg
     = ChangeUsername String
     | SignIn
-    | Register (Result JsSIP.RegistrationError Value)
+    | Register (Result JsSIP.RegistrationError JsSIP.UserAgent)
 
 
 type Stage
