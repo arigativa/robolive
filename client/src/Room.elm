@@ -1,12 +1,12 @@
-module Room exposing (Model, Msg, initial, update, view)
+module Room exposing (Model, Msg, initial, subscriptions, update, view)
 
 import Browser.Dom
 import Credentials exposing (Credentials)
-import Html exposing (Html, button, div, form, h1, i, input, p, strong, text)
+import Html exposing (Html, button, div, form, h1, i, input, p, strong, text, video)
 import Html.Attributes
 import Html.Events
-import Json.Decode as Decode
-import Json.Encode as Encode exposing (Value)
+import JsSIP
+import Json.Encode exposing (Value)
 import RemoteData exposing (RemoteData)
 import Task
 import Utils exposing (hasWhitespaces)
@@ -23,7 +23,7 @@ interlocutorInputID =
 
 type alias Model =
     { interlocutor : String
-    , call : RemoteData String ()
+    , call : RemoteData String Value
     }
 
 
@@ -43,8 +43,8 @@ initial =
 type Msg
     = NoOp
     | ChangeInterlocutor String
-    | Call
-    | CallFailed String
+    | Call Value
+    | CallDone (Result String Value)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -58,7 +58,7 @@ update msg model =
             , Cmd.none
             )
 
-        Call ->
+        Call userAgent ->
             if hasWhitespaces model.interlocutor then
                 ( { model | call = RemoteData.Failure "Interlocutor must have no white spaces" }
                 , Cmd.none
@@ -71,36 +71,32 @@ update msg model =
 
             else
                 ( { model | call = RemoteData.Loading }
-                , Cmd.none
+                , JsSIP.call
+                    { userAgent = userAgent
+                    , server = "rl.arigativa.ru"
+                    , username = model.interlocutor
+                    , withAudio = False
+                    , withVideo = True
+                    }
                 )
 
-        CallFailed reason ->
-            ( { model | call = RemoteData.Failure reason }
+        CallDone result ->
+            ( { model | call = RemoteData.fromResult result }
             , Cmd.none
             )
 
 
 
+-- S U B S C R I P T I O N S
+
+
+subscriptions : Sub Msg
+subscriptions =
+    JsSIP.onCalled CallDone
+
+
+
 -- V I E W
-
-
-viewWebRtcRemote :
-    { userAgent : Value
-    , server : String
-    , username : String
-    , withAudio : Bool
-    , withVideo : Bool
-    }
-    -> Html Msg
-viewWebRtcRemote options =
-    Html.node "web-rtc-remote-view"
-        [ Html.Attributes.property "user_agent" options.userAgent
-        , Html.Attributes.property "uri" (Encode.string ("sip:" ++ options.username ++ "@" ++ options.server))
-        , Html.Attributes.property "with_audio" (Encode.bool options.withAudio)
-        , Html.Attributes.property "with_video" (Encode.bool options.withVideo)
-        , Html.Events.on "fail" (Decode.map CallFailed Decode.string)
-        ]
-        []
 
 
 view : Credentials -> Model -> Html Msg
@@ -119,7 +115,7 @@ view credentials model =
     in
     div
         []
-        [ h1 [] [ text "Dashboard" ]
+        [ h1 [] [ text "Room" ]
         , p []
             [ text "Hey "
             , i [] [ text credentials.username ]
@@ -127,7 +123,7 @@ view credentials model =
 
         --
         , form
-            [ Html.Events.onSubmit Call
+            [ Html.Events.onSubmit (Call credentials.userAgent)
             ]
             [ button
                 [ Html.Attributes.type_ "submit"
@@ -163,18 +159,13 @@ view credentials model =
 
         --
         , case model.call of
-            RemoteData.NotAsked ->
-                text ""
-
-            RemoteData.Failure _ ->
-                text ""
+            RemoteData.Success stream ->
+                video
+                    [ Html.Attributes.autoplay True
+                    , Html.Attributes.property "srcObject" stream
+                    ]
+                    []
 
             _ ->
-                viewWebRtcRemote
-                    { userAgent = credentials.userAgent
-                    , server = "rl.arigativa.ru"
-                    , username = model.interlocutor
-                    , withAudio = False
-                    , withVideo = True
-                    }
+                text ""
         ]
