@@ -1,9 +1,9 @@
 module Credentials exposing (Credentials)
 
-import Json.Encode exposing (Value)
+import JsSIP
 
 
 type alias Credentials =
     { username : String
-    , userAgent : Value
+    , userAgent : JsSIP.UserAgent
     }

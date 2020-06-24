@@ -2,11 +2,10 @@ module Room exposing (Model, Msg, initial, subscriptions, update, view)
 
 import Browser.Dom
 import Credentials exposing (Credentials)
-import Html exposing (Html, button, div, form, h1, i, input, p, strong, text, video)
+import Html exposing (Html, b, button, div, form, h1, input, p, strong, text, video)
 import Html.Attributes
 import Html.Events
 import JsSIP
-import Json.Encode exposing (Value)
 import RemoteData exposing (RemoteData)
 import Task
 import Utils exposing (hasWhitespaces)
@@ -23,7 +22,7 @@ interlocutorInputID =
 
 type alias Model =
     { interlocutor : String
-    , call : RemoteData String Value
+    , call : RemoteData String JsSIP.MediaStream
     }
 
 
@@ -43,8 +42,9 @@ initial =
 type Msg
     = NoOp
     | ChangeInterlocutor String
-    | Call Value
-    | CallDone (Result String Value)
+    | Call JsSIP.UserAgent
+    | CallDone (Result String JsSIP.MediaStream)
+    | Hangup JsSIP.UserAgent
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -85,6 +85,11 @@ update msg model =
             , Cmd.none
             )
 
+        Hangup userAgent ->
+            ( { model | call = RemoteData.NotAsked }
+            , JsSIP.hangup userAgent
+            )
+
 
 
 -- S U B S C R I P T I O N S
@@ -99,53 +104,29 @@ subscriptions =
 -- V I E W
 
 
-view : Credentials -> Model -> Html Msg
-view credentials model =
-    let
-        ( busy, error ) =
-            case model.call of
-                RemoteData.Loading ->
-                    ( True, Nothing )
-
-                RemoteData.Failure reason ->
-                    ( False, Just reason )
-
-                _ ->
-                    ( False, Nothing )
-    in
-    div
-        []
-        [ h1 [] [ text "Room" ]
-        , p []
-            [ text "Hey "
-            , i [] [ text credentials.username ]
+viewCallForm : Credentials -> Bool -> Maybe String -> String -> Html Msg
+viewCallForm credentials busy error interlocutor =
+    form
+        [ Html.Events.onSubmit (Call credentials.userAgent)
+        ]
+        [ button
+            [ Html.Attributes.type_ "submit"
+            , Html.Attributes.disabled busy
+            , Html.Attributes.tabindex 0
             ]
-
-        --
-        , form
-            [ Html.Events.onSubmit (Call credentials.userAgent)
+            [ text "Call to "
             ]
-            [ button
-                [ Html.Attributes.type_ "submit"
-                , Html.Attributes.disabled busy
-                , Html.Attributes.tabindex 0
-                ]
-                [ text "Call to "
-                ]
-            , input
-                [ Html.Attributes.id interlocutorInputID
-                , Html.Attributes.type_ "text"
-                , Html.Attributes.placeholder "Interlocutor"
-                , Html.Attributes.value model.interlocutor
-                , Html.Attributes.readonly busy
-                , Html.Attributes.tabindex 0
-                , Html.Attributes.autofocus True
-                , Html.Events.onInput ChangeInterlocutor
-                ]
-                []
+        , input
+            [ Html.Attributes.id interlocutorInputID
+            , Html.Attributes.type_ "text"
+            , Html.Attributes.placeholder "Interlocutor"
+            , Html.Attributes.value interlocutor
+            , Html.Attributes.readonly busy
+            , Html.Attributes.tabindex 0
+            , Html.Attributes.autofocus True
+            , Html.Events.onInput ChangeInterlocutor
             ]
-
-        --
+            []
         , case error of
             Nothing ->
                 text ""
@@ -156,16 +137,46 @@ view credentials model =
                     [ strong [] [ text "Registration failed: " ]
                     , text reason
                     ]
+        ]
+
+
+view : Credentials -> Model -> Html Msg
+view credentials model =
+    div
+        []
+        [ h1 [] [ text "Room" ]
+        , p []
+            [ text "Hey "
+            , b [] [ text credentials.username ]
+            ]
 
         --
         , case model.call of
-            RemoteData.Success stream ->
-                video
-                    [ Html.Attributes.autoplay True
-                    , Html.Attributes.property "srcObject" stream
-                    ]
-                    []
+            RemoteData.NotAsked ->
+                viewCallForm credentials False Nothing model.interlocutor
 
-            _ ->
-                text ""
+            RemoteData.Loading ->
+                viewCallForm credentials True Nothing model.interlocutor
+
+            RemoteData.Failure reason ->
+                viewCallForm credentials False (Just reason) model.interlocutor
+
+            RemoteData.Success stream ->
+                div []
+                    [ p []
+                        [ text "In call with "
+                        , b [] [ text model.interlocutor ]
+                        , button
+                            [ Html.Attributes.type_ "button"
+                            , Html.Attributes.tabindex 0
+                            , Html.Events.onClick (Hangup credentials.userAgent)
+                            ]
+                            [ text "Hangup" ]
+                        ]
+                    , video
+                        [ Html.Attributes.autoplay True
+                        , JsSIP.srcObject stream
+                        ]
+                        []
+                    ]
         ]
