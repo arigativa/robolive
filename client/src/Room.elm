@@ -44,6 +44,7 @@ type Msg
     | ChangeInterlocutor String
     | Call JsSIP.UserAgent
     | CallDone (Result String JsSIP.MediaStream)
+    | CallEnd
     | Hangup
 
 
@@ -85,6 +86,11 @@ update msg model =
             , Cmd.none
             )
 
+        CallEnd ->
+            ( { model | call = RemoteData.NotAsked }
+            , Cmd.none
+            )
+
         Hangup ->
             ( { model | call = RemoteData.NotAsked }
             , JsSIP.hangup
@@ -97,11 +103,15 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    if RemoteData.isLoading model.call then
-        JsSIP.onCalled CallDone
+    case model.call of
+        RemoteData.Loading ->
+            JsSIP.onCalled CallDone
 
-    else
-        Sub.none
+        RemoteData.Success _ ->
+            JsSIP.onEnd CallEnd
+
+        _ ->
+            Sub.none
 
 
 

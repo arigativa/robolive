@@ -6,6 +6,7 @@ port module JsSIP exposing
     , call
     , hangup
     , onCalled
+    , onEnd
     , onRegistred
     , register
     , srcObject
@@ -157,3 +158,11 @@ port js_sip__hangup : () -> Cmd msg
 hangup : Cmd msg
 hangup =
     js_sip__hangup ()
+
+
+port js_sip__on_end : (() -> msg) -> Sub msg
+
+
+onEnd : msg -> Sub msg
+onEnd msg =
+    js_sip__on_end (always msg)

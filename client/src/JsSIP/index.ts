@@ -4,6 +4,28 @@ import { debug } from 'jssip/lib/JsSIP'
 
 debug.disable();
 
+class Subs {
+    private readonly unsubs: Array<() => void> = [];
+
+    public subscribe<T>(
+        port: undefined | ElmCmdPort<T>,
+        listener: (value: T) => void
+    ): void {
+        port?.subscribe(listener);
+        this.unsubs.push(() => port?.unsubscribe(listener));
+    }
+
+    public reset(): void {
+        while (this.unsubs.length > 0) {
+            const unsubscribe = this.unsubs.pop();
+
+            if (typeof unsubscribe === 'function') {
+                unsubscribe();
+            }
+        }
+    }
+}
+
 interface RegisterOptions {
     web_socket_url: string,
     uri: string,
@@ -34,6 +56,8 @@ export const register = (ports: {
     js_sip__on_call_confirmed?: ElmSubPort<MediaStream>;
 
     js_sip__hangup?: ElmCmdPort;
+
+    js_sip__on_end?: ElmSubPort;
 }): void => {
     ports.js_sip__register?.subscribe(options => {
         const uaConfig: UAConfiguration = {
@@ -69,6 +93,7 @@ export const register = (ports: {
     });
 
     ports.js_sip__call?.subscribe(options => {
+        const subs = new Subs();
         const session = options.user_agent.call(
             options.uri,
             {
@@ -87,7 +112,6 @@ export const register = (ports: {
         session.on('progress', () => console.log('progress'))
         session.on('accepted', () => console.log('accepted'))
         session.on('confirmed', () => console.log('confirmed'))
-        session.on('ended', () => console.log('ended'))
         session.on('newDTMF', () => console.log('newDTMF'))
         session.on('newInfo', () => console.log('newInfo'))
         session.on('hold', () => console.log('hold'))
@@ -112,15 +136,18 @@ export const register = (ports: {
             const remoteStreams = session.connection.getRemoteStreams();
 
             if (remoteStreams.length > 0) {
-                ports.js_sip__on_call_confirmed?.send(remoteStreams[ 0 ].clone())
+                ports.js_sip__on_call_confirmed?.send(remoteStreams[ 0 ].clone());
             }
 
-            const hangup = () => {
-                session.terminate();
-                ports.js_sip__hangup?.unsubscribe(hangup);
-            };
+            subs.subscribe(
+                ports.js_sip__hangup,
+                () => session.terminate()
+            );
+        });
 
-            ports.js_sip__hangup?.subscribe(hangup);
+        session.on('ended', () => {
+            ports.js_sip__on_end?.send(null);
+            subs.reset();
         });
     });
 };
