@@ -1,0 +1,35 @@
+name: Build frontend client
+
+on:
+  push:
+    paths:
+      - 'client/**'
+    branches:
+      - master
+  pull_request:
+    paths:
+      - 'client/**'
+
+jobs:
+  build-client:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+    - uses: actions/checkout@v2
+
+    - uses: actions/setup-node@v1
+
+    - run: npm install
+
+    - run: npm run build
+
+    - name: Package the build
+      run: tar -czf /tmp/client-distr.tar.gz -C ./build/ .
+
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: client-distr.tar.gz
+        path: /tmp/client-distr.tar.gz
