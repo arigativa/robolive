@@ -2,6 +2,7 @@
 
 title Robot control queue
 
+participant Robot
 database Registry
 actor Operator
 
@@ -18,5 +19,5 @@ Registry -> Operator: your turn
 note over Registry: sets deadline for joining session
 
 group control call 
-	Registry -> Operator: <queue status>
+	==calling a robot==#lightgreen
 end
