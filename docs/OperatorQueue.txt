@@ -1,0 +1,22 @@
+// View&edit https://sequencediagram.org/
+
+title Robot control queue
+
+database Registry
+actor Operator
+
+
+Operator -> Registry: what robots do you have?
+Registry -> Operator: "list of available robots"
+Operator -> Registry: I want to connect to #id
+Registry -#red> Operator: BUSY
+Operator -> Registry: I want stay in line
+group status polling
+	Registry -> Operator: <queue status>
+end
+Registry -> Operator: your turn
+note over Registry: sets deadline for joining session
+
+group control call 
+	Registry -> Operator: <queue status>
+end
