@@ -1,0 +1,92 @@
+https://tools.ietf.org/html/rfc4566#page-6
+Session description
+ v=  (protocol version)
+ o=  (originator and session identifier)
+ s=  (session name)
+ i=* (session information)
+ u=* (URI of description)
+ e=* (email address)
+ p=* (phone number)
+ c=* (connection information -- not required if included in
+      all media)
+ b=* (zero or more bandwidth information lines)
+ One or more time descriptions ("t=" and "r=" lines; see below)
+ z=* (time zone adjustments)
+ k=* (encryption key)
+ a=* (zero or more session attribute lines)
+ Zero or more media descriptions
+
+Time description
+ t=  (time the session is active)
+ r=* (zero or more repeat times)
+
+Media description, if present
+ m=  (media name and transport address)
+ i=* (media title)
+ c=* (connection information -- optional if included at
+      session level)
+ b=* (zero or more bandwidth information lines)
+ k=* (encryption key)
+ a=* (zero or more media attribute lines)
+
+
+https://tools.ietf.org/html/rfc4855
+o  The media type (e.g., audio) goes in SDP "m=" as the media
+         name.
+
+      o  The media subtype (payload format) goes in SDP "a=rtpmap" as
+         the encoding name.
+
+      o  The general (possibly optional) parameters "rate" and
+         "channels" also go in "a=rtpmap" as clock rate and encoding
+         parameters, respectively.
+
+      o  The general (and optional) parameters "ptime" and "maxptime" go
+         in the SDP "a=ptime" and "a=maxptime" attributes, respectively.
+
+      o  Any payload-format-specific parameters go in the SDP "a=fmtp"
+         attribute.  The set of allowed parameters is defined by the RFC
+         that specifies the payload format and MUST NOT be extended by
+         the media type registration without a corresponding revision of
+         the payload format specification.  The format and syntax of
+         these parameters may also be defined by the payload format
+         specification, but it is suggested that the parameters be
+         copied directly from the media type string as a semicolon
+         separated list of parameter=value pairs.  For payload formats
+         that specify some other syntax for the fmtp parameters, the
+         registration of that payload format as a media type must
+         specify what the parameters are in MIME format and how to map
+         them to the "a=fmtp" attribute.
+
+   An example mapping is as follows:
+
+         audio/L16; rate=48000; channels=2; ptime=5; emphasis=50-15
+
+         m=audio 49170 RTP/AVP 97
+         a=rtpmap:97 L16/48000/2
+         a=fmtp:97 emphasis=50-15
+         a=ptime:5
+
+   Note that the payload format (encoding) names defined in the RTP
+   Profile [4] are commonly shown in upper case.  Media subtype names
+   are commonly shown in lower case.  These names are case-insensitive
+   in both places.  Similarly, parameter names are case-insensitive both
+   in media type strings and in the default mapping to the SDP a=fmtp
+   attribute.
+
+https://tools.ietf.org/html/rfc3550#section-1.1
+Through some allocation mechanism the working group
+   chair obtains a multicast group address and pair of ports.  One port
+   is used for audio data, and the other is used for control (RTCP)
+   packets.  This address and port information is distributed to the
+   intended participants.
+
+The audio conferencing application used by each conference
+   participant sends audio data in small chunks of, say, 20 ms duration.
+   Each chunk of audio data is preceded by an RTP header; RTP header and
+   data are in turn contained in a UDP packet.  The RTP header indicates
+   what type of audio encoding (such as PCM, ADPCM or LPC) is contained
+   in each packet so that senders can change the encoding during a
+   conference, for example, to accommodate a new participant that is
+   connected through a low-bandwidth link or react to indications of
+   network congestion.

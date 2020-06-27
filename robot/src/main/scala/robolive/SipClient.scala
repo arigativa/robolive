@@ -184,7 +184,7 @@ final class RegistrationClientHandler extends RegistrationClientListener {
 }
 
 final class SipClient(sipEventHandler: SIPCallEventHandler) {
-  val registrarUri = "localhost:9031"
+  val registrarUri = "rl.arigativa.ru:9031"
 
   val sipUser = new SipUser(new NameAddress(s"robomachine@$registrarUri"))
   val sipTransportHandler = new SipTransportHandler(sipEventHandler, sipUser)

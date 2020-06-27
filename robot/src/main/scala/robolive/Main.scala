@@ -28,6 +28,8 @@ final class WebRTCController(webRTCBin: WebRTCBinManaged) {
           answer.getMediaDescriptors.get(mIdx).addAttribute(new AttributeField(value))
       }
 
+      println(s"ANSWER PREPARED:\n $answer")
+
       call.accept(answer.toString)
     }
   }
@@ -83,10 +85,12 @@ object Main extends App {
   def getEnv(name: String, default: String): String =
     sys.env.getOrElse(name, default)
 
+  private def rtppt = 120
+
   private def pipelineDescription(videoSrc: String, audioSrc: String): String = {
     s"""webrtcbin name=sendrecv bundle-policy=max-bundle stun-server=stun://stun.l.google.com:19302
-       | $videoSrc ! queue ! vp8enc deadline=1 ! rtpvp8pay pt=120 !
-       | queue ! application/x-rtp,media=video,encoding-name=VP8,payload=120 ! sendrecv.""".stripMargin
+       | $videoSrc ! queue ! vp8enc deadline=1 ! rtpvp8pay pt=${rtppt} !
+       | queue ! application/x-rtp,media=video,encoding-name=VP8,payload=${rtppt} ! sendrecv.""".stripMargin
   }
 
   private def onIncomingStream(pad: Pad): Unit = {
