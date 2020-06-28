@@ -35,6 +35,7 @@ local function http()
     KSR.log("info","received HTTP request on port: "..port.."\n")
 
     if port ~= config.websocket.port then
+        KSR.log("info","Restricted request at port: "..port.."\n")
         KSR.x.exit()
     end
 
