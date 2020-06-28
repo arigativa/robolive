@@ -14,6 +14,8 @@ import org.mjsip.sip.call.{
 }
 import org.mjsip.sip.message.SipMessage
 import org.mjsip.sip.provider.{SipProvider, SipProviderListener}
+import robolive.Main.pipelineDesc
+import robolive.gstreamer.GstManaged
 
 import scala.concurrent.ExecutionContext
 
@@ -26,8 +28,10 @@ final class SipTransportHandler(sipCallToEventAdapter: SIPCallEventHandler, sipU
   }
 }
 
-final class SIPCallEventHandler(controller: WebRTCController)(implicit ec: ExecutionContext)
-    extends ExtendedCallListener {
+final class SIPCallEventHandler(controller: WebRTCController)(
+  implicit ec: ExecutionContext,
+  gst: GstManaged.GSTInit.type
+) extends ExtendedCallListener {
 
   /** Callback function called when arriving a new REFER method (transfer request). */
   override def onCallTransfer(
@@ -144,10 +148,13 @@ final class SIPCallEventHandler(controller: WebRTCController)(implicit ec: Execu
   override def onCallUpdateRefused(call: Call, sdp: String, resp: SipMessage): Unit = ???
 
   /** Callback function called when arriving a BYE request */
-  override def onCallBye(call: Call, bye: SipMessage): Unit = println {
-    s"""onCallBye:
-       |$bye
-       |""".stripMargin
+  override def onCallBye(call: Call, bye: SipMessage): Unit = {
+    println {
+      s"""onCallBye:
+         |$bye
+         |""".stripMargin
+    }
+    controller.dispose()
   }
 
   /** Callback function called when arriving a response for the BYE request (call closed) */
@@ -183,22 +190,32 @@ final class RegistrationClientHandler extends RegistrationClientListener {
   }
 }
 
-final class SipClient(sipEventHandler: SIPCallEventHandler) {
-  val registrarUri = "rl.arigativa.ru:9031"
+final case class SipConfig(
+  registrarUri: String,
+  name: String,
+  protocol: String,
+)
 
-  val sipUser = new SipUser(new NameAddress(s"robomachine@$registrarUri"))
+final class SipClient(
+  sipEventHandler: SIPCallEventHandler,
+  config: SipConfig,
+) {
+  val nameAddress = s"${config.name}@${config.registrarUri}"
+  val sipUser = new SipUser(new NameAddress(nameAddress))
   val sipTransportHandler = new SipTransportHandler(sipEventHandler, sipUser)
 
-  val sipProvider = new SipProvider(null, 0, Array("tcp"))
+  val sipProvider = new SipProvider(null, 0, Array(config.protocol))
   sipProvider.addPromiscuousListener(sipTransportHandler)
 
   val rc = {
     val toAddress = sipUser.getAddress
     val fromAddress = sipUser.getAddress
     val contactAddress = sipUser.getAddress
+    val sipUri = new SipURI(config.registrarUri)
+
     new RegistrationClient(
       sipProvider,
-      new SipURI(registrarUri),
+      sipUri,
       toAddress,
       fromAddress,
       contactAddress,
@@ -207,5 +224,5 @@ final class SipClient(sipEventHandler: SIPCallEventHandler) {
   }
 
   if (rc.isRegistering) rc.halt()
-  rc.loopRegister(180, 180)
+  rc.loopRegister(30, 30)
 }
