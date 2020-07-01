@@ -1,7 +1,6 @@
 port module JsSIP exposing
     ( MediaStream
     , Protocol(..)
-    , RegistrationError
     , UserAgent
     , call
     , hangup
@@ -92,19 +91,13 @@ register options =
         |> js_sip__register
 
 
-type alias RegistrationError =
-    { code : Int
-    , reason : String
-    }
-
-
-port js_sip__on_registred_err : (RegistrationError -> msg) -> Sub msg
+port js_sip__on_registred_err : (String -> msg) -> Sub msg
 
 
 port js_sip__on_registred_ok : (Value -> msg) -> Sub msg
 
 
-onRegistred : (Result RegistrationError UserAgent -> msg) -> Sub msg
+onRegistred : (Result String UserAgent -> msg) -> Sub msg
 onRegistred tagger =
     Sub.batch
         [ js_sip__on_registred_err (tagger << Err)

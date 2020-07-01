@@ -34,11 +34,6 @@ interface RegisterOptions {
     password: null | string
 }
 
-interface RegisterError {
-    code: number;
-    reason: string;
-}
-
 interface CallOptions {
     user_agent: UA;
     uri: string;
@@ -49,7 +44,7 @@ interface CallOptions {
 
 export const register = (ports: {
     js_sip__register?: ElmCmdPort<RegisterOptions>;
-    js_sip__on_registred_err?: ElmSubPort<RegisterError>;
+    js_sip__on_registred_err?: ElmSubPort<string>;
     js_sip__on_registred_ok?: ElmSubPort<UA>;
 
     js_sip__call?: ElmCmdPort<CallOptions>;
@@ -78,10 +73,7 @@ export const register = (ports: {
         const ua = new UA(uaConfig);
 
         ua.on('registrationFailed', ({ response }) => {
-            ports.js_sip__on_registred_err?.send({
-                code: response.status_code,
-                reason: response.reason_phrase
-            })
+            ports.js_sip__on_registred_err?.send(response.reason_phrase)
 
             ua.stop();
         })
