@@ -44,6 +44,7 @@ interface CallOptions {
     uri: string;
     with_audio: boolean;
     with_video: boolean;
+    ice_servers: Array<string>;
 }
 
 export const register = (ports: {
@@ -102,7 +103,10 @@ export const register = (ports: {
                     video: options.with_video
                 },
                 pcConfig: {
-                    rtcpMuxPolicy: 'negotiate'
+                    rtcpMuxPolicy: 'negotiate',
+                    iceServers: [
+                        { urls: options.ice_servers }
+                    ]
                 }
             }
         );

@@ -21,7 +21,7 @@ type alias Model =
 
 initial : Model
 initial =
-    { username = ""
+    { username = "robohuman"
     , registration = RemoteData.NotAsked
     }
 

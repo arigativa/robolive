@@ -2,7 +2,7 @@ module Room exposing (Model, Msg, initial, subscriptions, update, view)
 
 import Browser.Dom
 import Credentials exposing (Credentials)
-import Html exposing (Html, b, button, div, form, h1, input, p, strong, text, video)
+import Html exposing (Html, b, button, div, form, h1, h3, input, p, strong, text, video)
 import Html.Attributes
 import Html.Events
 import JsSIP
@@ -21,14 +21,16 @@ interlocutorInputID =
 
 
 type alias Model =
-    { interlocutor : String
+    { iceServers : List String
+    , interlocutor : String
     , call : RemoteData String JsSIP.MediaStream
     }
 
 
 initial : ( Model, Cmd Msg )
 initial =
-    ( { interlocutor = ""
+    ( { iceServers = []
+      , interlocutor = "robomachine"
       , call = RemoteData.NotAsked
       }
     , Task.attempt (always NoOp) (Browser.Dom.focus interlocutorInputID)
@@ -41,6 +43,8 @@ initial =
 
 type Msg
     = NoOp
+    | AddIceServer String
+    | ChangeIceServer Int String
     | ChangeInterlocutor String
     | Call JsSIP.UserAgent
     | CallDone (Result String JsSIP.MediaStream)
@@ -53,6 +57,30 @@ update msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
+
+        AddIceServer initialValue ->
+            ( { model | iceServers = model.iceServers ++ [ initialValue ] }
+            , Cmd.none
+            )
+
+        ChangeIceServer index value ->
+            let
+                before =
+                    List.take index model.iceServers
+
+                after =
+                    List.drop (index + 1) model.iceServers
+
+                nextIceServers =
+                    if String.isEmpty value then
+                        before ++ after
+
+                    else
+                        before ++ value :: after
+            in
+            ( { model | iceServers = nextIceServers }
+            , Cmd.none
+            )
 
         ChangeInterlocutor nextInterlocutor ->
             ( { model | interlocutor = nextInterlocutor }
@@ -78,6 +106,7 @@ update msg model =
                     , username = model.interlocutor
                     , withAudio = False
                     , withVideo = True
+                    , iceServers = model.iceServers
                     }
                 )
 
@@ -118,12 +147,59 @@ subscriptions model =
 -- V I E W
 
 
-viewCallForm : Credentials -> Bool -> Maybe String -> String -> Html Msg
-viewCallForm credentials busy error interlocutor =
+viewIceServerCreator : Bool -> Html Msg
+viewIceServerCreator disabled =
+    input
+        [ Html.Attributes.type_ "text"
+        , Html.Attributes.tabindex 0
+        , Html.Attributes.disabled disabled
+        , Html.Events.onInput AddIceServer
+        ]
+        []
+
+
+viewIceServerChanger : Bool -> Int -> String -> Html Msg
+viewIceServerChanger disabled index value =
+    input
+        [ Html.Attributes.type_ "text"
+        , Html.Attributes.tabindex 0
+        , Html.Attributes.value value
+        , Html.Attributes.disabled disabled
+        , Html.Events.onInput (ChangeIceServer index)
+        ]
+        []
+
+
+viewIceServerContainer : List (Html msg) -> Html msg
+viewIceServerContainer =
+    div
+        [ Html.Attributes.style "margin-bottom" "5px"
+        ]
+
+
+viewIceServers : Bool -> List String -> Html Msg
+viewIceServers disabled values =
+    List.indexedMap (viewIceServerChanger disabled) values
+        ++ [ viewIceServerCreator disabled ]
+        |> List.map (viewIceServerContainer << List.singleton)
+        |> div
+            [ Html.Attributes.style "margin-bottom" "15px"
+            ]
+
+
+viewCallForm : Credentials -> Bool -> Maybe String -> List String -> String -> Html Msg
+viewCallForm credentials busy error iceServers interlocutor =
     form
         [ Html.Events.onSubmit (Call credentials.userAgent)
         ]
-        [ button
+        [ h3
+            []
+            [ text "Ice Servers"
+            ]
+        , viewIceServers busy iceServers
+
+        --
+        , button
             [ Html.Attributes.type_ "submit"
             , Html.Attributes.disabled busy
             , Html.Attributes.tabindex 0
@@ -169,13 +245,13 @@ view credentials model =
         --
         , case model.call of
             RemoteData.NotAsked ->
-                viewCallForm credentials False Nothing model.interlocutor
+                viewCallForm credentials False Nothing model.iceServers model.interlocutor
 
             RemoteData.Loading ->
-                viewCallForm credentials True Nothing model.interlocutor
+                viewCallForm credentials True Nothing model.iceServers model.interlocutor
 
             RemoteData.Failure reason ->
-                viewCallForm credentials False (Just reason) model.interlocutor
+                viewCallForm credentials False (Just reason) model.iceServers model.interlocutor
 
             RemoteData.Success stream ->
                 div []

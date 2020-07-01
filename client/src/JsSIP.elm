@@ -117,6 +117,7 @@ port js_sip__call :
     , uri : String
     , with_audio : Bool
     , with_video : Bool
+    , ice_servers : List String
     }
     -> Cmd msg
 
@@ -127,6 +128,7 @@ call :
     , username : String
     , withAudio : Bool
     , withVideo : Bool
+    , iceServers : List String
     }
     -> Cmd msg
 call options =
@@ -135,6 +137,7 @@ call options =
         , uri = generateUri options.username options.server
         , with_audio = options.withAudio
         , with_video = options.withVideo
+        , ice_servers = options.iceServers
         }
 
 
