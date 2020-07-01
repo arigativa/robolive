@@ -56,6 +56,7 @@ final class WebRTCController(pipelineDescription: String)(implicit gst: GstManag
     pipeline.dispose()
     webRTCBin = null
     pipeline = null
+    println("STATE: WAIT")
     state = WebRTCControllerPlayState.Wait
   }
 
