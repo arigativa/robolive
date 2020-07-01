@@ -15,7 +15,7 @@ class Subs {
         this.unsubs.push(() => port?.unsubscribe(listener));
     }
 
-    public reset(): void {
+    public unsubscribeAll(): void {
         while (this.unsubs.length > 0) {
             const unsubscribe = this.unsubs.pop();
 
@@ -93,7 +93,7 @@ export const register = (ports: {
         ua.start();
     });
 
-    ports.js_sip__call?.subscribe(options => {
+    const onJsSipCall = (options: CallOptions): void => {
         const subs = new Subs();
         const session = options.user_agent.call(
             options.uri,
@@ -151,7 +151,17 @@ export const register = (ports: {
 
         session.on('ended', () => {
             ports.js_sip__on_end?.send(null);
-            subs.reset();
+            subs.unsubscribeAll();
         });
+    }
+
+    ports.js_sip__call?.subscribe(options => {
+        try {
+            onJsSipCall(options)
+        } catch (error) {
+            const { message = 'Unknown error' }: Error = error;
+
+            ports.js_sip__on_call_failed?.send(message);
+        }
     });
 };
