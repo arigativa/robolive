@@ -2,7 +2,7 @@ module Room exposing (Model, Msg, initial, subscriptions, update, view)
 
 import Browser.Dom
 import Credentials exposing (Credentials)
-import Html exposing (Html, b, button, div, form, h1, h3, input, p, strong, text, video)
+import Html exposing (Html, b, button, div, form, h1, h3, input, label, p, strong, text, video)
 import Html.Attributes
 import Html.Events
 import JsSIP
@@ -21,7 +21,7 @@ interlocutorInputID =
 
 
 type alias Model =
-    { iceServers : List String
+    { iceServers : List ( Bool, String )
     , interlocutor : String
     , call : RemoteData String JsSIP.MediaStream
     }
@@ -45,6 +45,7 @@ type Msg
     = NoOp
     | AddIceServer String
     | ChangeIceServer Int String
+    | ActivateIceServer Int Bool
     | ChangeInterlocutor String
     | Call JsSIP.UserAgent
     | CallDone (Result String JsSIP.MediaStream)
@@ -59,7 +60,7 @@ update msg model =
             ( model, Cmd.none )
 
         AddIceServer initialValue ->
-            ( { model | iceServers = model.iceServers ++ [ initialValue ] }
+            ( { model | iceServers = model.iceServers ++ [ ( True, initialValue ) ] }
             , Cmd.none
             )
 
@@ -76,9 +77,19 @@ update msg model =
                         before ++ after
 
                     else
-                        before ++ value :: after
+                        before ++ ( True, value ) :: after
             in
             ( { model | iceServers = nextIceServers }
+            , Cmd.none
+            )
+
+        ActivateIceServer index active ->
+            ( case List.drop index model.iceServers of
+                [] ->
+                    model
+
+                ( _, value ) :: after ->
+                    { model | iceServers = List.take index model.iceServers ++ ( active, value ) :: after }
             , Cmd.none
             )
 
@@ -106,7 +117,7 @@ update msg model =
                     , username = model.interlocutor
                     , withAudio = False
                     , withVideo = True
-                    , iceServers = model.iceServers
+                    , iceServers = List.map Tuple.second (List.filter Tuple.first model.iceServers)
                     }
                 )
 
@@ -147,29 +158,6 @@ subscriptions model =
 -- V I E W
 
 
-viewIceServerCreator : Bool -> Html Msg
-viewIceServerCreator disabled =
-    input
-        [ Html.Attributes.type_ "text"
-        , Html.Attributes.tabindex 0
-        , Html.Attributes.disabled disabled
-        , Html.Events.onInput AddIceServer
-        ]
-        []
-
-
-viewIceServerChanger : Bool -> Int -> String -> Html Msg
-viewIceServerChanger disabled index value =
-    input
-        [ Html.Attributes.type_ "text"
-        , Html.Attributes.tabindex 0
-        , Html.Attributes.value value
-        , Html.Attributes.disabled disabled
-        , Html.Events.onInput (ChangeIceServer index)
-        ]
-        []
-
-
 viewIceServerContainer : List (Html msg) -> Html msg
 viewIceServerContainer =
     div
@@ -177,29 +165,64 @@ viewIceServerContainer =
         ]
 
 
-viewIceServers : Bool -> List String -> Html Msg
-viewIceServers disabled values =
-    List.indexedMap (viewIceServerChanger disabled) values
+viewIceServerCreator : Bool -> Html Msg
+viewIceServerCreator disabled =
+    viewIceServerContainer
+        [ input
+            [ Html.Attributes.type_ "text"
+            , Html.Attributes.tabindex 0
+            , Html.Attributes.placeholder "stun:127.0.0.1"
+            , Html.Attributes.disabled disabled
+            , Html.Events.onInput AddIceServer
+            ]
+            []
+        ]
+
+
+viewIceServerChanger : Bool -> Int -> ( Bool, String ) -> Html Msg
+viewIceServerChanger disabled index ( active, value ) =
+    viewIceServerContainer
+        [ input
+            [ Html.Attributes.type_ "text"
+            , Html.Attributes.tabindex 0
+            , Html.Attributes.value value
+            , Html.Attributes.disabled (disabled || not active)
+            , Html.Events.onInput (ChangeIceServer index)
+            ]
+            []
+        , label
+            []
+            [ input
+                [ Html.Attributes.type_ "checkbox"
+                , Html.Attributes.tabindex 0
+                , Html.Attributes.checked active
+                , Html.Events.onCheck (ActivateIceServer index)
+                ]
+                []
+            , if active then
+                text "use"
+
+              else
+                text "ignore"
+            ]
+        ]
+
+
+viewIceServers : Bool -> List ( Bool, String ) -> Html Msg
+viewIceServers disabled iceServers =
+    List.indexedMap (viewIceServerChanger disabled) iceServers
         ++ [ viewIceServerCreator disabled ]
-        |> List.map (viewIceServerContainer << List.singleton)
         |> div
             [ Html.Attributes.style "margin-bottom" "15px"
             ]
 
 
-viewCallForm : Credentials -> Bool -> Maybe String -> List String -> String -> Html Msg
+viewCallForm : Credentials -> Bool -> Maybe String -> List ( Bool, String ) -> String -> Html Msg
 viewCallForm credentials busy error iceServers interlocutor =
     form
         [ Html.Events.onSubmit (Call credentials.userAgent)
         ]
-        [ h3
-            []
-            [ text "Ice Servers"
-            ]
-        , viewIceServers busy iceServers
-
-        --
-        , button
+        [ button
             [ Html.Attributes.type_ "submit"
             , Html.Attributes.disabled busy
             , Html.Attributes.tabindex 0
@@ -217,6 +240,15 @@ viewCallForm credentials busy error iceServers interlocutor =
             , Html.Events.onInput ChangeInterlocutor
             ]
             []
+
+        --
+        , h3
+            []
+            [ text "Ice Servers"
+            ]
+        , viewIceServers busy iceServers
+
+        --
         , case error of
             Nothing ->
                 text ""
