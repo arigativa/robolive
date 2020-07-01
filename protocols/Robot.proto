@@ -1,0 +1,12 @@
+syntax = "proto2";
+
+package robolive.protocols;
+
+message RobotID {
+  required string value = 1;
+}
+
+message RobotShortDescription {
+  required RobotID id = 1;
+  required string name = 2;
+}
