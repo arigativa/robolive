@@ -18,12 +18,26 @@ object WebRTCControllerPlayState {
   case object Busy extends WebRTCControllerPlayState
 }
 
-final class WebRTCController(pipelineDescription: String)(implicit gst: GstManaged.GSTInit.type) {
+object WebRTCController {
+  def pipelineDescription(videoSrc: String, rtcType: Int, stunServerUrl: String): String = {
+    s"""webrtcbin name=sendrecv bundle-policy=max-bundle stun-server=$stunServerUrl
+       | $videoSrc ! queue ! vp8enc deadline=1 ! rtpvp8pay pt=$rtcType !
+       | queue ! application/x-rtp,media=video,encoding-name=VP8,payload=$rtcType ! sendrecv.""".stripMargin
+  }
+}
+
+final class WebRTCController(videoSrc: String)(implicit gst: GstManaged.GSTInit.type) {
   private var pipeline: Pipeline = _
   private var webRTCBin: WebRTCBinManaged = _
   @volatile private var state: WebRTCControllerPlayState = WebRTCControllerPlayState.Wait
 
-  private def start(): StateChangeReturn = synchronized {
+  private def start(rtcType: Int): StateChangeReturn = synchronized {
+    val pipelineDescription = WebRTCController.pipelineDescription(
+      videoSrc = videoSrc,
+      rtcType = rtcType,
+      stunServerUrl = "stun://stun.l.google.com:19302"
+    )
+
     pipeline = PipelineManaged(
       name = "robolive-robot-pipeline",
       description = pipelineDescription,
@@ -107,44 +121,59 @@ final class WebRTCController(pipelineDescription: String)(implicit gst: GstManag
     }
   }
 
+  private def getRtpType(sdp: SdpMessage): Option[Int] = {
+    val video = sdp.getMediaDescriptor("video")
+    val rtpmaps = video.getAttributes("rtpmap")
+    rtpmaps
+      .find(_.getAttributeValue.contains("VP8"))
+      .flatMap(_.getAttributeValue.split(" ").head.toIntOption)
+  }
+
   def makeCall(call: ExtendedCall, remoteSdp: SdpMessage)(
     implicit ec: ExecutionContext
   ): Future[Unit] = synchronized {
     state match {
       case WebRTCControllerPlayState.Wait | WebRTCControllerPlayState.Failure =>
         println("STATE: WAIT | FAILURE STATE")
-        if (start() == StateChangeReturn.SUCCESS) {
-          state = WebRTCControllerPlayState.Busy
+        getRtpType(remoteSdp) match {
+          case Some(rtpType) =>
+            println(s"STATE: RTP TYPE EXTRACTED $rtpType")
+            if (start(rtpType) == StateChangeReturn.SUCCESS) {
+              state = WebRTCControllerPlayState.Busy
 
-          call.ring()
+              call.ring()
 
-          webRTCBin.setRemoteOffer(remoteSdp)
-          (for {
-            localIceCandidates <- webRTCBin.fetchIceCandidates()
-            answer <- webRTCBin.createAnswer()
-          } yield {
-            webRTCBin.setLocalAnswer(answer)
+              webRTCBin.setRemoteOffer(remoteSdp)
+              (for {
+                localIceCandidates <- webRTCBin.fetchIceCandidates()
+                answer <- webRTCBin.createAnswer()
+              } yield {
+                webRTCBin.setLocalAnswer(answer)
 
-            localIceCandidates.foreach {
-              case IceCandidate(mIdx, value) =>
-                answer.getMediaDescriptors.get(mIdx).addAttribute(new AttributeField(value))
-            }
+                localIceCandidates.foreach {
+                  case IceCandidate(mIdx, value) =>
+                    answer.getMediaDescriptors.get(mIdx).addAttribute(new AttributeField(value))
+                }
 
-            println(s"ANSWER PREPARED:\n $answer")
+                println(s"ANSWER PREPARED:\n $answer")
 
-            call.accept(answer.toString)
-          }).recover {
-            case error =>
-              error.printStackTrace()
+                call.accept(answer.toString)
+              }).recover {
+                case error =>
+                  error.printStackTrace()
+                  state = WebRTCControllerPlayState.Failure
+                  Future.successful(call.refuse())
+              }
+            } else {
               state = WebRTCControllerPlayState.Failure
+              println("STATE: FAILED TO START")
               Future.successful(call.refuse())
-          }
-        } else {
-          state = WebRTCControllerPlayState.Failure
-          println("STATE: FAILED TO START")
-          Future.successful(call.refuse())
+            }
+          case None =>
+            state = WebRTCControllerPlayState.Failure
+            println("STATE: FAILED TO EXTRACT RTPTYPE")
+            Future.successful(call.refuse())
         }
-
       case WebRTCControllerPlayState.Busy =>
         println("STATE: BUSY")
         Future.successful(call.hangup())
@@ -161,23 +190,18 @@ object Main extends App {
   SLF4JBridgeHandler.removeHandlersForRootLogger()
   SLF4JBridgeHandler.install()
 
-  private val DefaultVideoSrcPipeline =
-    "videotestsrc is-live=true pattern=ball ! videoconvert"
-  private val DefaultAudioSrcPipeline =
-    "audiotestsrc ! audioconvert ! audioresample"
-
-  val videoSrc = getEnv("VIDEO_SRC", DefaultVideoSrcPipeline)
-  val audioSrc = getEnv("AUDIO_SRC", DefaultAudioSrcPipeline)
+  val videoSrc = {
+    val defaultVideoSrcPipeline = "videotestsrc is-live=true pattern=ball ! videoconvert"
+    getEnv("VIDEO_SRC", defaultVideoSrcPipeline)
+  }
   val latch = new CountDownLatch(1)
-  val pipelineDesc = pipelineDescription(videoSrc, audioSrc)
 
   implicit val gstInit: GstManaged.GSTInit.type = GstManaged("robolive-robot", new Version(1, 14))
 
-  val controller = new WebRTCController(pipelineDesc)
+  val controller = new WebRTCController(videoSrc)
   val sipEventsHandler = new SIPCallEventHandler(controller)
   val sipConfig = SipConfig(
     registrarUri = "localhost:9031",
-//    registrarUri = "rl.arigativa.ru:9031",
     name = "robomachine",
     protocol = "tcp",
   )
@@ -187,13 +211,5 @@ object Main extends App {
 
   def getEnv(name: String, default: String): String =
     sys.env.getOrElse(name, default)
-
-  private def rtppt = 120
-
-  private def pipelineDescription(videoSrc: String, audioSrc: String): String = {
-    s"""webrtcbin name=sendrecv bundle-policy=max-bundle stun-server=stun://stun.l.google.com:19302
-       | $videoSrc ! queue ! vp8enc deadline=1 ! rtpvp8pay pt=${rtppt} !
-       | queue ! application/x-rtp,media=video,encoding-name=VP8,payload=${rtppt} ! sendrecv.""".stripMargin
-  }
 
 }
