@@ -1,5 +1,6 @@
 port module JsSIP exposing
-    ( MediaStream
+    ( IceServer
+    , MediaStream
     , Protocol(..)
     , UserAgent
     , call
@@ -105,12 +106,19 @@ onRegistred tagger =
         ]
 
 
+type alias IceServer =
+    { url : String
+    , username : Maybe String
+    , password : Maybe String
+    }
+
+
 port js_sip__call :
     { user_agent : Value
     , uri : String
     , with_audio : Bool
     , with_video : Bool
-    , ice_servers : List String
+    , ice_servers : List IceServer
     }
     -> Cmd msg
 
@@ -121,7 +129,7 @@ call :
     , username : String
     , withAudio : Bool
     , withVideo : Bool
-    , iceServers : List String
+    , iceServers : List IceServer
     }
     -> Cmd msg
 call options =

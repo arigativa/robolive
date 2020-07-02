@@ -96,9 +96,7 @@ export const register = (ports: {
                 },
                 pcConfig: {
                     rtcpMuxPolicy: 'negotiate',
-                    iceServers: [
-                        { urls: options.ice_servers }
-                    ]
+                    iceServers: options.ice_servers.map(url => ({ urls: url }))
                 }
             }
         );
