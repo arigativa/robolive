@@ -2,12 +2,14 @@ module Room exposing (Model, Msg, initial, subscriptions, update, view)
 
 import Browser.Dom
 import Credentials exposing (Credentials)
-import Html exposing (Html, b, button, div, form, h1, h3, input, label, p, strong, text, video)
+import Html exposing (Html, b, button, div, form, h1, h3, input, p, strong, text, video)
 import Html.Attributes
 import Html.Events
-import JsSIP exposing (IceServer)
+import Html.Lazy
+import JsSIP
 import List.Extra
 import RemoteData exposing (RemoteData)
+import Room.IceServer as IceServer
 import Task
 import Utils exposing (hasWhitespaces)
 
@@ -21,41 +23,8 @@ interlocutorInputID =
 -- M O D E L
 
 
-type alias IceServer =
-    { active : Bool
-    , url : String
-    , username : String
-    , password : String
-    }
-
-
-convertIceServer : IceServer -> Maybe JsSIP.IceServer
-convertIceServer iceServer =
-    if not iceServer.active then
-        Nothing
-
-    else if isTurnServer iceServer.url then
-        Just
-            { url = iceServer.url
-            , username = Just iceServer.username
-            , password = Just iceServer.password
-            }
-
-    else
-        Just
-            { url = iceServer.url
-            , username = Nothing
-            , password = Nothing
-            }
-
-
-isTurnServer : String -> Bool
-isTurnServer url =
-    String.startsWith "turn:" url || String.startsWith "turns:" url
-
-
 type alias Model =
-    { iceServers : List IceServer
+    { iceServers : List IceServer.Model
     , interlocutor : String
     , call : RemoteData String JsSIP.MediaStream
     }
@@ -78,15 +47,12 @@ initial =
 type Msg
     = NoOp
     | AddIceServer String
-    | ChangeIceServerUrl Int String
-    | ChangeTurnServerUsername Int String
-    | ChangeTurnServerPassword Int String
-    | ActivateIceServer Int Bool
     | ChangeInterlocutor String
     | Call JsSIP.UserAgent
     | CallDone (Result String JsSIP.MediaStream)
     | CallEnd
     | Hangup
+    | IceServerMsg Int IceServer.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -96,50 +62,14 @@ update msg model =
             ( model, Cmd.none )
 
         AddIceServer initialUrl ->
-            ( { model | iceServers = model.iceServers ++ [ IceServer True initialUrl "" "" ] }
-            , Cmd.none
-            )
+            case IceServer.init initialUrl of
+                Nothing ->
+                    ( model, Cmd.none )
 
-        ChangeIceServerUrl index "" ->
-            ( { model | iceServers = List.Extra.removeAt index model.iceServers }
-            , Cmd.none
-            )
-
-        ChangeIceServerUrl index url ->
-            let
-                updateIceServer iceServer =
-                    { iceServer | url = url }
-            in
-            ( { model | iceServers = List.Extra.updateAt index updateIceServer model.iceServers }
-            , Cmd.none
-            )
-
-        ChangeTurnServerUsername index username ->
-            let
-                updateIceServer iceServer =
-                    { iceServer | username = username }
-            in
-            ( { model | iceServers = List.Extra.updateAt index updateIceServer model.iceServers }
-            , Cmd.none
-            )
-
-        ChangeTurnServerPassword index password ->
-            let
-                updateIceServer iceServer =
-                    { iceServer | password = password }
-            in
-            ( { model | iceServers = List.Extra.updateAt index updateIceServer model.iceServers }
-            , Cmd.none
-            )
-
-        ActivateIceServer index active ->
-            let
-                updateIceServer iceServer =
-                    { iceServer | active = active }
-            in
-            ( { model | iceServers = List.Extra.updateAt index updateIceServer model.iceServers }
-            , Cmd.none
-            )
+                Just lastIceServer ->
+                    ( { model | iceServers = model.iceServers ++ [ lastIceServer ] }
+                    , Cmd.map (always NoOp) IceServer.focusLast
+                    )
 
         ChangeInterlocutor nextInterlocutor ->
             ( { model | interlocutor = nextInterlocutor }
@@ -165,7 +95,7 @@ update msg model =
                     , username = model.interlocutor
                     , withAudio = False
                     , withVideo = True
-                    , iceServers = List.filterMap convertIceServer model.iceServers
+                    , iceServers = List.filterMap IceServer.toJsSIP model.iceServers
                     }
                 )
 
@@ -182,6 +112,19 @@ update msg model =
         Hangup ->
             ( { model | call = RemoteData.NotAsked }
             , JsSIP.hangup
+            )
+
+        IceServerMsg index msgOfIceServer ->
+            ( case Maybe.map (IceServer.update msgOfIceServer) (List.Extra.getAt index model.iceServers) of
+                Nothing ->
+                    model
+
+                Just IceServer.Deleted ->
+                    { model | iceServers = List.Extra.removeAt index model.iceServers }
+
+                Just (IceServer.Updated nextIceServer) ->
+                    { model | iceServers = List.Extra.setAt index nextIceServer model.iceServers }
+            , Cmd.none
             )
 
 
@@ -220,6 +163,7 @@ viewIceServerCreator disabled =
             [ Html.Attributes.type_ "text"
             , Html.Attributes.tabindex 0
             , Html.Attributes.placeholder "stun:127.0.0.1"
+            , Html.Attributes.value ""
             , Html.Attributes.disabled disabled
             , Html.Events.onInput AddIceServer
             ]
@@ -227,85 +171,32 @@ viewIceServerCreator disabled =
         ]
 
 
-viewIceServerChanger : Bool -> Int -> IceServer -> Html Msg
-viewIceServerChanger disabled index { active, url, username, password } =
-    let
-        hasCredentials =
-            isTurnServer url
-    in
-    viewIceServerContainer
-        [ input
-            [ Html.Attributes.type_ "text"
-            , Html.Attributes.tabindex 0
-            , Html.Attributes.value url
-            , Html.Attributes.disabled (disabled || not active)
-            , Html.Events.onInput (ChangeIceServerUrl index)
-            ]
-            []
-
-        --
-        , if hasCredentials then
-            input
-                [ Html.Attributes.type_ "email"
-                , Html.Attributes.tabindex 0
-                , Html.Attributes.value username
-                , Html.Attributes.placeholder "username"
-                , Html.Attributes.disabled (disabled || not active)
-                , Html.Events.onInput (ChangeTurnServerUsername index)
-                ]
-                []
-
-          else
-            text ""
-
-        --
-        , if hasCredentials then
-            input
-                [ Html.Attributes.type_ "password"
-                , Html.Attributes.tabindex 0
-                , Html.Attributes.value password
-                , Html.Attributes.placeholder "password"
-                , Html.Attributes.disabled (disabled || not active)
-                , Html.Events.onInput (ChangeTurnServerPassword index)
-                ]
-                []
-
-          else
-            text ""
-
-        --
-        , label
-            []
-            [ input
-                [ Html.Attributes.type_ "checkbox"
-                , Html.Attributes.tabindex 0
-                , Html.Attributes.checked active
-                , Html.Attributes.disabled disabled
-                , Html.Events.onCheck (ActivateIceServer index)
-                ]
-                []
-            , if active then
-                text "use"
-
-              else
-                text "ignore"
-            ]
-        ]
-
-
-viewIceServers : Bool -> List IceServer -> Html Msg
+viewIceServers : Bool -> List IceServer.Model -> Html Msg
 viewIceServers disabled iceServers =
-    List.indexedMap (viewIceServerChanger disabled) iceServers
+    let
+        lastIndex =
+            List.length iceServers - 1
+    in
+    List.indexedMap
+        (\index iceServer ->
+            viewIceServerContainer
+                [ Html.map
+                    (IceServerMsg index)
+                    (Html.Lazy.lazy3 IceServer.view (index == lastIndex) disabled iceServer)
+                ]
+        )
+        iceServers
         ++ [ viewIceServerCreator disabled ]
         |> div
             [ Html.Attributes.style "margin-bottom" "15px"
             ]
 
 
-viewCallForm : Credentials -> Bool -> Maybe String -> List IceServer -> String -> Html Msg
+viewCallForm : Credentials -> Bool -> Maybe String -> List IceServer.Model -> String -> Html Msg
 viewCallForm credentials busy error iceServers interlocutor =
     form
-        [ Html.Events.onSubmit (Call credentials.userAgent)
+        [ Html.Attributes.novalidate True
+        , Html.Events.onSubmit (Call credentials.userAgent)
         ]
         [ button
             [ Html.Attributes.type_ "submit"

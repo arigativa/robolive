@@ -34,12 +34,18 @@ interface RegisterOptions {
     password: null | string
 }
 
+interface IceServer {
+    url: string;
+    username: null | string;
+    password: null | string;
+}
+
 interface CallOptions {
     user_agent: UA;
     uri: string;
     with_audio: boolean;
     with_video: boolean;
-    ice_servers: Array<string>;
+    ice_servers: Array<IceServer>;
 }
 
 export const register = (ports: {
@@ -96,7 +102,20 @@ export const register = (ports: {
                 },
                 pcConfig: {
                     rtcpMuxPolicy: 'negotiate',
-                    iceServers: options.ice_servers.map(url => ({ urls: url }))
+                    iceServers: options.ice_servers.map(({ url, username, password }): RTCIceServer => {
+                        if (username == null || password == null || username.length === 0 || password.length === 0) {
+                            return {
+                                urls: url
+                            };
+                        }
+
+                        return {
+                            urls: url,
+                            username,
+                            credential: password,
+                            credentialType: 'password'
+                        }
+                    })
                 }
             }
         );
