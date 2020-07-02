@@ -2,11 +2,14 @@ module Room exposing (Model, Msg, initial, subscriptions, update, view)
 
 import Browser.Dom
 import Credentials exposing (Credentials)
-import Html exposing (Html, b, button, div, form, h1, input, p, strong, text, video)
+import Html exposing (Html, b, button, div, form, h1, h3, input, p, strong, text, video)
 import Html.Attributes
 import Html.Events
+import Html.Lazy
 import JsSIP
+import List.Extra
 import RemoteData exposing (RemoteData)
+import Room.IceServer as IceServer
 import Task
 import Utils exposing (hasWhitespaces)
 
@@ -21,14 +24,16 @@ interlocutorInputID =
 
 
 type alias Model =
-    { interlocutor : String
+    { iceServers : List IceServer.Model
+    , interlocutor : String
     , call : RemoteData String JsSIP.MediaStream
     }
 
 
 initial : ( Model, Cmd Msg )
 initial =
-    ( { interlocutor = ""
+    ( { iceServers = []
+      , interlocutor = "robomachine"
       , call = RemoteData.NotAsked
       }
     , Task.attempt (always NoOp) (Browser.Dom.focus interlocutorInputID)
@@ -41,11 +46,13 @@ initial =
 
 type Msg
     = NoOp
+    | AddIceServer String
     | ChangeInterlocutor String
     | Call JsSIP.UserAgent
     | CallDone (Result String JsSIP.MediaStream)
     | CallEnd
     | Hangup
+    | IceServerMsg Int IceServer.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -53,6 +60,16 @@ update msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
+
+        AddIceServer initialUrl ->
+            case IceServer.init initialUrl of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just lastIceServer ->
+                    ( { model | iceServers = model.iceServers ++ [ lastIceServer ] }
+                    , Cmd.map (always NoOp) IceServer.focusLast
+                    )
 
         ChangeInterlocutor nextInterlocutor ->
             ( { model | interlocutor = nextInterlocutor }
@@ -78,6 +95,7 @@ update msg model =
                     , username = model.interlocutor
                     , withAudio = False
                     , withVideo = True
+                    , iceServers = List.filterMap IceServer.toJsSIP model.iceServers
                     }
                 )
 
@@ -94,6 +112,19 @@ update msg model =
         Hangup ->
             ( { model | call = RemoteData.NotAsked }
             , JsSIP.hangup
+            )
+
+        IceServerMsg index msgOfIceServer ->
+            ( case Maybe.map (IceServer.update msgOfIceServer) (List.Extra.getAt index model.iceServers) of
+                Nothing ->
+                    model
+
+                Just IceServer.Deleted ->
+                    { model | iceServers = List.Extra.removeAt index model.iceServers }
+
+                Just (IceServer.Updated nextIceServer) ->
+                    { model | iceServers = List.Extra.setAt index nextIceServer model.iceServers }
+            , Cmd.none
             )
 
 
@@ -118,10 +149,54 @@ subscriptions model =
 -- V I E W
 
 
-viewCallForm : Credentials -> Bool -> Maybe String -> String -> Html Msg
-viewCallForm credentials busy error interlocutor =
+viewIceServerContainer : List (Html msg) -> Html msg
+viewIceServerContainer =
+    div
+        [ Html.Attributes.style "margin-bottom" "5px"
+        ]
+
+
+viewIceServerCreator : Bool -> Html Msg
+viewIceServerCreator disabled =
+    viewIceServerContainer
+        [ input
+            [ Html.Attributes.type_ "text"
+            , Html.Attributes.tabindex 0
+            , Html.Attributes.placeholder "stun:127.0.0.1"
+            , Html.Attributes.value ""
+            , Html.Attributes.disabled disabled
+            , Html.Events.onInput AddIceServer
+            ]
+            []
+        ]
+
+
+viewIceServers : Bool -> List IceServer.Model -> Html Msg
+viewIceServers disabled iceServers =
+    let
+        lastIndex =
+            List.length iceServers - 1
+    in
+    List.indexedMap
+        (\index iceServer ->
+            viewIceServerContainer
+                [ Html.map
+                    (IceServerMsg index)
+                    (Html.Lazy.lazy3 IceServer.view (index == lastIndex) disabled iceServer)
+                ]
+        )
+        iceServers
+        ++ [ viewIceServerCreator disabled ]
+        |> div
+            [ Html.Attributes.style "margin-bottom" "15px"
+            ]
+
+
+viewCallForm : Credentials -> Bool -> Maybe String -> List IceServer.Model -> String -> Html Msg
+viewCallForm credentials busy error iceServers interlocutor =
     form
-        [ Html.Events.onSubmit (Call credentials.userAgent)
+        [ Html.Attributes.novalidate True
+        , Html.Events.onSubmit (Call credentials.userAgent)
         ]
         [ button
             [ Html.Attributes.type_ "submit"
@@ -141,6 +216,15 @@ viewCallForm credentials busy error interlocutor =
             , Html.Events.onInput ChangeInterlocutor
             ]
             []
+
+        --
+        , h3
+            []
+            [ text "Ice Servers"
+            ]
+        , viewIceServers busy iceServers
+
+        --
         , case error of
             Nothing ->
                 text ""
@@ -169,13 +253,13 @@ view credentials model =
         --
         , case model.call of
             RemoteData.NotAsked ->
-                viewCallForm credentials False Nothing model.interlocutor
+                viewCallForm credentials False Nothing model.iceServers model.interlocutor
 
             RemoteData.Loading ->
-                viewCallForm credentials True Nothing model.interlocutor
+                viewCallForm credentials True Nothing model.iceServers model.interlocutor
 
             RemoteData.Failure reason ->
-                viewCallForm credentials False (Just reason) model.interlocutor
+                viewCallForm credentials False (Just reason) model.iceServers model.interlocutor
 
             RemoteData.Success stream ->
                 div []

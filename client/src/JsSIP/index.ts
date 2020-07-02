@@ -15,7 +15,7 @@ class Subs {
         this.unsubs.push(() => port?.unsubscribe(listener));
     }
 
-    public reset(): void {
+    public unsubscribeAll(): void {
         while (this.unsubs.length > 0) {
             const unsubscribe = this.unsubs.pop();
 
@@ -34,9 +34,10 @@ interface RegisterOptions {
     password: null | string
 }
 
-interface RegisterError {
-    code: number;
-    reason: string;
+interface IceServer {
+    url: string;
+    username: null | string;
+    password: null | string;
 }
 
 interface CallOptions {
@@ -44,11 +45,12 @@ interface CallOptions {
     uri: string;
     with_audio: boolean;
     with_video: boolean;
+    ice_servers: Array<IceServer>;
 }
 
 export const register = (ports: {
     js_sip__register?: ElmCmdPort<RegisterOptions>;
-    js_sip__on_registred_err?: ElmSubPort<RegisterError>;
+    js_sip__on_registred_err?: ElmSubPort<string>;
     js_sip__on_registred_ok?: ElmSubPort<UA>;
 
     js_sip__call?: ElmCmdPort<CallOptions>;
@@ -77,10 +79,7 @@ export const register = (ports: {
         const ua = new UA(uaConfig);
 
         ua.on('registrationFailed', ({ response }) => {
-            ports.js_sip__on_registred_err?.send({
-                code: response.status_code,
-                reason: response.reason_phrase
-            })
+            ports.js_sip__on_registred_err?.send(response.reason_phrase)
 
             ua.stop();
         })
@@ -92,7 +91,7 @@ export const register = (ports: {
         ua.start();
     });
 
-    ports.js_sip__call?.subscribe(options => {
+    const onJsSipCall = (options: CallOptions): void => {
         const subs = new Subs();
         const session = options.user_agent.call(
             options.uri,
@@ -102,7 +101,21 @@ export const register = (ports: {
                     video: options.with_video
                 },
                 pcConfig: {
-                    rtcpMuxPolicy: 'negotiate'
+                    rtcpMuxPolicy: 'negotiate',
+                    iceServers: options.ice_servers.map(({ url, username, password }): RTCIceServer => {
+                        if (username == null || password == null || username.length === 0 || password.length === 0) {
+                            return {
+                                urls: url
+                            };
+                        }
+
+                        return {
+                            urls: url,
+                            username,
+                            credential: password,
+                            credentialType: 'password'
+                        }
+                    })
                 }
             }
         );
@@ -147,7 +160,17 @@ export const register = (ports: {
 
         session.on('ended', () => {
             ports.js_sip__on_end?.send(null);
-            subs.reset();
+            subs.unsubscribeAll();
         });
+    }
+
+    ports.js_sip__call?.subscribe(options => {
+        try {
+            onJsSipCall(options)
+        } catch (error) {
+            const { message = 'Unknown error' }: Error = error;
+
+            ports.js_sip__on_call_failed?.send(message);
+        }
     });
 };

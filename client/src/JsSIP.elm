@@ -1,7 +1,7 @@
 port module JsSIP exposing
-    ( MediaStream
+    ( IceServer
+    , MediaStream
     , Protocol(..)
-    , RegistrationError
     , UserAgent
     , call
     , hangup
@@ -92,19 +92,13 @@ register options =
         |> js_sip__register
 
 
-type alias RegistrationError =
-    { code : Int
-    , reason : String
-    }
-
-
-port js_sip__on_registred_err : (RegistrationError -> msg) -> Sub msg
+port js_sip__on_registred_err : (String -> msg) -> Sub msg
 
 
 port js_sip__on_registred_ok : (Value -> msg) -> Sub msg
 
 
-onRegistred : (Result RegistrationError UserAgent -> msg) -> Sub msg
+onRegistred : (Result String UserAgent -> msg) -> Sub msg
 onRegistred tagger =
     Sub.batch
         [ js_sip__on_registred_err (tagger << Err)
@@ -112,11 +106,19 @@ onRegistred tagger =
         ]
 
 
+type alias IceServer =
+    { url : String
+    , username : Maybe String
+    , password : Maybe String
+    }
+
+
 port js_sip__call :
     { user_agent : Value
     , uri : String
     , with_audio : Bool
     , with_video : Bool
+    , ice_servers : List IceServer
     }
     -> Cmd msg
 
@@ -127,6 +129,7 @@ call :
     , username : String
     , withAudio : Bool
     , withVideo : Bool
+    , iceServers : List IceServer
     }
     -> Cmd msg
 call options =
@@ -135,6 +138,7 @@ call options =
         , uri = generateUri options.username options.server
         , with_audio = options.withAudio
         , with_video = options.withVideo
+        , ice_servers = options.iceServers
         }
 
 

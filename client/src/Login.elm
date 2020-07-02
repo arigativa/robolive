@@ -21,7 +21,7 @@ type alias Model =
 
 initial : Model
 initial =
-    { username = ""
+    { username = "robohuman"
     , registration = RemoteData.NotAsked
     }
 
@@ -33,7 +33,7 @@ initial =
 type Msg
     = ChangeUsername String
     | SignIn
-    | Register (Result JsSIP.RegistrationError JsSIP.UserAgent)
+    | Register (Result String JsSIP.UserAgent)
 
 
 type Stage
@@ -81,7 +81,7 @@ update msg model =
 
         Register (Err error) ->
             Updated
-                ( { model | registration = RemoteData.Failure error.reason }
+                ( { model | registration = RemoteData.Failure error }
                 , Cmd.none
                 )
 
