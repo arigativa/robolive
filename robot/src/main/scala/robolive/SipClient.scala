@@ -14,7 +14,6 @@ import org.mjsip.sip.call.{
 }
 import org.mjsip.sip.message.SipMessage
 import org.mjsip.sip.provider.{SipProvider, SipProviderListener}
-import robolive.Main.pipelineDesc
 import robolive.gstreamer.GstManaged
 
 import scala.concurrent.ExecutionContext
