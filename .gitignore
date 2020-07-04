@@ -5,6 +5,7 @@
 .terraform/
 target/
 .idea/
+classes/
 
 # dependencies
 **/node_modules
