@@ -34,3 +34,4 @@ signalling_conf_ready_dir: /etc/kamailio
 signalling_enable_tls: true
 signalling_interface_ip: "{{ host_private_ip }}"
 signalling_public_ip: "{{ host_public_ip }}"
+signalling_ws_port: 4443

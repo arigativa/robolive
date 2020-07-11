@@ -1,5 +1,14 @@
 local config = require "config"
 
+local wsport
+
+local function getWsPort(port) 
+    if not port then
+        return  KSR.pv.get("$var(WS_PORT)")
+    end
+    return port
+end
+
 local function isWS()
     local upgrade = KSR.hdr.get("Upgrade")
     local connection = KSR.hdr.get("Connection")
@@ -31,10 +40,12 @@ end
 
 local function http()
 
+    wsport = getWsPort(port) 
+   
     local port = KSR.pv.get("$Rp")
     KSR.log("info","received HTTP request on port: "..port.."\n")
 
-    if port ~= config.websocket.port then
+    if port ~= wsport then
         KSR.log("info","Restricted request at port: "..port.."\n")
         KSR.x.exit()
     end

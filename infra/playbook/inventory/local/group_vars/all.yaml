@@ -21,3 +21,4 @@ signalling_conf_ready_dir: /etc/kamailio
 signalling_enable_tls: false
 signalling_public_ip: 127.0.0.1
 signalling_interface_ip: 169.28.1.1
+signalling_ws_port: 9031
