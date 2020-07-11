@@ -9,7 +9,7 @@
   tags:
     - relay
 
-- name: Ensure configuration directory
+- name: Ensure configuration directory {{ turn_config_dir }}
   file:
     path: "{{ turn_config_dir }}"
     state: directory

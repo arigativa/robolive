@@ -1,6 +1,6 @@
 return {
     websocket = {
-        port = 4443,
+        port = 9031,
     },
     locationStorage = "location",
     allowedUnames = {

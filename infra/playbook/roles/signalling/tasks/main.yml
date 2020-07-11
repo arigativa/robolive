@@ -115,6 +115,7 @@
   tags:
     - signalling
     - kamailio
+    - signalling_config
 
 - name: Ensure run directory exists
   file:
