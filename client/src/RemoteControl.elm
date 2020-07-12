@@ -3,7 +3,16 @@ module RemoteControl exposing (Model, Msg, initial, subscriptions, update, view)
 import Browser.Events
 import Html exposing (Html, div, text)
 import Html.Events
+import JsSIP
 import Json.Decode as Decode
+import Json.Encode as Encode exposing (Value)
+
+
+encodeKeyCode : Int -> Value
+encodeKeyCode keyCode =
+    [ ( "keyCode", Encode.int keyCode )
+    ]
+        |> Encode.object
 
 
 
@@ -28,14 +37,16 @@ type Msg
     | KeyUp
 
 
-update : Msg -> Model
+update : Msg -> ( Model, Cmd Msg )
 update msg =
     case msg of
-        KeyDown code ->
-            Just code
+        KeyDown keyCode ->
+            ( Just keyCode
+            , JsSIP.sendInfo (encodeKeyCode keyCode)
+            )
 
         KeyUp ->
-            Nothing
+            ( Nothing, Cmd.none )
 
 
 

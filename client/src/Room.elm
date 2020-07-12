@@ -141,18 +141,20 @@ update msg model =
             )
 
         RemoteControlMsg msgOfRemoteControl ->
-            ( case model.call of
+            case model.call of
                 RemoteData.Success { stream } ->
                     let
-                        nextRemoteControl =
+                        ( nextRemoteControl, cmdOfRemoteControl ) =
                             RemoteControl.update msgOfRemoteControl
                     in
-                    { model | call = RemoteData.Success (Connection stream nextRemoteControl) }
+                    ( { model | call = RemoteData.Success (Connection stream nextRemoteControl) }
+                    , Cmd.map RemoteControlMsg cmdOfRemoteControl
+                    )
 
                 _ ->
-                    model
-            , Cmd.none
-            )
+                    ( model
+                    , Cmd.none
+                    )
 
 
 
