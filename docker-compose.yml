@@ -2,8 +2,8 @@ version: '3'
 
 services:
   signaling:
-    image: kamailio-signalling
-    container_name: kamailio-signalling
+    image: robolive-signalling
+    container_name: signalling
     ports:
       - "9030:9030"
       - "9031:9031"
@@ -16,8 +16,8 @@ services:
             ipv4_address: 169.28.1.1
         
   turn: 
-    container_name: coturn
-    image: coturn
+    image: robolive-relay
+    container_name: relay
     restart: always
     ports:
         - 8080:8080

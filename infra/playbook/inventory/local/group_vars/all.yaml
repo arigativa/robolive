@@ -1,3 +1,4 @@
+inventory: local 
 turn_external_ip: 127.0.0.1
 turn_internal_ip: 169.28.1.4
 turn_raw_port: 8080

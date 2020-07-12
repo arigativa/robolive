@@ -1,0 +1,46 @@
+- name: Install Coturn - relay server
+  apt:
+    pkg:
+      - coturn
+  notify:
+    - Start Coturn
+  tags:
+    - relay
+
+- name: Ensure configuration directory {{ turn_config_dir }}
+  file:
+    path: "{{ turn_config_dir }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  notify:
+    - Start Coturn
+  tags:
+    - relay
+    - relay_config
+
+- name: Copy templates to the Coturn configuration folder
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+  with_items:
+    - { src: coturn.conf.j2, dest: "{{ turn_config_dir }}/{{ turn_config_file }}" }
+  notify:
+    - Start Coturn
+  tags:
+    - relay
+    - relay_config
+
+- name: Copy systemd service file to server
+  template:
+    src: coturn.service
+    dest: /lib/systemd/system/
+    owner: root
+    group: root
+  notify:
+    - Start Coturn
+  tags:
+    - relay

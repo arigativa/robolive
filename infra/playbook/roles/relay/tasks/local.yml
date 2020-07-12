@@ -1,0 +1,9 @@
+- name: ensure docker image
+  command: docker build -t robolive-relay -f ./roles/relay/Dockerfile .
+
+- name: Porvide configuration files
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  with_items:
+    - { src: coturn.conf, dest: "{{ turn_config_dir }}/{{ turn_config_file }}" }

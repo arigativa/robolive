@@ -1,0 +1,146 @@
+- name: Create Kamailio group
+  group: name={{ kamailio_group }}
+  tags: 
+    - deploy
+
+- name: Create Kamailio user
+  user: name={{ kamailio_user }} home={{ kamailio_home_directory }} group={{ kamailio_group }}
+  tags:
+    - deploy
+
+- name: Install Kamailio runtime dependencies [1/2]
+  apt:
+    pkg:
+      - libssl1.1
+      - openssl
+      - libcurl4
+      - libxml2
+      - libpcre16-3
+      - libpcre32-3
+      - libpcrecpp0v5
+      - lua5.1
+      - luarocks
+  tags:
+    - signalling
+    - kamailio
+
+- name: Install Kamailio runtime dependencies [2/2]
+  command: luarocks install lua-cjson
+  tags:
+    - signalling
+    - kamailio
+
+- name: Ensure package directory
+  file:
+    path: "{{ signalling_package_dir }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  tags:
+    - signalling
+    - kamailio
+
+- name: Copy Kamailio package
+  copy:
+    src: "{{ signalling_kamailio_package }}"
+    dest: "{{ signalling_kamailio_package_local }}"
+    owner: root
+    group: root
+  tags:
+    - signalling
+    - kamailio
+  register: kamilio_package
+
+- name: Extract Kamailio
+  unarchive:
+    src: "{{ signalling_kamailio_package_local }}"
+    dest: "{{ signalling_package_dir }}"
+    remote_src: yes
+    owner: root
+    group: root
+  when: kamilio_package.changed
+  notify:
+    - Start Kamailio
+  tags:
+    - signalling
+    - kamailio
+
+# Configuration
+
+# TODO pre-uploaded keys are used here
+- name: Copy certificates
+  copy:
+    src: "{{ item.src }}"
+    remote_src: yes
+    dest: "{{ item.dest }}"
+    owner: "{{ kamailio_user }}"
+    group: "{{ kamailio_group }}"
+    mode: '0600'
+  with_items:
+    - { src: "/etc/letsencrypt/live/rl.arigativa.ru/privkey.pem", dest: "{{ kamailio_private_key }}" }
+    - { src: "/etc/letsencrypt/live/rl.arigativa.ru/cert.pem", dest: "{{ kamailio_certificate }}" }
+    - { src: "/etc/letsencrypt/live/rl.arigativa.ru/fullchain.pem", dest: "{{ kamailio_ca_list }}" }
+  tags:
+    - signalling
+    - kamailio
+
+- name: Ensure configuration directory
+  file:
+    path: "{{ signalling_conf_dir }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  tags:
+    - signalling
+    - kamailio
+
+- name: Extract engine scripts
+  unarchive:
+    src: engine.tar.gz
+    dest: "{{ signalling_conf_dir }}"
+    owner: root
+    group: root
+  notify:
+   - Start Kamailio
+  tags:
+    - signalling
+    - kamailio
+
+- name: Provide configuration files
+  template:
+    src: "{{ item }}"
+    dest: "{{ signalling_conf_dir }}/{{ item }}"
+  with_items:
+    - "kamailio.cfg"
+    - "tls.cfg"
+  tags:
+    - signalling
+    - kamailio
+    - signalling_config
+
+- name: Ensure run directory exists
+  file:
+    path: "{{ kamailio_run_directory }}"
+    state: directory
+    mode: '0755'
+    owner: "{{ kamailio_user }}"
+    group: "{{ kamailio_group }}"
+  tags:
+    - signalling
+    - kamailio
+
+# Service definition
+
+- name: Copy systemd service file to server
+  template:
+    src: kamailio.service
+    dest: /etc/systemd/system
+    owner: root
+    group: root
+  notify:
+    - Start Kamailio
+  tags:
+    - signalling
+    - kamailio

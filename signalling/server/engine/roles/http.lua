@@ -51,7 +51,7 @@ local function http()
     end
 
     if isWS() then
-        -- if will add API then need to handle retur states 
+        -- if will add API then need to handle return states 
         handleWS() 
         KSR.x.exit()
     end

@@ -1,4 +1,5 @@
 
+inventory: production
 main_domain: rl.arigativa.ru
 main_domain_tls_cert: /etc/letsencrypt/live/rl.arigativa.ru/cert.pem
 main_domain_tls_priv: /etc/letsencrypt/live/rl.arigativa.ru/privkey.pem
