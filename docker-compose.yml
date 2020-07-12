@@ -7,7 +7,6 @@ services:
     ports:
       - "9030:9030"
       - "9031:9031"
-      - "4443:4443"
     volumes:
       - ./tmp/config:/etc/kamailio
       - ./signalling/server/engine:/etc/kamailio/engine
@@ -21,7 +20,7 @@ services:
     restart: always
     ports:
         - 8080:8080
-        - 4444:4444
+        - 4443:4443
         - 46000-46100:46000-46100
     volumes:
         - "./tmp/config:/etc/coturn"
