@@ -8,6 +8,7 @@ import Html.Events
 import Html.Lazy
 import JsSIP
 import List.Extra
+import RemoteControl
 import RemoteData exposing (RemoteData)
 import Room.IceServer as IceServer
 import Task
@@ -23,10 +24,16 @@ interlocutorInputID =
 -- M O D E L
 
 
+type alias Connection =
+    { stream : JsSIP.MediaStream
+    , remoteControl : RemoteControl.Model
+    }
+
+
 type alias Model =
     { iceServers : List IceServer.Model
     , interlocutor : String
-    , call : RemoteData String JsSIP.MediaStream
+    , call : RemoteData String Connection
     }
 
 
@@ -53,6 +60,7 @@ type Msg
     | CallEnd
     | Hangup
     | IceServerMsg Int IceServer.Msg
+    | RemoteControlMsg RemoteControl.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -99,8 +107,13 @@ update msg model =
                     }
                 )
 
-        CallDone result ->
-            ( { model | call = RemoteData.fromResult result }
+        CallDone (Err err) ->
+            ( { model | call = RemoteData.Failure err }
+            , Cmd.none
+            )
+
+        CallDone (Ok stream) ->
+            ( { model | call = RemoteData.Success (Connection stream RemoteControl.initial) }
             , Cmd.none
             )
 
@@ -127,6 +140,22 @@ update msg model =
             , Cmd.none
             )
 
+        RemoteControlMsg msgOfRemoteControl ->
+            case model.call of
+                RemoteData.Success { stream } ->
+                    let
+                        ( nextRemoteControl, cmdOfRemoteControl ) =
+                            RemoteControl.update msgOfRemoteControl
+                    in
+                    ( { model | call = RemoteData.Success (Connection stream nextRemoteControl) }
+                    , Cmd.map RemoteControlMsg cmdOfRemoteControl
+                    )
+
+                _ ->
+                    ( model
+                    , Cmd.none
+                    )
+
 
 
 -- S U B S C R I P T I O N S
@@ -138,8 +167,11 @@ subscriptions model =
         RemoteData.Loading ->
             JsSIP.onCalled CallDone
 
-        RemoteData.Success _ ->
-            JsSIP.onEnd CallEnd
+        RemoteData.Success { remoteControl } ->
+            Sub.batch
+                [ JsSIP.onEnd CallEnd
+                , Sub.map RemoteControlMsg (RemoteControl.subscriptions remoteControl)
+                ]
 
         _ ->
             Sub.none
@@ -261,7 +293,7 @@ view credentials model =
             RemoteData.Failure reason ->
                 viewCallForm credentials False (Just reason) model.iceServers model.interlocutor
 
-            RemoteData.Success stream ->
+            RemoteData.Success { stream, remoteControl } ->
                 div []
                     [ p []
                         [ text "In call with "
@@ -278,5 +310,6 @@ view credentials model =
                         , JsSIP.srcObject stream
                         ]
                         []
+                    , Html.map RemoteControlMsg (RemoteControl.view remoteControl)
                     ]
         ]

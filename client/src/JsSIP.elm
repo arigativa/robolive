@@ -9,12 +9,13 @@ port module JsSIP exposing
     , onEnd
     , onRegistred
     , register
+    , sendInfo
     , srcObject
     )
 
 import Html
 import Html.Attributes
-import Json.Encode exposing (Value)
+import Json.Encode exposing (Value, encode)
 
 
 type UserAgent
@@ -154,6 +155,14 @@ onCalled tagger =
         [ js_sip__on_call_failed (tagger << Err)
         , js_sip__on_call_confirmed (tagger << Ok << MediaStream)
         ]
+
+
+port js_sip__send_info : String -> Cmd msg
+
+
+sendInfo : Value -> Cmd msg
+sendInfo value =
+    js_sip__send_info (encode 0 value)
 
 
 port js_sip__hangup : () -> Cmd msg

@@ -57,6 +57,8 @@ export const register = (ports: {
     js_sip__on_call_failed?: ElmSubPort<string>;
     js_sip__on_call_confirmed?: ElmSubPort<MediaStream>;
 
+    js_sip__send_info: ElmCmdPort<string>;
+
     js_sip__hangup?: ElmCmdPort;
 
     js_sip__on_end?: ElmSubPort;
@@ -151,6 +153,11 @@ export const register = (ports: {
             if (remoteStreams.length > 0) {
                 ports.js_sip__on_call_confirmed?.send(remoteStreams[ 0 ].clone());
             }
+
+            subs.subscribe(
+                ports.js_sip__send_info,
+                json => session.sendInfo('application/json', json)
+            );
 
             subs.subscribe(
                 ports.js_sip__hangup,
