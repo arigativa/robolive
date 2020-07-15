@@ -9,11 +9,21 @@ final case class SdpMessage(
   private val attributeMap = sessionDescription.a.groupBy(attr => attr.name)
   private val mediaMap = media.map(m => m.m.media -> m).toMap
 
-  def findAttributes(name: String): Seq[SdpAttribute] = {
+  def getRawAttributes(name: String): Seq[SdpAttribute] = {
     attributeMap.get(name).toSeq.flatten
   }
 
-  def findMedia(name: String): Option[Media] = {
+  def getAttributes[T: AttributeValueDecoder](name: String): Either[Seq[String], Seq[T]] = {
+    val attrs = attributeMap.get(name).toSeq.flatten.map(_.as[T])
+    val success = attrs.collect { case Right(value) => value }
+    if (success.length == attrs.length) {
+      Right(success)
+    } else {
+      Left(attrs.collect { case Left(value) => value })
+    }
+  }
+
+  def getMedia(name: String): Option[Media] = {
     mediaMap.get(name)
   }
 
@@ -175,7 +185,7 @@ object SdpMessage {
       s"Fail to parse attribute '$name'. Attribute value is empty"
     def failToParseAttributeMessage(name: String, value: String) =
       s"Fail to parse attribute '$name:$value'"
-    def fromValue[T](value: T): AttributeValueDecoder[T] = (v: Option[String]) => Right(value)
+    def fromValue[T](value: T): AttributeValueDecoder[T] = (_: Option[String]) => Right(value)
     def nonEmpty[T](name: String)(c: String => T): AttributeValueDecoder[T] = {
       case Some(value) => Right(c(value))
       case None => Left(attributeIsEmptyMessage(name))
@@ -218,6 +228,11 @@ object SdpMessage {
     k: Option[EncryptionKey],
     a: Seq[SdpAttribute],
   ) extends SdpString {
+
+    def attributeAdded(attr: SdpAttribute): SessionDescription = this.copy(a = a.appended(attr))
+
+    def attributesAdded(attrs: Seq[SdpAttribute]): SessionDescription = this.copy(a = a ++ attrs)
+
     override def toSdpString: String = {
       (Seq(
         v.toSdpString,
@@ -254,8 +269,22 @@ object SdpMessage {
   ) extends SdpString {
     private val attributeMap = a.groupBy(attr => attr.name)
 
-    def findAttributes(name: String): Seq[SdpAttribute] = {
+    def attributeAdded(attr: SdpAttribute): Media = this.copy(a = a.appended(attr))
+
+    def attributesAdded(attrs: Seq[SdpAttribute]): Media = this.copy(a = a ++ attrs)
+
+    def getRawAttributes(name: String): Seq[SdpAttribute] = {
       attributeMap.get(name).toSeq.flatten
+    }
+
+    def getAttributes[T: AttributeValueDecoder](name: String): Either[Seq[String], Seq[T]] = {
+      val attrs = attributeMap.get(name).toSeq.flatten.map(_.as[T])
+      val success = attrs.collect { case Right(value) => value }
+      if (success.length == attrs.length) {
+        Right(success)
+      } else {
+        Left(attrs.collect { case Left(value) => value })
+      }
     }
 
     override def toSdpString: String = {

@@ -5,22 +5,24 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import org.freedesktop.gstreamer.webrtc._
 import org.freedesktop.gstreamer.{Element, Pad, Pipeline, SDPMessage, StateChangeReturn}
-import org.mjsip.sdp.SdpMessage
+import sdp.SdpMessage
 import robolive.gstreamer.GstManaged.GSTInit
 import robolive.gstreamer.bindings.GstWebRTCDataChannel
+import sdp.SdpMessage.{AttributeValueDecoder, RawValueAttribute}
 
 import scala.concurrent.{Future, Promise}
 
 final class WebRTCBinManaged(webRTCBin: WebRTCBin) extends AutoCloseable {
   import WebRTCBinManaged._
 
-  private def fromGstSdp(gstSdp: WebRTCSessionDescription): SdpMessage = {
-    new SdpMessage(gstSdp.getSDPMessage.toString)
+  private def fromGstSdp(gstSdp: WebRTCSessionDescription): Either[Seq[String], SdpMessage] = {
+    SdpMessage(gstSdp.getSDPMessage.toString)
   }
 
   private def toGstSdp(sdp: SdpMessage, sdpType: WebRTCSDPType): WebRTCSessionDescription = {
+    val sdpString = sdp.toSdpString
     val gstSdp = new SDPMessage()
-    gstSdp.parseBuffer(sdp.toString)
+    gstSdp.parseBuffer(sdpString)
     new WebRTCSessionDescription(sdpType, gstSdp)
   }
 
@@ -42,7 +44,8 @@ final class WebRTCBinManaged(webRTCBin: WebRTCBin) extends AutoCloseable {
     val cs = new ConcurrentLinkedQueue[IceCandidate]()
     val candidatesCount = new AtomicInteger(0)
     val cb: WebRTCBin.ON_ICE_CANDIDATE = (sdpMLineIndex: Int, candidate: String) => {
-      cs.add(IceCandidate(sdpMLineIndex, candidate))
+      val value = candidate.substring(candidate.indexOf(":") + 1)
+      cs.add(IceCandidate(sdpMLineIndex, value))
       if (candidatesCount.incrementAndGet() > 20 && !p.isCompleted) {
         import scala.jdk.CollectionConverters._
         p.success(cs.iterator().asScala.toSeq)
@@ -55,7 +58,14 @@ final class WebRTCBinManaged(webRTCBin: WebRTCBin) extends AutoCloseable {
   def createOffer(): Future[SdpMessage] = {
     val p = Promise[SdpMessage]()
     val cb: WebRTCBin.CREATE_OFFER =
-      (d: WebRTCSessionDescription) => p.success(fromGstSdp(d))
+      (d: WebRTCSessionDescription) => {
+        fromGstSdp(d) match {
+          case Right(value) => p.success(value)
+          case Left(errors) =>
+            val err = s"Can not parse GStreamer SdpMessage: ${errors.mkString(", ")}"
+            p.failure(new RuntimeException(err))
+        }
+      }
     webRTCBin.createOffer(cb)
     p.future
   }
@@ -63,25 +73,29 @@ final class WebRTCBinManaged(webRTCBin: WebRTCBin) extends AutoCloseable {
   def createAnswer(): Future[SdpMessage] = {
     val p = Promise[SdpMessage]()
     val cb: WebRTCBin.CREATE_ANSWER =
-      (d: WebRTCSessionDescription) => p.success(fromGstSdp(d))
+      (d: WebRTCSessionDescription) =>
+        fromGstSdp(d) match {
+          case Right(value) => p.success(value)
+          case Left(errors) =>
+            val err = s"Can not parse GStreamer SdpMessage: ${errors.mkString(", ")}"
+            p.failure(new RuntimeException(err))
+        }
     webRTCBin.createAnswer(cb)
     p.future
   }
 
   def addIceCandidate(candidate: IceCandidate): Unit = {
-    webRTCBin.addIceCandidate(candidate.sdpMLineIndex, candidate.candidate)
+    webRTCBin.addIceCandidate(candidate.sdpMLineIndex, s"candidate:${candidate.candidate}")
   }
 
   private def getIceCandidatesFromSdpMessage(message: SdpMessage): Seq[IceCandidate] = {
-    import scala.jdk.CollectionConverters._
-
-    (for {
-      (media, index) <- message.getMediaDescriptors.asScala.zipWithIndex
-      candidates = media.getAttributes("candidate").iterator.toList
-      iceCandidate <- candidates
+    for {
+      (media, index) <- message.media.zipWithIndex
+      candidate <- media.getRawAttributes("candidate")
+      value <- candidate.valueOpt
     } yield {
-      IceCandidate(index, iceCandidate.getValue)
-    }).toSeq
+      IceCandidate(index, value)
+    }
   }
 
   def setLocalAnswer(answer: SdpMessage): Unit = {
@@ -104,9 +118,13 @@ final class WebRTCBinManaged(webRTCBin: WebRTCBin) extends AutoCloseable {
     candidates.foreach(addIceCandidate)
   }
 
-  def getRemoteDescription: SdpMessage = fromGstSdp(webRTCBin.getRemoteDescription)
+  def getRemoteDescription: Either[Seq[String], SdpMessage] = fromGstSdp(
+    webRTCBin.getRemoteDescription
+  )
 
-  def getLocalDescription: SdpMessage = fromGstSdp(webRTCBin.getLocalDescription)
+  def getLocalDescription: Either[Seq[String], SdpMessage] = fromGstSdp(
+    webRTCBin.getLocalDescription
+  )
 
   def setStunServer(server: String): Unit = webRTCBin.setStunServer(server)
 
