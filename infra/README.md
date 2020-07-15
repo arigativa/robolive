@@ -57,3 +57,4 @@ ansible-playbook -i inventory/production playbook.yml
 cd infra/playbook
 ansible-inventory -i inventory/production --list --playbook-dir ./ -vvv
 ```
+
