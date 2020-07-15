@@ -2,7 +2,6 @@ package robolive
 
 import java.util
 
-import org.mjsip.sdp.SdpMessage
 import org.mjsip.sip.address.{NameAddress, SipURI}
 import org.mjsip.sip.call.{
   Call,
@@ -15,6 +14,7 @@ import org.mjsip.sip.call.{
 import org.mjsip.sip.message.SipMessage
 import org.mjsip.sip.provider.{SipProvider, SipProviderListener}
 import robolive.gstreamer.GstManaged
+import sdp.SdpMessage
 
 import scala.concurrent.ExecutionContext
 
@@ -71,8 +71,13 @@ final class SIPCallEventHandler(controller: WebRTCController)(
     sdp: String,
     invite: SipMessage
   ): Unit = {
-    val extendedCall = call.asInstanceOf[ExtendedCall]
-    controller.makeCall(extendedCall, new SdpMessage(sdp))
+    SdpMessage(sdp) match {
+      case Right(sdpMessage) =>
+        val extendedCall = call.asInstanceOf[ExtendedCall]
+        controller.makeCall(extendedCall, sdpMessage)
+      case Left(errors) =>
+        println(s"Can no accept invite, sdp parsing error: ${errors.mkString(", ")}")
+    }
   }
 
   /** Callback function called when arriving a 183 Session Progress */
@@ -120,7 +125,9 @@ final class SIPCallEventHandler(controller: WebRTCController)(
     content_type: String,
     body: Array[Byte],
     msg: SipMessage
-  ): Unit = ???
+  ): Unit = {
+    println(s"Button pressed: $msg")
+  }
 
   /** Callback function called when arriving a new Re-INVITE method (re-inviting/call modify) */
   override def onCallModify(call: Call, sdp: String, invite: SipMessage): Unit = ???

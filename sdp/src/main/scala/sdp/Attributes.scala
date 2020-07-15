@@ -48,7 +48,7 @@ object Attributes {
     }
   }
   final case class RtpMap(
-    payloadType: String,
+    payloadType: Int,
     encodingName: String,
     clockRate: Int,
     encodingParameters: Seq[String],
@@ -59,13 +59,20 @@ object Attributes {
       if (rtpMapRaw.size == 2) {
         val encodingRaw = rtpMapRaw(1).split("/")
         if (encodingRaw.size >= 2) {
-          val payloadType = rtpMapRaw(0)
+          val payloadType = rtpMapRaw(0).toIntOption
+            .toRight(s"Can not parse payload type '${rtpMapRaw(0)}', not an integer value")
+
           val encodingName = encodingRaw(0)
           val clockRate = encodingRaw(1).toIntOption.toRight(
             AttributeValueDecoder.failToParseAttributeMessage("rtpmap", encodingRaw(1))
           )
           val params = encodingRaw.slice(2, encodingRaw.size).toSeq
-          clockRate.map(RtpMap(payloadType, encodingName, _, params))
+          for {
+            cr <- clockRate
+            pt <- payloadType
+          } yield {
+            RtpMap(pt, encodingName, cr, params)
+          }
         } else {
           Left(AttributeValueDecoder.failToParseAttributeMessage("rtpmap", rtpMapRaw(1)))
         }

@@ -3,10 +3,12 @@ package robolive
 import java.util.concurrent.CountDownLatch
 
 import org.freedesktop.gstreamer._
-import org.mjsip.sdp.{AttributeField, SdpMessage}
+import org.mjsip.sdp.AttributeField
 import org.mjsip.sip.call.ExtendedCall
 import robolive.gstreamer.WebRTCBinManaged.IceCandidate
 import robolive.gstreamer.{GstManaged, PipelineManaged, WebRTCBinManaged}
+import sdp.SdpMessage.RawValueAttribute
+import sdp.{Attributes, SdpMessage}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -121,12 +123,14 @@ final class WebRTCController(videoSrc: String)(implicit gst: GstManaged.GSTInit.
     }
   }
 
-  private def getRtpType(sdp: SdpMessage): Option[Int] = {
-    val video = sdp.getMediaDescriptor("video")
-    val rtpmaps = video.getAttributes("rtpmap")
-    rtpmaps
-      .find(_.getAttributeValue.contains("VP8"))
-      .flatMap(_.getAttributeValue.split(" ").head.toIntOption)
+  private def getRtpType(sdp: SdpMessage): Either[Seq[String], Int] = {
+    for {
+      video <- sdp.getMedia("video").toRight(Seq("Video media not found"))
+      rtpMaps <- video.getAttributes[Attributes.RtpMap]("rtpmap")
+      attr <- rtpMaps.find(_.encodingName == "VP8").toRight(Seq("VP8 codec not found in RtpMap"))
+    } yield {
+      attr.payloadType
+    }
   }
 
   def makeCall(call: ExtendedCall, remoteSdp: SdpMessage)(
@@ -136,7 +140,7 @@ final class WebRTCController(videoSrc: String)(implicit gst: GstManaged.GSTInit.
       case WebRTCControllerPlayState.Wait | WebRTCControllerPlayState.Failure =>
         println("STATE: WAIT | FAILURE STATE")
         getRtpType(remoteSdp) match {
-          case Some(rtpType) =>
+          case Right(rtpType) =>
             println(s"STATE: RTP TYPE EXTRACTED $rtpType")
             if (start(rtpType) == StateChangeReturn.SUCCESS) {
               state = WebRTCControllerPlayState.Busy
@@ -150,14 +154,17 @@ final class WebRTCController(videoSrc: String)(implicit gst: GstManaged.GSTInit.
               } yield {
                 webRTCBin.setLocalAnswer(answer)
 
-                localIceCandidates.foreach {
-                  case IceCandidate(mIdx, value) =>
-                    answer.getMediaDescriptors.get(mIdx).addAttribute(new AttributeField(value))
+                val mediasWithCandidates = localIceCandidates.groupBy(_.sdpMLineIndex).map {
+                  case (mIndex, candidates) =>
+                    val attrs = candidates.map(c => RawValueAttribute("candidate", c.candidate))
+                    answer.media(mIndex).attributesAdded(attrs)
                 }
 
-                println(s"ANSWER PREPARED:\n $answer")
+                val answerWithCandidates = answer.copy(media = mediasWithCandidates.toSeq)
 
-                call.accept(answer.toString)
+                println(s"ANSWER PREPARED:\n ${answerWithCandidates.toSdpString}")
+
+                call.accept(answerWithCandidates.toSdpString)
               }).recover {
                 case error =>
                   error.printStackTrace()
@@ -169,9 +176,9 @@ final class WebRTCController(videoSrc: String)(implicit gst: GstManaged.GSTInit.
               println("STATE: FAILED TO START")
               Future.successful(call.refuse())
             }
-          case None =>
+          case Left(errors) =>
             state = WebRTCControllerPlayState.Failure
-            println("STATE: FAILED TO EXTRACT RTPTYPE")
+            println(s"STATE: FAILED TO EXTRACT RTPTYPE: ERRORS: ${errors.mkString(", ")}")
             Future.successful(call.refuse())
         }
       case WebRTCControllerPlayState.Busy =>
