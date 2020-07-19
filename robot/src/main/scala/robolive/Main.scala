@@ -3,9 +3,7 @@ package robolive
 import java.util.concurrent.CountDownLatch
 
 import org.freedesktop.gstreamer._
-import org.mjsip.sdp.AttributeField
 import org.mjsip.sip.call.ExtendedCall
-import robolive.gstreamer.WebRTCBinManaged.IceCandidate
 import robolive.gstreamer.{GstManaged, PipelineManaged, WebRTCBinManaged}
 import sdp.SdpMessage.RawValueAttribute
 import sdp.{Attributes, SdpMessage}
@@ -133,6 +131,10 @@ final class WebRTCController(videoSrc: String)(implicit gst: GstManaged.GSTInit.
     }
   }
 
+  private def fixSdpForChrome(sdp: String) = {
+    sdp + System.lineSeparator()
+  }
+
   def makeCall(call: ExtendedCall, remoteSdp: SdpMessage)(
     implicit ec: ExecutionContext
   ): Future[Unit] = synchronized {
@@ -164,7 +166,8 @@ final class WebRTCController(videoSrc: String)(implicit gst: GstManaged.GSTInit.
 
                 println(s"ANSWER PREPARED:\n ${answerWithCandidates.toSdpString}")
 
-                call.accept(answerWithCandidates.toSdpString)
+                val sdpString = fixSdpForChrome(answerWithCandidates.toSdpString)
+                call.accept(sdpString)
               }).recover {
                 case error =>
                   error.printStackTrace()
