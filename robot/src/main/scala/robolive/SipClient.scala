@@ -131,7 +131,7 @@ final class SIPCallEventHandler(controller: WebRTCController)(
     body: Array[Byte],
     msg: SipMessage
   ): Unit = {
-    logger.info(s"Button pressed: $msg")
+    controller.clientInput(msg.getStringBody)
   }
 
   /** Callback function called when arriving a new Re-INVITE method (re-inviting/call modify) */
