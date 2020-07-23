@@ -17,16 +17,13 @@ object Main extends App {
   SLF4JBridgeHandler.removeHandlersForRootLogger()
   SLF4JBridgeHandler.install()
 
-  val videoSrc = {
-    val defaultVideoSrcPipeline = "videotestsrc is-live=true pattern=ball ! videoconvert"
-    getEnv("VIDEO_SRC", defaultVideoSrcPipeline)
-  }
-
+  val videoSrc = getEnv("VIDEO_SRC", "videotestsrc is-live=true pattern=ball ! videoconvert")
   val robotName = getEnv("ROBOT_NAME", "robomachine")
-
   val signallingUri = getEnv("SIGNALLING_URI", "localhost:9031")
 
-  logger.info(s"Starting Robolive inc. $robotName")
+  logger.info(s"Starting Robolive inc. robot")
+  logger.info(s"Hello, I'm $robotName")
+  logger.info(s"Trying to connect to signalling `$signallingUri`")
 
   val latch = new CountDownLatch(1)
 
