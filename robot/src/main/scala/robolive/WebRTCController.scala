@@ -19,37 +19,44 @@ final class WebRTCController(videoSrc: String)(implicit gst: GstManaged.GSTInit.
   @volatile private var state: WebRTCControllerPlayState = WebRTCControllerPlayState.Wait
 
   private def start(rtcType: Int): StateChangeReturn = synchronized {
-    val pipelineDescription = WebRTCController.pipelineDescription(
-      videoSrc = videoSrc,
-      rtcType = rtcType,
-      stunServerUrl = "stun://stun.l.google.com:19302"
-    )
+    try {
+      val pipelineDescription = WebRTCController.pipelineDescription(
+        videoSrc = videoSrc,
+        rtcType = rtcType,
+        stunServerUrl = "stun://stun.l.google.com:19302"
+      )
 
-    pipeline = PipelineManaged(
-      name = "robolive-robot-pipeline",
-      description = pipelineDescription,
-    )
-    pipeline.ready()
-    val bus = pipeline.getBus
+      pipeline = PipelineManaged(
+        name = "robolive-robot-pipeline",
+        description = pipelineDescription,
+      )
+      pipeline.ready()
+      val bus = pipeline.getBus
 
-    val eosHandler: Bus.EOS =
-      (source: GstObject) => logger.info(s"EOS ${source.getName}")
+      val eosHandler: Bus.EOS =
+        (source: GstObject) => logger.info(s"EOS ${source.getName}")
 
-    val errorHandler: Bus.ERROR = (source: GstObject, code: Int, message: String) =>
-      logger.error(s"Error ${source.getName}: $code $message")
+      val errorHandler: Bus.ERROR = (source: GstObject, code: Int, message: String) =>
+        logger.error(s"Error ${source.getName}: $code $message")
 
-    bus.connect(eosHandler)
-    bus.connect(errorHandler)
+      bus.connect(eosHandler)
+      bus.connect(errorHandler)
 
-    val stateChange = pipeline.play()
-    if (stateChange == StateChangeReturn.SUCCESS) {
-      webRTCBin = WebRTCBinManaged(pipeline, "sendrecv")
-      webRTCBin.onPadAdded(onIncomingStream)
-    } else {
-      pipeline = null
-      webRTCBin = null
+      val stateChange = pipeline.play()
+      if (stateChange == StateChangeReturn.SUCCESS) {
+        webRTCBin = WebRTCBinManaged(pipeline, "sendrecv")
+        webRTCBin.onPadAdded(onIncomingStream)
+      } else {
+        pipeline = null
+        webRTCBin = null
+      }
+      stateChange
+    } catch {
+      case err: Throwable =>
+        logger.error("starting failed", err)
+        state = WebRTCControllerPlayState.Failure
+        StateChangeReturn.FAILURE
     }
-    stateChange
   }
 
   def dispose(): Unit = synchronized {
