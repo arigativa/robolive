@@ -11,10 +11,6 @@ import scala.concurrent.ExecutionContext
 object Main extends App {
   private val logger = LoggerFactory.getLogger(getClass.getName)
 
-  val robotName = "robomachine"
-
-  logger.info(s"Starting robot: $robotName")
-
   implicit val ec: ExecutionContext = ExecutionContext.global
 
   import org.slf4j.bridge.SLF4JBridgeHandler
@@ -26,6 +22,12 @@ object Main extends App {
     getEnv("VIDEO_SRC", defaultVideoSrcPipeline)
   }
 
+  val robotName = getEnv("ROBOT_NAME", "robomachine")
+
+  val signallingUri = getEnv("SIGNALLING_URI", "localhost:9031")
+
+  logger.info(s"Starting Robolive inc. $robotName")
+
   val latch = new CountDownLatch(1)
 
   implicit val gstInit: GstManaged.GSTInit.type = GstManaged(robotName, new Version(1, 14))
@@ -33,7 +35,7 @@ object Main extends App {
   val controller = new WebRTCController(videoSrc)
   val sipEventsHandler = new SIPCallEventHandler(controller)
   val sipConfig = SipConfig(
-    registrarUri = "localhost:9031",
+    registrarUri = signallingUri,
     name = robotName,
     protocol = "tcp",
   )
