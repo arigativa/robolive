@@ -68,7 +68,7 @@ export SIGNALLING_URI='localhost:9031'
 To run robot on Jetson Nano with CSI camera you can override video/audio source:
 ```shell script
 export AUDIO_SRC='audiotestsrc wave=silence ! audioconvert'
-export VIDEO_SRC='nvarguscamerasrc sensor_mode=3 ! video/x-raw(memory:NVMM),width=1280, height=720, framerate=60/1, format=NV12 ! videoconvert'
+export VIDEO_SRC='nvarguscamerasrc sensor_mode=3 ! video/x-raw(memory:NVMM),width=1280, height=720, framerate=60/1, format=NV12 ! nvvidconv flip-method=0 ! videoconvert'
 ```
 
 | # | Resolution  | FPS | Exposure, us |  
