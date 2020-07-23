@@ -92,7 +92,8 @@ final class WebRTCController(videoSrc: String)(implicit gst: GstManaged.GSTInit.
         if (name.startsWith(receiverName)) {
           val queue = ElementFactory.make("queue", "incomingBuffer")
           val convert = ElementFactory.make("videoconvert", "videoconvert")
-          val sink = ElementFactory.make("autovideosink", "autovideosink")
+          val sink = ElementFactory.make("filesink", "filesink")
+          sink.set("location", "/dev/null")
           pipeline.add(queue)
           pipeline.add(convert)
           pipeline.add(sink)
