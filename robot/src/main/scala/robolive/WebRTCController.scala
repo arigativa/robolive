@@ -145,14 +145,21 @@ final class WebRTCController(videoSrc: String)(implicit gst: GstManaged.GSTInit.
             logger.debug(s"Extracted rtpType: $rtpType")
 
             if (start(rtpType) == StateChangeReturn.SUCCESS) {
+              logger.info("Call accepted")
               state = WebRTCControllerPlayState.Busy
 
               call.ring()
 
               webRTCBin.setRemoteOffer(remoteSdp)
+              logger.debug(s"Remote offer set: ${remoteSdp.toSdpString}")
               (for {
                 localIceCandidates <- webRTCBin.fetchIceCandidates()
+                localIceCandidatesStr = localIceCandidates
+                  .map(c => s"${c.sdpMLineIndex} | ${c.candidate}")
+                  .mkString(System.lineSeparator())
+                _ = logger.info(s"Ice candidates fetched: $localIceCandidatesStr")
                 answer <- webRTCBin.createAnswer()
+                _ = logger.info(s"Answer created: ${answer.toSdpString}")
               } yield {
                 localIceCandidates.foreach { iceCandidate =>
                   webRTCBin.addIceCandidate(iceCandidate)
