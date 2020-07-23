@@ -19,7 +19,7 @@ object Main extends App {
 
   val videoSrc = {
     val default =
-      "nvarguscamerasrc sensor_mode=3 ! video/x-raw(memory:NVMM),width=1280, height=720, framerate=60/1, format=NV12 ! nvvidconv flip-method=2 ! videoconvert"
+      "nvarguscamerasrc sensor_mode=3 ! video/x-raw(memory:NVMM),width=1280, height=720, framerate=60/1, format=NV12 ! videoconvert"
     getEnv("VIDEO_SRC", default)
   }
   val robotName = getEnv("ROBOT_NAME", "robomachine")
