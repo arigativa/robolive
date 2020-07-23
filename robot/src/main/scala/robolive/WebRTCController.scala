@@ -18,6 +18,8 @@ final class WebRTCController(videoSrc: String)(implicit gst: GstManaged.GSTInit.
   private var webRTCBin: WebRTCBinManaged = _
   @volatile private var state: WebRTCControllerPlayState = WebRTCControllerPlayState.Wait
 
+  private val servoController = ServoController.make
+
   private def start(rtcType: Int): StateChangeReturn = synchronized {
     try {
       val pipelineDescription = WebRTCController.pipelineDescription(
@@ -211,7 +213,58 @@ final class WebRTCController(videoSrc: String)(implicit gst: GstManaged.GSTInit.
 
   }
 
+  object Keys {
+    val ArrowUp = 38
+    val ArrowDown = 40
+    val ArrowLeft = 37
+    val ArrowRight = 39
+  }
+
+  case class ServosState(servos: Map[Int, Int]) {
+    def move(servoId: Int, angleDiff: Int): ServosState = {
+      val result = ServosState(servos.updatedWith(servoId) {
+        case None => Some(90 + angleDiff)
+        case Some(angle) =>
+          val newAngle = angle + angleDiff
+          val limitedAngle =
+            if (newAngle < 0) 0
+            else if (newAngle > 180) 180
+            else newAngle
+          Some(limitedAngle)
+      })
+
+      servoController.servoProxy(servoId, result.servos.getOrElse(servoId, 0))
+
+      result
+    }
+  }
+
+  var servosState = ServosState(Map.empty)
+
+  def updateServoState(f: ServosState => ServosState) = {
+    servosState = f(servosState)
+  }
+
   def clientInput(input: String): Unit = {
+    import io.circe._, io.circe.generic.auto._, io.circe.parser._, io.circe.syntax._
+    import Keys._
+
+    sealed trait ClientInput
+    case class KeyPressed(keyCode: Int) extends ClientInput
+
+    decode[KeyPressed](input) match {
+      case Right(KeyPressed(keyCode)) =>
+        keyCode match {
+          case ArrowUp => updateServoState(_.move(3, 10))
+          case ArrowDown => updateServoState(_.move(3, -10))
+          case ArrowLeft => updateServoState(_.move(0, 10))
+          case ArrowRight => updateServoState(_.move(0, -10))
+          case _ => logger.warn(s"unhandled user key press: $keyCode")
+        }
+      case Left(err: Throwable) =>
+        logger.warn("unexpected user input: $", err)
+    }
+
     logger.info(s"Client input received: $input")
   }
 }
