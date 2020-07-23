@@ -13,6 +13,7 @@ import org.mjsip.sip.call.{
 }
 import org.mjsip.sip.message.SipMessage
 import org.mjsip.sip.provider.{SipProvider, SipProviderListener}
+import org.slf4j.LoggerFactory
 import robolive.gstreamer.GstManaged
 import sdp.SdpMessage
 
@@ -21,8 +22,11 @@ import scala.concurrent.ExecutionContext
 final class SipTransportHandler(sipCallToEventAdapter: SIPCallEventHandler, sipUser: SipUser)
     extends SipProviderListener {
 
+  private val logger = LoggerFactory.getLogger(getClass.getName)
+
   /** When a new SipMessage is received by the SipProvider. */
   override def onReceivedMessage(sip_provider: SipProvider, message: SipMessage): Unit = {
+    logger.debug(s"Message received: $message")
     new ExtendedCall(sip_provider, message, sipUser, sipCallToEventAdapter)
   }
 }
@@ -31,6 +35,7 @@ final class SIPCallEventHandler(controller: WebRTCController)(
   implicit ec: ExecutionContext,
   gst: GstManaged.GSTInit.type
 ) extends ExtendedCallListener {
+  private val logger = LoggerFactory.getLogger(getClass.getName)
 
   /** Callback function called when arriving a new REFER method (transfer request). */
   override def onCallTransfer(
@@ -76,7 +81,7 @@ final class SIPCallEventHandler(controller: WebRTCController)(
         val extendedCall = call.asInstanceOf[ExtendedCall]
         controller.makeCall(extendedCall, sdpMessage)
       case Left(errors) =>
-        println(s"Can no accept invite, sdp parsing error: ${errors.mkString(", ")}")
+        logger.error(s"Error can not accept invite, sdp parsing failure: ${errors.mkString(", ")}")
     }
   }
 
@@ -108,7 +113,7 @@ final class SIPCallEventHandler(controller: WebRTCController)(
 
   /** Callback function called when arriving an ACK method (call confirmed) */
   override def onCallConfirmed(call: Call, sdp: String, ack: SipMessage): Unit = {
-    println(
+    logger.info(
       s"""onCallConfirmed:
          |sdp: $sdp
          |ack: $ack""".stripMargin
@@ -126,7 +131,7 @@ final class SIPCallEventHandler(controller: WebRTCController)(
     body: Array[Byte],
     msg: SipMessage
   ): Unit = {
-    println(s"Button pressed: $msg")
+    controller.clientInput(msg.getStringBody)
   }
 
   /** Callback function called when arriving a new Re-INVITE method (re-inviting/call modify) */
@@ -155,7 +160,7 @@ final class SIPCallEventHandler(controller: WebRTCController)(
 
   /** Callback function called when arriving a BYE request */
   override def onCallBye(call: Call, bye: SipMessage): Unit = {
-    println {
+    logger.info {
       s"""onCallBye:
          |$bye
          |""".stripMargin
@@ -168,26 +173,30 @@ final class SIPCallEventHandler(controller: WebRTCController)(
 }
 
 final class RegistrationClientHandler extends RegistrationClientListener {
+  private val logger = LoggerFactory.getLogger(getClass.getName)
+
   override def onRegistrationSuccess(
     registrationClient: RegistrationClient,
     nameAddress: NameAddress,
     nameAddress1: NameAddress,
     i: Int,
     s: String
-  ): Unit = println {
-    s"""REGISTER OK:
-      |target:  $nameAddress
-      |contact: $nameAddress1
-      |expires: $i
-      |result:  $s
-      |""".stripMargin
+  ): Unit = {
+    logger.info {
+      s"""REGISTER OK:
+         |target:  $nameAddress
+         |contact: $nameAddress1
+         |expires: $i
+         |result:  $s
+         |""".stripMargin
+    }
   }
   override def onRegistrationFailure(
     registrationClient: RegistrationClient,
     nameAddress: NameAddress,
     nameAddress1: NameAddress,
     s: _root_.java.lang.String
-  ): Unit = println {
+  ): Unit = logger.info {
     s"""REGISTER FAIL:
        |target:  $nameAddress
        |contact: $nameAddress1
