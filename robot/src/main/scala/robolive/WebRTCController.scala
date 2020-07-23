@@ -192,6 +192,10 @@ final class WebRTCController(videoSrc: String)(implicit gst: GstManaged.GSTInit.
     }
 
   }
+
+  def clientInput(input: String): Unit = {
+    logger.info(s"Client input received: $input")
+  }
 }
 
 object WebRTCController {
