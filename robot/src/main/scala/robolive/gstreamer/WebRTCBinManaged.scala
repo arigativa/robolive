@@ -114,8 +114,6 @@ final class WebRTCBinManaged(webRTCBin: WebRTCBin) extends AutoCloseable {
 
   def setRemoteOffer(offer: SdpMessage): Unit = {
     webRTCBin.setRemoteDescription(toGstSdpOffer(offer))
-    val candidates = getIceCandidatesFromSdpMessage(offer)
-    candidates.foreach(addIceCandidate)
   }
 
   def getRemoteDescription: Either[Seq[String], SdpMessage] = fromGstSdp(

@@ -154,6 +154,9 @@ final class WebRTCController(videoSrc: String)(implicit gst: GstManaged.GSTInit.
                 localIceCandidates <- webRTCBin.fetchIceCandidates()
                 answer <- webRTCBin.createAnswer()
               } yield {
+                localIceCandidates.foreach { iceCandidate =>
+                  webRTCBin.addIceCandidate(iceCandidate)
+                }
                 webRTCBin.setLocalAnswer(answer)
 
                 val mediasWithCandidates = localIceCandidates.groupBy(_.sdpMLineIndex).map {
