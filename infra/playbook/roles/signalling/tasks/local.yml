@@ -1,0 +1,14 @@
+- name: ensure docker image
+  command: docker build -t robolive-signalling -f ./roles/signalling/Dockerfile .
+
+- name: Provide configuration files
+  template:
+    src: "{{ item }}"
+    dest: "{{ signalling_conf_dir }}/{{ item }}"
+  with_items:
+    - "kamailio.cfg"
+    - "tls.cfg"
+  tags:
+    - signalling
+    - kamailio
+    - signalling_config

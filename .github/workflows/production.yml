@@ -45,6 +45,8 @@ jobs:
     defaults:
       run:
         working-directory: infra/playbook
+    env:
+      ANSIBLE_HOST_KEY_CHECKING: False
     steps: # TODO move this specific steps into single bash/make/whatever program to use it correctly from local as well
       - name: Checkout
         uses: actions/checkout@v2
@@ -68,7 +70,7 @@ jobs:
         run: pip install -r requirements.txt && ansible-galaxy role install -r requirements.yml
 
       - name: Check Ansible playbook
-        run: ansible-playbook -i inventory/ playbook.yml -C -vv
+        run: ansible-playbook -i inventory/production playbook.yml -C -vv
         if: github.ref != 'refs/heads/master' || github.event_name != 'push'
 
       - name: Run Ansible playbook

@@ -64,7 +64,7 @@ RUN apk update \
 
 VOLUME ["/var/lib/coturn"]
 
-COPY ./openssl.cnf openssl.cnf
+COPY ./roles/relay/openssl.cnf openssl.cnf
 RUN apk add --no-cache openssl && openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout localhost.key -out localhost.pem -config openssl.cnf -sha256
 
 CMD ["turnserver","-c","/etc/coturn/coturn.conf"]
