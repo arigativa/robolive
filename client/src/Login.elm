@@ -6,6 +6,7 @@ import Html.Attributes
 import Html.Events
 import JsSIP
 import RemoteData exposing (RemoteData)
+import Slider
 import Utils exposing (hasWhitespaces)
 
 
@@ -16,6 +17,7 @@ import Utils exposing (hasWhitespaces)
 type alias Model =
     { username : String
     , registration : RemoteData String Never
+    , slider : Slider.Model Float
     }
 
 
@@ -23,6 +25,13 @@ initial : Model
 initial =
     { username = "robohuman"
     , registration = RemoteData.NotAsked
+    , slider =
+        Slider.float
+            { min = 0
+            , max = 1
+            , step = 0.01
+            , value = 0.5
+            }
     }
 
 
