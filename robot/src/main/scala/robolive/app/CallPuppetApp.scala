@@ -27,7 +27,6 @@ object CallPuppetApp extends App {
   logger.info(s"Hello, I'm $robotName")
   logger.info(s"Trying to connect to signalling `$signallingUri`")
 
-
   val sipConfig = SipConfig(
     registrarUri = signallingUri,
     name = robotName,

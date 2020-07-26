@@ -26,7 +26,9 @@ object ManagedRobotApp extends App {
 
   val inventoryClient =
     Inventory.buildClient(
-      InventoryConnection.host, InventoryConnection.port, InventoryConnection.usePlaintext
+      InventoryConnection.host,
+      InventoryConnection.port,
+      InventoryConnection.usePlaintext
     )
 
   val defaultVideoSrc = {
@@ -36,7 +38,8 @@ object ManagedRobotApp extends App {
 
   val runningPuppet =
     new RunningPuppet(
-      inventoryClient, PuppetSoul.DefaultCommandExecutor(defaultVideoSrc),
+      inventoryClient,
+      PuppetSoul.DefaultCommandExecutor(defaultVideoSrc),
       initialState = RobotState(RobotStatus(Robot.desc))
     )
 

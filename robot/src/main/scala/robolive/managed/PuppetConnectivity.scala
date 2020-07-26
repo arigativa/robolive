@@ -11,10 +11,10 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 object PuppetConnectivity {
 
   class RunningPuppet(
-                       client: RegistryInventoryGrpc.RegistryInventoryStub,
-                       puppetSoul: PuppetSoul,
-                       initialState: RobotState,
-                     )(implicit ec: ExecutionContext) {
+    client: RegistryInventoryGrpc.RegistryInventoryStub,
+    puppetSoul: PuppetSoul,
+    initialState: RobotState,
+  )(implicit ec: ExecutionContext) {
 
     val robotState = new AtomicReference[RobotState](initialState)
 

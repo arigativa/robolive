@@ -5,10 +5,10 @@ import robolive.protocols.Inventory.Command.Command
 import robolive.protocols.Inventory.RobotStatus
 
 case class RobotState(
-                       status: RobotStatus,
-                       runningCommands: List[ExecutingCommand] = Nil,
-                       requestedExit: Option[ExitState] = None
-                     )
+  status: RobotStatus,
+  runningCommands: List[ExecutingCommand] = Nil,
+  requestedExit: Option[ExitState] = None
+)
 
 object RobotState {
 
