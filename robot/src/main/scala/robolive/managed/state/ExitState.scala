@@ -1,11 +1,11 @@
 package robolive.managed.state
 
 case class ExitState(
-                    exitCode: Int,
-                    updateRequested: Boolean = false,
-                    rebootRequested: Boolean = false,
-                    lastError: Option[String] = None
-                    )
+  exitCode: Int,
+  updateRequested: Boolean = false,
+  rebootRequested: Boolean = false,
+  lastError: Option[String] = None
+)
 
 object ExitState {
 
