@@ -27,7 +27,7 @@
     owner: root
     group: root
   with_items:
-    - { src: coturn.conf.j2, dest: "{{ turn_config_dir }}/{{ turn_config_file }}" }
+    - { src: coturn.conf, dest: "{{ turn_config_dir }}/{{ turn_config_file }}" }
   notify:
     - Start Coturn
   tags:
