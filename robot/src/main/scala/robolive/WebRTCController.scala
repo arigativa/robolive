@@ -18,38 +18,47 @@ final class WebRTCController(videoSrc: String)(implicit gst: GstManaged.GSTInit.
   private var webRTCBin: WebRTCBinManaged = _
   @volatile private var state: WebRTCControllerPlayState = WebRTCControllerPlayState.Wait
 
+  private val servoController = ServoController.make
+
   private def start(rtcType: Int): StateChangeReturn = synchronized {
-    val pipelineDescription = WebRTCController.pipelineDescription(
-      videoSrc = videoSrc,
-      rtcType = rtcType,
-      stunServerUrl = "stun://stun.l.google.com:19302"
-    )
+    try {
+      val pipelineDescription = WebRTCController.pipelineDescription(
+        videoSrc = videoSrc,
+        rtcType = rtcType,
+        stunServerUrl = "stun://stun.l.google.com:19302"
+      )
 
-    pipeline = PipelineManaged(
-      name = "robolive-robot-pipeline",
-      description = pipelineDescription,
-    )
-    pipeline.ready()
-    val bus = pipeline.getBus
+      pipeline = PipelineManaged(
+        name = "robolive-robot-pipeline",
+        description = pipelineDescription,
+      )
+      pipeline.ready()
+      val bus = pipeline.getBus
 
-    val eosHandler: Bus.EOS =
-      (source: GstObject) => logger.info(s"EOS ${source.getName}")
+      val eosHandler: Bus.EOS =
+        (source: GstObject) => logger.info(s"EOS ${source.getName}")
 
-    val errorHandler: Bus.ERROR = (source: GstObject, code: Int, message: String) =>
-      logger.error(s"Error ${source.getName}: $code $message")
+      val errorHandler: Bus.ERROR = (source: GstObject, code: Int, message: String) =>
+        logger.error(s"Error ${source.getName}: $code $message")
 
-    bus.connect(eosHandler)
-    bus.connect(errorHandler)
+      bus.connect(eosHandler)
+      bus.connect(errorHandler)
 
-    val stateChange = pipeline.play()
-    if (stateChange == StateChangeReturn.SUCCESS) {
-      webRTCBin = WebRTCBinManaged(pipeline, "sendrecv")
-      webRTCBin.onPadAdded(onIncomingStream)
-    } else {
-      pipeline = null
-      webRTCBin = null
+      val stateChange = pipeline.play()
+      if (stateChange == StateChangeReturn.SUCCESS) {
+        webRTCBin = WebRTCBinManaged(pipeline, "sendrecv")
+        webRTCBin.onPadAdded(onIncomingStream)
+      } else {
+        pipeline = null
+        webRTCBin = null
+      }
+      stateChange
+    } catch {
+      case err: Throwable =>
+        logger.error("starting failed", err)
+        state = WebRTCControllerPlayState.Failure
+        StateChangeReturn.FAILURE
     }
-    stateChange
   }
 
   def dispose(): Unit = synchronized {
@@ -92,7 +101,8 @@ final class WebRTCController(videoSrc: String)(implicit gst: GstManaged.GSTInit.
         if (name.startsWith(receiverName)) {
           val queue = ElementFactory.make("queue", "incomingBuffer")
           val convert = ElementFactory.make("videoconvert", "videoconvert")
-          val sink = ElementFactory.make("autovideosink", "autovideosink")
+          val sink = ElementFactory.make("filesink", "filesink")
+          sink.set("location", "/dev/null")
           pipeline.add(queue)
           pipeline.add(convert)
           pipeline.add(sink)
@@ -137,15 +147,25 @@ final class WebRTCController(videoSrc: String)(implicit gst: GstManaged.GSTInit.
             logger.debug(s"Extracted rtpType: $rtpType")
 
             if (start(rtpType) == StateChangeReturn.SUCCESS) {
+              logger.info("Call accepted")
               state = WebRTCControllerPlayState.Busy
 
               call.ring()
 
               webRTCBin.setRemoteOffer(remoteSdp)
+              logger.debug(s"Remote offer set: ${remoteSdp.toSdpString}")
               (for {
                 localIceCandidates <- webRTCBin.fetchIceCandidates()
+                localIceCandidatesStr = localIceCandidates
+                  .map(c => s"${c.sdpMLineIndex} | ${c.candidate}")
+                  .mkString(System.lineSeparator())
+                _ = logger.info(s"Ice candidates fetched: $localIceCandidatesStr")
                 answer <- webRTCBin.createAnswer()
+                _ = logger.info(s"Answer created: ${answer.toSdpString}")
               } yield {
+                localIceCandidates.foreach { iceCandidate =>
+                  webRTCBin.addIceCandidate(iceCandidate)
+                }
                 webRTCBin.setLocalAnswer(answer)
 
                 val mediasWithCandidates = localIceCandidates.groupBy(_.sdpMLineIndex).map {
@@ -193,7 +213,58 @@ final class WebRTCController(videoSrc: String)(implicit gst: GstManaged.GSTInit.
 
   }
 
+  object Keys {
+    val ArrowUp = 38
+    val ArrowDown = 40
+    val ArrowLeft = 37
+    val ArrowRight = 39
+  }
+
+  case class ServosState(servos: Map[Int, Int]) {
+    def move(servoId: Int, angleDiff: Int): ServosState = {
+      val result = ServosState(servos.updatedWith(servoId) {
+        case None => Some(90 + angleDiff)
+        case Some(angle) =>
+          val newAngle = angle + angleDiff
+          val limitedAngle =
+            if (newAngle < 0) 0
+            else if (newAngle > 180) 180
+            else newAngle
+          Some(limitedAngle)
+      })
+
+      servoController.servoProxy(servoId, result.servos.getOrElse(servoId, 0))
+
+      result
+    }
+  }
+
+  var servosState = ServosState(Map.empty)
+
+  def updateServoState(f: ServosState => ServosState) = {
+    servosState = f(servosState)
+  }
+
   def clientInput(input: String): Unit = {
+    import io.circe._, io.circe.generic.auto._, io.circe.parser._, io.circe.syntax._
+    import Keys._
+
+    sealed trait ClientInput
+    case class KeyPressed(keyCode: Int) extends ClientInput
+
+    decode[KeyPressed](input) match {
+      case Right(KeyPressed(keyCode)) =>
+        keyCode match {
+          case ArrowUp => updateServoState(_.move(3, 10))
+          case ArrowDown => updateServoState(_.move(3, -10))
+          case ArrowLeft => updateServoState(_.move(0, 10))
+          case ArrowRight => updateServoState(_.move(0, -10))
+          case _ => logger.warn(s"unhandled user key press: $keyCode")
+        }
+      case Left(err: Throwable) =>
+        logger.warn("unexpected user input: $", err)
+    }
+
     logger.info(s"Client input received: $input")
   }
 }

@@ -11,10 +11,6 @@ import scala.concurrent.ExecutionContext
 object Main extends App {
   private val logger = LoggerFactory.getLogger(getClass.getName)
 
-  val robotName = "robomachine"
-
-  logger.info(s"Starting robot: $robotName")
-
   implicit val ec: ExecutionContext = ExecutionContext.global
 
   import org.slf4j.bridge.SLF4JBridgeHandler
@@ -22,9 +18,16 @@ object Main extends App {
   SLF4JBridgeHandler.install()
 
   val videoSrc = {
-    val defaultVideoSrcPipeline = "videotestsrc is-live=true pattern=ball ! videoconvert"
-    getEnv("VIDEO_SRC", defaultVideoSrcPipeline)
+    val default =
+      "nvarguscamerasrc sensor_mode=3 ! video/x-raw(memory:NVMM),width=1280, height=720, framerate=60/1, format=NV12 ! nvvidconv flip-method=0 ! videoconvert"
+    getEnv("VIDEO_SRC", default)
   }
+  val robotName = getEnv("ROBOT_NAME", "robomachine")
+  val signallingUri = getEnv("SIGNALLING_URI", "rl.arigativa.ru:9031")
+
+  logger.info(s"Starting Robolive inc. robot")
+  logger.info(s"Hello, I'm $robotName")
+  logger.info(s"Trying to connect to signalling `$signallingUri`")
 
   val latch = new CountDownLatch(1)
 
@@ -33,7 +36,7 @@ object Main extends App {
   val controller = new WebRTCController(videoSrc)
   val sipEventsHandler = new SIPCallEventHandler(controller)
   val sipConfig = SipConfig(
-    registrarUri = "localhost:9031",
+    registrarUri = signallingUri,
     name = robotName,
     protocol = "tcp",
   )

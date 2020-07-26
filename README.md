@@ -58,12 +58,17 @@ terraform init
 terraform apply
 ```
 
+# Running locally
+```shell script
+export VIDEO_SRC='videotestsrc is-live=true pattern=ball ! videoconvert'
+export SIGNALLING_URI='localhost:9031'
+``` 
 # Running on Jetson Nano
 
 To run robot on Jetson Nano with CSI camera you can override video/audio source:
 ```shell script
 export AUDIO_SRC='audiotestsrc wave=silence ! audioconvert'
-export VIDEO_SRC='nvarguscamerasrc sensor_mode=3 ! video/x-raw(memory:NVMM),width=1280, height=720, framerate=60/1, format=NV12 ! nvvidconv flip-method=2 ! videoconvert'
+export VIDEO_SRC='nvarguscamerasrc sensor_mode=3 ! video/x-raw(memory:NVMM),width=1280, height=720, framerate=60/1, format=NV12 ! nvvidconv flip-method=0 ! videoconvert'
 ```
 
 | # | Resolution  | FPS | Exposure, us |  

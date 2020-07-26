@@ -11,5 +11,13 @@ libraryDependencies ++= Seq(
   "org.slf4j" % "jul-to-slf4j" % "1.7.30",
 )
 
+val circeVersion = "0.12.3"
+
+libraryDependencies ++= Seq(
+  "io.circe" %% "circe-core",
+  "io.circe" %% "circe-generic",
+  "io.circe" %% "circe-parser"
+).map(_ % circeVersion)
+
 // please, run `docker build -t robot-base .` from root folder
 dockerBaseImage := "robot-base"

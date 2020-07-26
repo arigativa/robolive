@@ -2,7 +2,7 @@ import { WebSocketInterface, UA } from 'jssip/lib/JsSIP';
 import { UAConfiguration } from 'jssip/lib/UA';
 import { debug } from 'jssip/lib/JsSIP'
 
-debug.disable();
+debug.enable("JsSIP:*");
 
 class Subs {
     private readonly unsubs: Array<() => void> = [];

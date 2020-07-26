@@ -3,8 +3,10 @@ package robolive.gstreamer
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 
+import ch.qos.logback.classic.Logger
 import org.freedesktop.gstreamer.webrtc._
 import org.freedesktop.gstreamer.{Element, Pad, Pipeline, SDPMessage, StateChangeReturn}
+import org.slf4j.LoggerFactory
 import sdp.SdpMessage
 import robolive.gstreamer.GstManaged.GSTInit
 import robolive.gstreamer.bindings.GstWebRTCDataChannel
@@ -14,6 +16,8 @@ import scala.concurrent.{Future, Promise}
 
 final class WebRTCBinManaged(webRTCBin: WebRTCBin) extends AutoCloseable {
   import WebRTCBinManaged._
+
+  private val logger = LoggerFactory.getLogger(getClass.getName)
 
   private def fromGstSdp(gstSdp: WebRTCSessionDescription): Either[Seq[String], SdpMessage] = {
     SdpMessage(gstSdp.getSDPMessage.toString)
@@ -45,8 +49,9 @@ final class WebRTCBinManaged(webRTCBin: WebRTCBin) extends AutoCloseable {
     val candidatesCount = new AtomicInteger(0)
     val cb: WebRTCBin.ON_ICE_CANDIDATE = (sdpMLineIndex: Int, candidate: String) => {
       val value = candidate.substring(candidate.indexOf(":") + 1)
+      logger.debug(s"Ice candidate fetched: $value")
       cs.add(IceCandidate(sdpMLineIndex, value))
-      if (candidatesCount.incrementAndGet() > 20 && !p.isCompleted) {
+      if (candidatesCount.incrementAndGet() > 10 && !p.isCompleted) {
         import scala.jdk.CollectionConverters._
         p.success(cs.iterator().asScala.toSeq)
       }
@@ -114,8 +119,6 @@ final class WebRTCBinManaged(webRTCBin: WebRTCBin) extends AutoCloseable {
 
   def setRemoteOffer(offer: SdpMessage): Unit = {
     webRTCBin.setRemoteDescription(toGstSdpOffer(offer))
-    val candidates = getIceCandidatesFromSdpMessage(offer)
-    candidates.foreach(addIceCandidate)
   }
 
   def getRemoteDescription: Either[Seq[String], SdpMessage] = fromGstSdp(
