@@ -45,6 +45,8 @@ jobs:
     defaults:
       run:
         working-directory: infra/playbook
+    env:
+      ANSIBLE_HOST_KEY_CHECKING: False
     steps: # TODO move this specific steps into single bash/make/whatever program to use it correctly from local as well
       - name: Checkout
         uses: actions/checkout@v2
