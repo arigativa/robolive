@@ -1,6 +1,9 @@
 How to run:
 1 Start signalling  
 2 Start client  
-3 `docker build -t robot-base .` from root folder
-4 `docker:publishLocal`
-5 `docker run --user root -e "SIGNALLING_URI=ws://$(ip -4 addr show docker0 | grep -Po 'inet \K[\d.]+'):5000" --device=/dev/video0:/dev/video0 robot-sca:0.1`
+3 `docker build -t robolive-robot .` from root folder
+4 `docker run --user root --env-file test.env --network host robolive-robot:latest`
+
+issues:
+`** (robomachine:6): CRITICAL **: 10:33:47.357: gst_dtls_connection_stop: assertion 'self->priv->ssl' failed`
+"solved" by: `https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/-/issues/811`

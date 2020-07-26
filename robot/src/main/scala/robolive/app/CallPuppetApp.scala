@@ -1,8 +1,19 @@
 package robolive.app
 
+import java.util.concurrent.CountDownLatch
+
+import org.freedesktop.gstreamer.Version
 import org.slf4j.LoggerFactory
-import robolive.SipConfig
+import robolive.{
+  PythonShellServoController,
+  SIPCallEventHandler,
+  ServoController,
+  SipClient,
+  SipConfig,
+  WebRTCController
+}
 import robolive.call.SipWebrtcPuppet
+import robolive.gstreamer.GstManaged
 
 import scala.concurrent.ExecutionContext
 
@@ -22,6 +33,11 @@ object CallPuppetApp extends App {
   }
   val robotName = getEnv("ROBOT_NAME", "robomachine")
   val signallingUri = getEnv("SIGNALLING_URI", "rl.arigativa.ru:9031")
+  val servoControllerType = getEnv("SERVO_CONTROLLER", default = "PYTHON_SHELL")
+  val servoController = servoControllerType match {
+    case "PYTHON_SHELL" => ServoController.makePythonShellServoController
+    case "FAKE" => ServoController.makeFakeServoController
+  }
 
   logger.info(s"Starting Robolive inc. robot")
   logger.info(s"Hello, I'm $robotName")
@@ -33,5 +49,23 @@ object CallPuppetApp extends App {
     protocol = "tcp",
   )
 
-  SipWebrtcPuppet.run(robotName, videoSrc, sipConfig)
+  implicit val gstInit: GstManaged.GSTInit.type = GstManaged(robotName, new Version(1, 14))
+  val controller = new WebRTCController(videoSrc, servoController)
+
+  val latch = new CountDownLatch(1)
+  sys.addShutdownHook {
+    logger.info(s"Stopping $robotName")
+    try {
+      logger.info(s"Disposing allocated resources of $robotName")
+      gstInit.dispose()
+    } finally {
+      logger.info(s"Stopped $robotName")
+      latch.countDown()
+    }
+  }
+
+  val sipEventsHandler = new SIPCallEventHandler(controller)
+  val sipClient = new SipClient(sipEventsHandler, sipConfig)
+
+  latch.await()
 }
