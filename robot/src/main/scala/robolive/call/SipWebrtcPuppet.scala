@@ -9,10 +9,11 @@ import robolive.gstreamer.GstManaged
 import scala.concurrent.ExecutionContext
 
 object SipWebrtcPuppet {
-  def run(robotName: String,
-          videoSrc: String,
-          sipConfig: SipConfig
-         )(implicit ec: ExecutionContext) = {
+  def run(
+    robotName: String,
+    videoSrc: String,
+    sipConfig: SipConfig,
+  )(implicit ec: ExecutionContext) = {
 
     val latch = new CountDownLatch(1)
 
