@@ -11,7 +11,7 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Random, Try}
 
-object ManagedRobotApp extends App {
+object ManagedRobotApp {
 
   object Robot {
     val id: RobotID = RobotID(getEnv("ROBOT_ID", s"PUPPET-${Math.abs(Random.nextInt()) % 1000}"))

@@ -1,0 +1,74 @@
+https://tools.ietf.org/html/rfc8445
+
+                   +---------+
+ +--------+        |Signaling|         +--------+
+ | STUN   |        |Server   |         | STUN   |
+ | Server |        +---------+         | Server |
+ +--------+       /           \        +--------+
+                 /             \
+                /               \
+               / <- Signaling -> \
+              /                   \
+       +--------+               +--------+
+       |  NAT   |               |  NAT   |
+       +--------+               +--------+
+          /                             \
+         /                               \
+     +-------+                       +-------+
+     | Agent |                       | Agent |
+     |   L   |                       |   R   |
+     +-------+                       +-------+
+
+The basic idea behind ICE is as follows: each agent has a variety of
+candidate transport addresses it could use to communicate with the other agent.
+These might include:
+o  A transport address on a directly attached network interface
+o  A translated transport address on the public side of a NAT (a
+  "server-reflexive" address) (STUN)
+o  A transport address allocated from a TURN server (a "relayed
+  address")
+
+Potentially, any of L's candidate transport addresses can be used to
+communicate with any of R's candidate transport addresses.  In
+practice, however, many combinations will not work.  For instance, if
+L and R are both behind NATs, their directly attached interface
+addresses are unlikely to be able to communicate directly (this is
+why ICE is needed, after all!).  The purpose of ICE is to discover
+which pairs of addresses will work.  The way that ICE does this is to
+systematically try all possible pairs (in a carefully sorted order)
+until it finds one or more that work.
+
+The first category of candidates are those with a transport address
+   obtained directly from a local interface.
+The agent uses STUN or TURN to obtain additional candidates.
+
+To Internet
+      |
+      |
+      |  /------------  Relayed
+  Y:y | /               Address
+  +--------+
+  |        |
+  |  TURN  |
+  | Server |
+  |        |
+  +--------+
+      |
+      |
+      | /------------  Server
+X1':x1'|/               Reflexive
++------------+         Address
+|    NAT     |
++------------+
+      |
+      | /------------  Local
+  X:x |/               Address
+  +--------+
+  |        |
+  | Agent  |
+  |        |
+  +--------+
+
+Legend:
+HOST:port (e.x.: Y:y)
+

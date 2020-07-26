@@ -1,18 +1,16 @@
 package robolive.gstreamer
 
+import java.util.{Timer, TimerTask}
 import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.atomic.AtomicInteger
 
-import ch.qos.logback.classic.Logger
 import org.freedesktop.gstreamer.webrtc._
 import org.freedesktop.gstreamer.{Element, Pad, Pipeline, SDPMessage, StateChangeReturn}
 import org.slf4j.LoggerFactory
 import sdp.SdpMessage
 import robolive.gstreamer.GstManaged.GSTInit
 import robolive.gstreamer.bindings.GstWebRTCDataChannel
-import sdp.SdpMessage.{AttributeValueDecoder, RawValueAttribute}
 
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 
 final class WebRTCBinManaged(webRTCBin: WebRTCBin) extends AutoCloseable {
   import WebRTCBinManaged._
@@ -43,21 +41,30 @@ final class WebRTCBinManaged(webRTCBin: WebRTCBin) extends AutoCloseable {
     p.future
   }
 
-  def fetchIceCandidates(): Future[Seq[IceCandidate]] = {
+  def fetchIceCandidates()(implicit ec: ExecutionContext): Future[Seq[IceCandidate]] = {
+    import scala.jdk.CollectionConverters._
+
     val p = Promise[Seq[IceCandidate]]()
     val cs = new ConcurrentLinkedQueue[IceCandidate]()
-    val candidatesCount = new AtomicInteger(0)
+
+    val timer = {
+      val completeTask = new TimerTask {
+        override def run(): Unit = p.success(cs.iterator().asScala.toSeq)
+      }
+      val timer = new Timer("Ice gathering timer")
+      timer.schedule(completeTask, 2000L)
+      timer
+    }
+
     val cb: WebRTCBin.ON_ICE_CANDIDATE = (sdpMLineIndex: Int, candidate: String) => {
       val value = candidate.substring(candidate.indexOf(":") + 1)
       logger.debug(s"Ice candidate fetched: $value")
       cs.add(IceCandidate(sdpMLineIndex, value))
-      if (candidatesCount.incrementAndGet() > 10 && !p.isCompleted) {
-        import scala.jdk.CollectionConverters._
-        p.success(cs.iterator().asScala.toSeq)
-      }
     }
     webRTCBin.connect(cb)
-    p.future
+    val resFuture = p.future
+    resFuture.foreach(_ => timer.cancel())
+    resFuture
   }
 
   def createOffer(): Future[SdpMessage] = {

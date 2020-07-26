@@ -4,7 +4,11 @@ import java.util.concurrent.LinkedTransferQueue
 
 import scala.sys.process.ProcessIO
 
-class ServoController(cliCommand: String) {
+trait ServoController {
+  def servoProxy(servoId: Int, angle: Int): Unit
+}
+
+final class PythonShellServoController(cliCommand: String) extends ServoController {
   import sys.process._
 
   private val commandQueue = new LinkedTransferQueue[String]()
@@ -44,8 +48,12 @@ class ServoController(cliCommand: String) {
 
 object ServoController {
 
-  def make: ServoController = {
+  def makePythonShellServoController: ServoController = {
     val cliCommand = sys.env.getOrElse("SERVO_CLI_COMMAND", "~/servo-cli.py")
-    new ServoController(cliCommand)
+    new PythonShellServoController(cliCommand)
+  }
+
+  def makeFakeServoController: ServoController = (servoId: Int, angle: Int) => {
+    println(s"SERVO adjusted: $servoId $angle")
   }
 }

@@ -9,7 +9,6 @@ libraryDependencies ++= Seq(
   "org.freedesktop.gstreamer" % "gst1-java-core" % "1.1.0",
   "ch.qos.logback" % "logback-classic" % "1.2.3",
   "org.slf4j" % "jul-to-slf4j" % "1.7.30",
-
   "io.grpc" % "grpc-netty-shaded" % scalapb.compiler.Version.grpcJavaVersion,
   "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
 )
@@ -27,6 +26,3 @@ libraryDependencies ++= Seq(
   "io.circe" %% "circe-generic",
   "io.circe" %% "circe-parser"
 ).map(_ % circeVersion)
-
-// please, run `docker build -t robot-base .` from root folder
-dockerBaseImage := "robot-base"

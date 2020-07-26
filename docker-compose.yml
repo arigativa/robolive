@@ -16,7 +16,20 @@ services:
     networks:
         testing_net:
             ipv4_address: 169.28.1.1
-        
+
+  robot:
+    image: robolive-robot
+    container_name: robot
+    networks:
+      testing_net:
+        ipv4_address: 169.28.1.10
+    environment:
+      - GST_DEBUG=*:3
+      - VIDEO_SRC=videotestsrc is-live=true pattern=ball ! videoconvert
+      - SERVO_CONTROLLER=FAKE
+      - SIGNALLING_URI=169.28.1.1:9031
+      - OPENSSL_CONF=""
+
   turn: 
     image: robolive-relay
     build:
