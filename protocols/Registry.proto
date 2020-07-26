@@ -1,0 +1,74 @@
+syntax = "proto2";
+
+import public "Robot.proto";
+
+package robolive.protocols;
+
+message RobotsListRequest {
+}
+
+message RobotsListResponse {
+  message RobotState {
+    required RobotShortDescription description = 1;
+    required bool isOnCall = 2;
+  }
+
+  repeated RobotState robots = 1;
+}
+
+message RestartRobotRequest {
+  required RobotID id = 1;
+  optional bool rebootSystem = 2;
+  optional bool forceUpdate = 3;
+}
+
+message RestartRobotResponse {
+
+}
+
+message RobotCall {
+  required string robotUsername = 1;
+  required string username = 2;
+  required string password = 3;
+  required string server = 4;
+}
+
+message CallID {
+  required string value = 1;
+}
+
+message UserID {
+  required string value = 1;
+}
+
+message StartCallRequest {
+  required UserID userID = 1;
+  required RobotID robotID = 2;
+}
+
+message StartCallResponse {
+  message CreatedSession {
+    required CallID id = 1;
+    required RobotCall call = 2;
+  }
+  message Rejection {
+    required string reason = 1;
+  }
+
+  oneof result {
+    CreatedSession session = 1;
+    Rejection rejection = 2;
+  }
+}
+
+message StopCallResponse {
+
+}
+
+service RegistryOperator {
+  rpc RobotsList(RobotsListRequest) returns (RobotsListResponse);
+  rpc RestartRobot(RestartRobotRequest) returns (RestartRobotResponse);
+  rpc StartCall(StartCallRequest) returns (StartCallResponse);
+  rpc StopCall(CallID) returns (StopCallResponse);
+}
+
