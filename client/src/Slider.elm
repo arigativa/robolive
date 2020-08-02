@@ -54,9 +54,9 @@ type Msg
     = Change String
 
 
-update : Msg -> Model a -> ( Model a, Cmd Msg )
-update msg model =
-    ( model, Cmd.none )
+update : Msg -> Model a -> Model a
+update (Change nextValue) model =
+    { model | value = nextValue }
 
 
 

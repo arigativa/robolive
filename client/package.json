@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "clean": "rm -rf build",
+    "clean": "rm -rf build & rm -rf .cache",
     "prestart": "npm run clean",
     "start": "parcel public/index.html --out-dir=build --port=3000",
     "prebuild": "npm run clean",
