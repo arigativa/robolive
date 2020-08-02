@@ -1,4 +1,4 @@
-module Slider exposing (Model, Msg, float, getValue, int, subscriptions, update, view)
+module Slider exposing (Model, Msg, float, getValue, int, update, view)
 
 import Html exposing (Html, div, input, span, text)
 import Html.Attributes
@@ -23,22 +23,22 @@ int :
     { min : Int
     , max : Int
     , step : Int
-    , value : Int
+    , initialValue : Int
     }
     -> Model Int
-int { min, max, step, value } =
-    Model String.fromInt String.toInt min max step (String.fromInt value)
+int { min, max, step, initialValue } =
+    Model String.fromInt String.toInt min max step (String.fromInt initialValue)
 
 
 float :
     { min : Float
     , max : Float
     , step : Float
-    , value : Float
+    , initialValue : Float
     }
     -> Model Float
-float { min, max, step, value } =
-    Model String.fromFloat String.toFloat min max step (String.fromFloat value)
+float { min, max, step, initialValue } =
+    Model String.fromFloat String.toFloat min max step (String.fromFloat initialValue)
 
 
 getValue : Model a -> Maybe a
@@ -60,16 +60,16 @@ update msg model =
 
 
 
--- S U B S C R I P T I O N S
-
-
-subscriptions : Model a -> Sub Msg
-subscriptions model =
-    Sub.none
-
-
-
 -- V I E W
+
+
+viewBorderValue : String -> Html msg
+viewBorderValue value =
+    span
+        [ Html.Attributes.style "font-size" "0.8em"
+        ]
+        [ text value
+        ]
 
 
 view : Model a -> Html Msg
@@ -81,18 +81,33 @@ view model =
             , model.serialize model.step
             )
     in
-    div []
-        [ input
-            [ Html.Attributes.type_ "number"
+    div
+        [ Html.Attributes.style "display" "flex"
+        , Html.Attributes.style "flex-flow" "row nowrap"
+        , Html.Attributes.style "align-items" "center"
+        ]
+        [ viewBorderValue min
+        , input
+            [ Html.Attributes.type_ "range"
             , Html.Attributes.min min
             , Html.Attributes.max max
             , Html.Attributes.step step
             , Html.Attributes.value model.value
+            , Html.Events.onInput Change
             ]
             []
-        , span [] [ text min ]
+        , viewBorderValue max
         , input
-            [ Html.Attributes.type_ "range"
+            [ Html.Attributes.style "text-align" "right"
+            , Html.Attributes.style "margin-left" "5px"
+
+            --
+            , Html.Attributes.type_ "number"
+            , Html.Attributes.min min
+            , Html.Attributes.max max
+            , Html.Attributes.step step
+            , Html.Attributes.value model.value
+            , Html.Events.onInput Change
             ]
             []
         ]
