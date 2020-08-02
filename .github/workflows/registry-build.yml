@@ -1,0 +1,41 @@
+name: Build registry server
+
+on:
+  push:
+    paths:
+      - 'build.sbt'
+      - 'project/**'
+      - 'registry/**'
+    branches: [ master ]
+  pull_request:
+    paths:
+      - 'build.sbt'
+      - 'project/**'
+      - 'registry/**'
+
+jobs:
+  build-registry-package:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Scala caches
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.sbt
+          ~/.ivy2/cache
+          ~/.cache/coursier
+        key: ${{ runner.os }}-sbt-docs-${{ hashFiles('**/*.sbt') }}
+
+    - uses: actions/setup-java@v1
+      with:
+        java-version: 8
+
+    - name: Build Registry package
+      run: sbt universal:packageBin
+
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: registry-distr.zip
+        path: registry/target/universal/registry.zip

@@ -3,7 +3,8 @@ name := "registry"
 version := "1.0"
 scalaVersion := "2.13.1"
 
-javacOptions ++= Seq("-source", "1.8", "-target", "1.8")
+sources in (Compile, doc) := Seq.empty
+publishArtifact in (Compile, packageDoc) := false
 
 libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % "1.2.3",
@@ -18,3 +19,9 @@ PB.protoSources in Compile := Seq(file("protocols"))
 PB.targets in Compile := Seq(
   scalapb.gen(grpc = true) -> (sourceManaged in Compile).value / "robolive" / "protocols"
 )
+
+
+/* Packaging */
+
+topLevelDirectory := None
+packageName in Universal := "registry"
