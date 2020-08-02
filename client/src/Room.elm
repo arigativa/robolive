@@ -30,7 +30,8 @@ interlocutorInputID =
 
 type alias Connection =
     { stream : JsSIP.MediaStream
-    , sliders : Dict Int ( Debounce Int, Slider.Model Int )
+    , sliders : Dict Int (Slider.Model Int)
+    , debounces : Dict Int (Debounce Int)
     , remoteControl : RemoteControl.Model
     }
 
@@ -52,6 +53,16 @@ initial =
     )
 
 
+initialDebounce : Debounce Int
+initialDebounce =
+    Debounce.init 300
+
+
+getDebounce : Int -> Dict Int (Debounce Int) -> Debounce Int
+getDebounce index debounces =
+    Maybe.withDefault initialDebounce (Dict.get index debounces)
+
+
 initialSlider : Slider.Model Int
 initialSlider =
     Slider.int
@@ -62,14 +73,9 @@ initialSlider =
         }
 
 
-initialDebouncer : Debounce Int
-initialDebouncer =
-    Debounce.bounce 300
-
-
-getSlider : Int -> Dict Int ( Debounce Int, Slider.Model Int ) -> ( Debounce Int, Slider.Model Int )
+getSlider : Int -> Dict Int (Slider.Model Int) -> Slider.Model Int
 getSlider index sliders =
-    Maybe.withDefault ( initialDebouncer, initialSlider ) (Dict.get index sliders)
+    Maybe.withDefault initialSlider (Dict.get index sliders)
 
 
 
@@ -144,6 +150,7 @@ update msg model =
                 initialConnection =
                     { stream = stream
                     , sliders = Dict.empty
+                    , debounces = Dict.empty
                     , remoteControl = RemoteControl.initial
                     }
             in
@@ -177,11 +184,7 @@ update msg model =
         DebounceTick index tick ->
             case model.call of
                 RemoteData.Success connection ->
-                    case
-                        getSlider index connection.sliders
-                            |> Tuple.first
-                            |> Debounce.getValue tick
-                    of
+                    case Debounce.getValue tick (getDebounce index connection.debounces) of
                         Nothing ->
                             ( model, Cmd.none )
 
@@ -201,11 +204,11 @@ update msg model =
             case model.call of
                 RemoteData.Success connection ->
                     let
-                        ( debounce, slider ) =
-                            getSlider index connection.sliders
-
                         nextSlider =
-                            Slider.update msgOfSlider slider
+                            Slider.update msgOfSlider (getSlider index connection.sliders)
+
+                        debounce =
+                            getDebounce index connection.debounces
 
                         ( nextDebounce, cmdOfDebounce ) =
                             case Slider.getValue nextSlider of
@@ -216,7 +219,10 @@ update msg model =
                                     Debounce.push value debounce
 
                         nextConnection =
-                            { connection | sliders = Dict.insert index ( nextDebounce, nextSlider ) connection.sliders }
+                            { connection
+                                | sliders = Dict.insert index nextSlider connection.sliders
+                                , debounces = Dict.insert index nextDebounce connection.debounces
+                            }
                     in
                     ( { model | call = RemoteData.Success nextConnection }
                     , Cmd.map (DebounceTick index) cmdOfDebounce
@@ -398,7 +404,6 @@ view credentials model =
                             (\index ->
                                 sliders
                                     |> getSlider index
-                                    |> Tuple.second
                                     |> Slider.view
                                     |> Html.map (SliderMsg index)
                             )

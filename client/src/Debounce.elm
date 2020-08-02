@@ -1,4 +1,4 @@
-module Debounce exposing (Debounce, Tick, bounce, getValue, push)
+module Debounce exposing (Debounce, Tick, getValue, init, push)
 
 import Process
 import Task
@@ -15,8 +15,8 @@ type Debounce a
     = Debounce (State a)
 
 
-bounce : Float -> Debounce a
-bounce ms =
+init : Float -> Debounce a
+init ms =
     Debounce (State 0 Nothing ms)
 
 
