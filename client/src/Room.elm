@@ -3,11 +3,13 @@ module Room exposing (Model, Msg, initial, subscriptions, update, view)
 import AVL.Dict as Dict exposing (Dict)
 import Browser.Dom
 import Credentials exposing (Credentials)
+import Debounce exposing (Debounce)
 import Html exposing (Html, b, button, div, form, h1, h3, input, p, strong, text, video)
 import Html.Attributes
 import Html.Events
 import Html.Lazy
 import JsSIP
+import Json.Encode as Encode
 import List.Extra
 import RemoteControl
 import RemoteData exposing (RemoteData)
@@ -28,7 +30,7 @@ interlocutorInputID =
 
 type alias Connection =
     { stream : JsSIP.MediaStream
-    , sliders : Dict Int (Slider.Model Int)
+    , sliders : Dict Int ( Debounce Int, Slider.Model Int )
     , remoteControl : RemoteControl.Model
     }
 
@@ -60,9 +62,14 @@ initialSlider =
         }
 
 
-getSlider : Int -> Dict Int (Slider.Model Int) -> Slider.Model Int
+initialDebouncer : Debounce Int
+initialDebouncer =
+    Debounce.bounce 300
+
+
+getSlider : Int -> Dict Int ( Debounce Int, Slider.Model Int ) -> ( Debounce Int, Slider.Model Int )
 getSlider index sliders =
-    Maybe.withDefault initialSlider (Dict.get index sliders)
+    Maybe.withDefault ( initialDebouncer, initialSlider ) (Dict.get index sliders)
 
 
 
@@ -77,6 +84,7 @@ type Msg
     | CallDone (Result String JsSIP.MediaStream)
     | CallEnd
     | Hangup
+    | DebounceTick Int Debounce.Tick
     | IceServerMsg Int IceServer.Msg
     | SliderMsg Int Slider.Msg
     | RemoteControlMsg RemoteControl.Msg
@@ -166,24 +174,56 @@ update msg model =
             , Cmd.none
             )
 
-        SliderMsg index msgOfSlider ->
-            ( case model.call of
+        DebounceTick index tick ->
+            case model.call of
                 RemoteData.Success connection ->
-                    let
-                        nextSlider =
-                            connection.sliders
-                                |> getSlider index
-                                |> Slider.update msgOfSlider
+                    case
+                        getSlider index connection.sliders
+                            |> Tuple.first
+                            |> Debounce.getValue tick
+                    of
+                        Nothing ->
+                            ( model, Cmd.none )
 
-                        nextConnection =
-                            { connection | sliders = Dict.insert index nextSlider connection.sliders }
-                    in
-                    { model | call = RemoteData.Success nextConnection }
+                        Just value ->
+                            ( model
+                            , Encode.object
+                                [ ( "index", Encode.int index )
+                                , ( "angle", Encode.int value )
+                                ]
+                                |> JsSIP.sendInfo
+                            )
 
                 _ ->
-                    model
-            , Cmd.none
-            )
+                    ( model, Cmd.none )
+
+        SliderMsg index msgOfSlider ->
+            case model.call of
+                RemoteData.Success connection ->
+                    let
+                        ( debounce, slider ) =
+                            getSlider index connection.sliders
+
+                        nextSlider =
+                            Slider.update msgOfSlider slider
+
+                        ( nextDebounce, cmdOfDebounce ) =
+                            case Slider.getValue nextSlider of
+                                Nothing ->
+                                    ( debounce, Cmd.none )
+
+                                Just value ->
+                                    Debounce.push value debounce
+
+                        nextConnection =
+                            { connection | sliders = Dict.insert index ( nextDebounce, nextSlider ) connection.sliders }
+                    in
+                    ( { model | call = RemoteData.Success nextConnection }
+                    , Cmd.map (DebounceTick index) cmdOfDebounce
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
 
         RemoteControlMsg msgOfRemoteControl ->
             case model.call of
@@ -358,6 +398,7 @@ view credentials model =
                             (\index ->
                                 sliders
                                     |> getSlider index
+                                    |> Tuple.second
                                     |> Slider.view
                                     |> Html.map (SliderMsg index)
                             )

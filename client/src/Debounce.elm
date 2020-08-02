@@ -1,4 +1,4 @@
-module Debounce exposing (Debounce, Msg, bounce, push, update)
+module Debounce exposing (Debounce, Tick, bounce, getValue, push)
 
 import Process
 import Task
@@ -20,12 +20,12 @@ bounce ms =
     Debounce (State 0 Nothing ms)
 
 
-type Msg
+type Tick
     = Tick Int
 
 
-update : Msg -> Debounce a -> Maybe a
-update (Tick lastSize) (Debounce state) =
+getValue : Tick -> Debounce a -> Maybe a
+getValue (Tick lastSize) (Debounce state) =
     if lastSize == state.size then
         state.value
 
@@ -35,7 +35,7 @@ update (Tick lastSize) (Debounce state) =
 
 {-| Push a value into the debouncer.
 -}
-push : a -> Debounce a -> ( Debounce a, Cmd Msg )
+push : a -> Debounce a -> ( Debounce a, Cmd Tick )
 push value (Debounce state) =
     ( Debounce
         { state
