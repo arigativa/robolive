@@ -3,11 +3,15 @@ name: Build registry server
 on:
   push:
     paths:
-      - 'registry'
+      - 'build.sbt'
+      - 'project/**'
+      - 'registry/**'
     branches: [ master ]
   pull_request:
     paths:
-      - 'registry'
+      - 'build.sbt'
+      - 'project/**'
+      - 'registry/**'
 
 jobs:
   build-registry-package:
