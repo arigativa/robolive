@@ -17,6 +17,7 @@
     }
   },
   "include": [
+    "./stories/**/*",
     "./src/**/*",
     "./index.ts",
     "./*.d.ts"

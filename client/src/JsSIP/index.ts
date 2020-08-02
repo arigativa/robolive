@@ -57,7 +57,7 @@ export const register = (ports: {
     js_sip__on_call_failed?: ElmSubPort<string>;
     js_sip__on_call_confirmed?: ElmSubPort<MediaStream>;
 
-    js_sip__send_info: ElmCmdPort<string>;
+    js_sip__send_info?: ElmCmdPort<string>;
 
     js_sip__hangup?: ElmCmdPort;
 
