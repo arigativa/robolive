@@ -10,8 +10,8 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 
 object RegistryServer extends App {
-  val InventoryPort = 3478
-  val OperatorPort = 3479
+  val InventoryPort = getEnv("REGISTRY_PORT_FOR_ROBOT", "3478").toInt
+  val OperatorPort = getEnv("REGISTRY_PORT_FOR_OPERATOR", "3479").toInt
 
   val service = new RegistryProtoServer()
 
@@ -33,4 +33,7 @@ object RegistryServer extends App {
 
       server.awaitTermination()
     }
+
+  def getEnv(name: String, default: String): String =
+    sys.env.getOrElse(name, default)
 }
