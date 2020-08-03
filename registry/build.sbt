@@ -19,3 +19,9 @@ PB.protoSources in Compile := Seq(file("protocols"))
 PB.targets in Compile := Seq(
   scalapb.gen(grpc = true) -> (sourceManaged in Compile).value / "robolive" / "protocols"
 )
+
+
+/* Packaging */
+
+topLevelDirectory := None
+packageName in Universal := "registry"

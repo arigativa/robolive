@@ -32,10 +32,10 @@ jobs:
         java-version: 8
 
     - name: Build Registry package
-      run: sbt universal:packageZipTarball
+      run: sbt universal:registry
 
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v2
       with:
         name: registry-distr.zip
-        path: registry/target/universal/registry-1.0.zip
+        path: registry/target/universal/registry.zip
