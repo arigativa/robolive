@@ -1,0 +1,28 @@
+FROM hseeberger/scala-sbt:8u265_1.3.13_2.13.3 as built
+
+WORKDIR /src
+
+ADD build.sbt /src/
+ADD project /src/project
+
+ADD sdp /src/sdp
+ADD mjsip /src/mjsip
+
+ADD protocols /src/protocols
+
+ADD registry /src/registry
+ADD robot /src/robot
+
+RUN sbt compile
+RUN sbt 'project registry' universal:packageBin
+RUN mkdir -p /dist/registry
+RUN unzip registry/target/universal/registry.zip -d /dist/registry
+
+
+
+FROM openjdk:8 as registry
+
+COPY --from=built /dist/registry /app
+
+CMD /app/bin/registry
+

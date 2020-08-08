@@ -1,4 +1,4 @@
-version: '3'
+version: '3.7'
 
 services:
   signaling:
@@ -27,6 +27,19 @@ services:
     networks:
         testing_net:
             ipv4_address: 169.28.1.4
+
+  registry:
+    build:
+      context: .
+      dockerfile: Dockerfile.allscala
+      target: registry
+    container_name: registry
+    environment:
+      REGISTRY_PORT_FOR_ROBOT: 3478
+      REGISTRY_PORT_FOR_OPERATOR: 3479
+    ports:
+      - 3478:3478
+      - 3479:3479
 
 
 networks:
