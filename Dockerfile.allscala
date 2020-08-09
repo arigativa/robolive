@@ -1,3 +1,6 @@
+################################
+# Stage 0: Build all scala code
+
 FROM hseeberger/scala-sbt:8u265_1.3.13_2.13.3 as built
 
 WORKDIR /src
@@ -18,7 +21,8 @@ RUN sbt 'project registry' universal:packageBin
 RUN mkdir -p /dist/registry
 RUN unzip registry/target/universal/registry.zip -d /dist/registry
 
-
+################################
+# Stage 1: Build registry image
 
 FROM openjdk:8 as registry
 
