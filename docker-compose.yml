@@ -3,6 +3,9 @@ version: '3.7'
 services:
   signaling:
     image: robolive-signalling
+    build:
+      context: ./infra/playbook
+      dockerfile: ./roles/signalling/Dockerfile
     container_name: signalling
     ports:
       - "9030:9030"
@@ -16,6 +19,9 @@ services:
         
   turn: 
     image: robolive-relay
+    build:
+      context: ./infra/playbook
+      dockerfile: ./roles/relay/Dockerfile
     container_name: relay
     restart: always
     ports:
