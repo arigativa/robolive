@@ -17,12 +17,17 @@ ADD registry /src/registry
 ADD robot /src/robot
 
 RUN sbt compile
+
 RUN sbt 'project registry' universal:packageBin
 RUN mkdir -p /dist/registry
 RUN unzip registry/target/universal/registry.zip -d /dist/registry
 
+RUN sbt 'project robot' universal:packageBin
+RUN mkdir -p /dist/robot
+RUN unzip robot/target/universal/robot.zip -d /dist/robot
+
 ################################
-# Stage 1: Build registry image
+# Stage 1.a: Build registry image
 
 FROM openjdk:8 as registry
 
@@ -30,3 +35,20 @@ COPY --from=built /dist/registry /app
 
 CMD /app/bin/registry
 
+
+################################
+# Stage 1.b: Build registry image
+
+FROM openjdk:11 as robot
+
+RUN apt-get --allow-releaseinfo-change update
+
+RUN apt update && apt install -y \
+    gstreamer1.0-tools \
+    gstreamer1.0-nice \
+    gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-bad gir1.2-gst-plugins-bad-1.0
+
+COPY --from=built /dist/robot /app
+
+CMD ["/app/bin/call-puppet-app"]
