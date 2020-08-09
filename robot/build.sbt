@@ -1,7 +1,7 @@
-organization := "ru.arigativa.robolive"
+organization := "robolive"
 name := "robot"
 version := "1.0"
-scalaVersion := "2.13.1"
+scalaVersion := "2.13.3"
 
 javacOptions ++= Seq("-source", "1.8", "-target", "1.8")
 
@@ -13,12 +13,6 @@ libraryDependencies ++= Seq(
   "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
 )
 
-PB.protoSources in Compile := Seq(file("protocols"))
-
-PB.targets in Compile := Seq(
-  scalapb.gen(grpc = true) -> (sourceManaged in Compile).value / "robolive" / "protocols"
-)
-
 val circeVersion = "0.12.3"
 
 libraryDependencies ++= Seq(
@@ -26,3 +20,14 @@ libraryDependencies ++= Seq(
   "io.circe" %% "circe-generic",
   "io.circe" %% "circe-parser"
 ).map(_ % circeVersion)
+
+PB.protoSources in Compile := Seq(file("protocols"))
+
+PB.targets in Compile := Seq(
+  scalapb.gen(grpc = true) -> (sourceManaged in Compile).value / "robolive" / "protocols"
+)
+
+/* Packaging */
+
+topLevelDirectory := None
+packageName in Universal := "robot"
