@@ -6,10 +6,9 @@ After=network.target
 [Service]
 User=turnserver
 Group=turnserver
-Type=forking
 RuntimeDirectory=turnserver
 PIDFile=/run/turnserver/turnserver.pid
-ExecStart=/usr/bin/turnserver --daemon -c {{ turn_config_dir }}/{{ turn_config_file }} --pidfile /run/turnserver/turnserver.pid
+ExecStart=/usr/bin/turnserver -c {{ turn_config_dir }}/{{ turn_config_file }}
 #FixMe: turnserver exit faster than it is finshing the setup and ready for handling the connection.
 ExecStartPost=/bin/sleep 2
 Restart=on-failure
