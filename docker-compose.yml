@@ -1,8 +1,11 @@
-version: '3'
+version: '3.7'
 
 services:
   signaling:
     image: robolive-signalling
+    build:
+      context: ./infra/playbook
+      dockerfile: ./roles/signalling/Dockerfile
     container_name: signalling
     ports:
       - "9030:9030"
@@ -13,25 +16,67 @@ services:
     networks:
         testing_net:
             ipv4_address: 169.28.1.1
-        
+
+  robot:
+    image: robolive-robot
+    build:
+      context: .
+      dockerfile: Dockerfile.allscala
+      target: robot
+    container_name: robot
+    networks:
+      testing_net:
+        ipv4_address: 169.28.1.10
+    command: /app/bin/call-puppet-app # managed-robot-app
+    environment:
+      GST_DEBUG: '*:3'
+      VIDEO_SRC: 'videotestsrc is-live=true pattern=ball ! videoconvert'
+      SERVO_CONTROLLER: 'FAKE'
+      SIGNALLING_URI: '169.28.1.1:9031'
+      OPENSSL_CONF: ''
+      INVENTORY_PORT: 3478
+      INVENTORY_HOST: registry
+    depends_on:
+      - registry
+
   turn: 
     image: robolive-relay
+    build:
+      context: ./infra/playbook
+      dockerfile: ./roles/relay/Dockerfile
     container_name: relay
     restart: always
     ports:
         - 8080:8080
         - 4443:4443
-        - 46000-46100:46000-46100
+        - 45000-45100:45000-45100
     volumes:
         - "./tmp/config:/etc/coturn"
     networks:
         testing_net:
             ipv4_address: 169.28.1.4
 
+  registry:
+    image: robolive-registry
+    build:
+      context: .
+      dockerfile: Dockerfile.allscala
+      target: registry
+    container_name: registry
+    environment:
+      REGISTRY_PORT_FOR_ROBOT: 3478
+      REGISTRY_PORT_FOR_OPERATOR: 3479
+    networks:
+      testing_net:
+        ipv4_address: 169.28.1.20
+    ports:
+      - 3478:3478
+      - 3479:3479
+
 
 networks:
-    testing_net:
-        ipam:
-            driver: default
-            config:
-                - subnet: 169.28.0.0/16
+  testing_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: 169.28.0.0/16

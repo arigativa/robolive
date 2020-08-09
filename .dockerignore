@@ -1,0 +1,6 @@
+/infra/
+target/
+robot/target/
+robot/project/target/
+registry/target/
+registry/project/target/

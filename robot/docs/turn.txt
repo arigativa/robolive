@@ -1,0 +1,30 @@
+                                   Peer A
+                                   Server-Reflexive      +---------+
+                                   Transport Address     |         |
+                                   192.0.2.150:32102     |         |
+                                         |             //|         |
+                     TURN                |            / ^|  Peer A |
+  Client's           Server              |           /  ||         |
+  Host Transport     Transport           |         //   ||         |
+  Address            Address             |       //     |+---------+
+198.51.100.2:49721  192.0.2.15:3478      |+-+  //     Peer A
+           |             |               ||N| /       Host Transport
+           |   +-+       |               ||A|/        Address
+           |   | |       |               v|T|     203.0.113.2:49582
+           |   | |       |               /+-+
++---------+|   | |      |+---------+   /              +---------+
+|         ||   |N|      ||         | //               |         |
+| TURN    |v   | |      v| TURN    |/                 |         |
+| Client  |----|A|-------| Server  |------------------|  Peer B |
+|         |    | |^      |         |^                ^|         |
+|         |    |T||      |         ||                ||         |
++---------+    | ||      +---------+|                |+---------+
+               | ||                 |                |
+               | ||                 |                |
+               +-+|                 |                |
+                  |                 |                |
+                  |                 |                |
+        Client's                    |            Peer B
+        Server-Reflexive     Relayed             Transport
+        Transport Address    Transport Address   Address
+        192.0.2.1:7000       192.0.2.15:50000    192.0.2.210:49191

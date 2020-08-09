@@ -3,13 +3,19 @@ package robolive
 import org.freedesktop.gstreamer._
 import org.mjsip.sip.call.ExtendedCall
 import org.slf4j.LoggerFactory
+import robolive.gstreamer.WebRTCBinManaged.IceCandidate
 import robolive.gstreamer.{GstManaged, PipelineManaged, WebRTCBinManaged}
 import sdp.SdpMessage.RawValueAttribute
 import sdp.{Attributes, SdpMessage}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-final class WebRTCController(videoSrc: String)(implicit gst: GstManaged.GSTInit.type) {
+final class WebRTCController(
+  videoSrc: String,
+  servoController: ServoController,
+)(
+  implicit gst: GstManaged.GSTInit.type
+) {
   import WebRTCController._
 
   private val logger = LoggerFactory.getLogger(getClass.getName)
@@ -18,14 +24,12 @@ final class WebRTCController(videoSrc: String)(implicit gst: GstManaged.GSTInit.
   private var webRTCBin: WebRTCBinManaged = _
   @volatile private var state: WebRTCControllerPlayState = WebRTCControllerPlayState.Wait
 
-  private val servoController = ServoController.make
-
   private def start(rtcType: Int): StateChangeReturn = synchronized {
     try {
       val pipelineDescription = WebRTCController.pipelineDescription(
         videoSrc = videoSrc,
         rtcType = rtcType,
-        stunServerUrl = "stun://stun.l.google.com:19302"
+        stunServerUrl = "stun://stun.l.google.com:19302",
       )
 
       pipeline = PipelineManaged(
@@ -163,14 +167,21 @@ final class WebRTCController(videoSrc: String)(implicit gst: GstManaged.GSTInit.
                 answer <- webRTCBin.createAnswer()
                 _ = logger.info(s"Answer created: ${answer.toSdpString}")
               } yield {
-                localIceCandidates.foreach { iceCandidate =>
-                  webRTCBin.addIceCandidate(iceCandidate)
+                remoteSdp.media.zipWithIndex.foreach {
+                  case (media, i) =>
+                    val candidates = media.getRawAttributes("candidate")
+                    candidates.foreach { candidate =>
+                      println(s"Added: ${candidate.valueOpt.get}")
+                      webRTCBin.addIceCandidate(IceCandidate(i, candidate.valueOpt.get))
+                    }
                 }
+
                 webRTCBin.setLocalAnswer(answer)
 
                 val mediasWithCandidates = localIceCandidates.groupBy(_.sdpMLineIndex).map {
                   case (mIndex, candidates) =>
-                    val attrs = candidates.map(c => RawValueAttribute("candidate", c.candidate))
+                    val attrs = candidates
+                      .map(c => RawValueAttribute("candidate", c.candidate))
                     answer.media(mIndex).attributesAdded(attrs)
                 }
 
@@ -278,7 +289,11 @@ object WebRTCController {
     case object Busy extends WebRTCControllerPlayState
   }
 
-  def pipelineDescription(videoSrc: String, rtcType: Int, stunServerUrl: String): String = {
+  def pipelineDescription(
+    videoSrc: String,
+    rtcType: Int,
+    stunServerUrl: String,
+  ): String = {
     s"""webrtcbin name=sendrecv bundle-policy=max-bundle stun-server=$stunServerUrl
        | $videoSrc ! queue ! vp8enc deadline=1 ! rtpvp8pay pt=$rtcType !
        | queue ! application/x-rtp,media=video,encoding-name=VP8,payload=$rtcType ! sendrecv.""".stripMargin
