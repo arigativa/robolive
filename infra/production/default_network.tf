@@ -77,10 +77,22 @@ resource "azurerm_network_security_group" "web" {
     destination_address_prefix = "*"
     destination_port_range     = "46000-46100"
     direction                  = "Inbound"
-    name                       = "allowUdpForRelay"
+    name                       = "allowInboundForRelay"
     description                = ""
     priority                   = 330
-    protocol                   = "UDP"
+    protocol                   = "*"
+  }
+  security_rule {
+    access                     = "Allow"
+    source_address_prefix      = "*"
+    source_port_range          = "*"
+    destination_address_prefix = "*"
+    destination_port_range     = "46000-46100"
+    direction                  = "Outbound"
+    name                       = "allowOutboundForRelay"
+    description                = ""
+    priority                   = 331
+    protocol                   = "*"
   }
   security_rule {
     access                     = "Allow"
