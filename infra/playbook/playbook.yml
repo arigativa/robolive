@@ -1,5 +1,7 @@
 ---
 - hosts: signalling_and_relay
+  become: yes
+  become_user: root
   roles:
     #- { role: geerlingguy.nginx, tags: nginx }
     - { role: relay, tags: relay }
