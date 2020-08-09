@@ -6,11 +6,17 @@ robolive_team:
   - name: Robert
     login: gr0bert
     email: gubinrobert@gmail.com
+    ssh_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDuQxarLbNIXQrbCyl2KcZoitKe1vPlGuyuI2EMh/xcaPtx15HinQ9jQtskV7BLZm9RgjEwxpCYlXhiTv2KJVlXeuqH1w6oNwzJjxd/EMljm7NE6oE+NNU3Xt9779Y1PY2TAfC4PVCkYwU0KAuAQiQY/NOiEwZgXsEPeOkenbtKkJDYEnFDtDt3Q+xvtPe4RAL2S22Bg5FdGSAOaL9DMWhLrMvlaZw46XuoAFBgwjImSs6eCbCtqBnwlmDKX/ve/XP0ZZSXretOqgpWEi+2ZrM/v5hm8o6xc4+vixffZsa69haXrC36rjTu1MXkLWH9YmyTYThohoue/3HiV+ZvgV9bhSyR2jzFfEIsQoADqIXTMAviOhlAclfROB0WpT44CVKzMSzwZR4WZWV8qs2gxh14ImPtrvQlZBitHtwEYtVdksGIKCck7yTS450hHe8IZseXwp2rjpiqa2ENzivfim6V4AaS8SLzxfZ94ndJLYVuYkVQcBOPv/J8//7vZehlgOM= gubinrobert@gmail.com"
 
   - name: Sasha
     login: hasselbach
     email: alex@arigativa.ru
     ssh_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDECw4pLZu4vjtdT/vHNeqO2TY2okeumy6Gr39Sex8ZtZ4JRwtNrqWnVEfQChRTklAB/lYGNz2Ww5leO/q2Vbebq76uoT4x/7MDBWRNqSteJEkhJL+FXEjdxvqkHeRXckZiIQl7P1ItazQeTORGRXwDb7QSjix3dPSQWGDj4ZWmkFgVHlRS3zxoW+T4DgF2qDOlMKxgz2HZbwBylvwa1udWJj7ICOO26NBFoULShgNa03ye+LZf2mraEzo/Kn9RFovNzfgCL8sf43+3tVg3b2j8hWi9zyEOd6NIrZRVcXYk8gWuMdpcAqHke+0TbLCCu7nybBjMFa0iQ7aypAM3MM9V2Uh7Hxu2GHZwUbdzzaxsojmLaQkYB9lwm+e/LdLS2t99mRPsPmEsaDAYJoVUAELm15VE5i8eSzjA60Q8dbJ1qTSgV/n7mC5R+aYXrlj7efU352Ew2WyM3vhVFIeDhuc5hhYBlBC9cqgTNRWB9DtlA9wN0gmnLsHuctNIFsCnJZNGEbufvL+AMA5vBNJOeaDHm+9meI2GdzUD0IIZijEpHaJGi1uDRHh6/l4XPhit43yhPmzdY318Qma+HAre5A1CmmtfJwt1s9KvTHfChgCWk41C+eO6UMFV/C+NINL1pdC6in37Y2J3t3kup8bCMjpOHU6TOsWneJ1IYEZ01z5qgw== alex@arigativa.ru"
+
+  - name: Sashamac
+    login: hasselmac
+    email: alex@arigativa.ru
+    ssh_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBMSZXkTQqN9nWdJXMwfe2WZTSx9483t7Y09G1ft/Nft agasselbakh@stackstate.com"
 
   - name: Yurii
     login: ovoshlook
