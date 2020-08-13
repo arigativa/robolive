@@ -37,6 +37,7 @@ function ksr_request_route()
         
         if result == 2 then
             roles.nathandle.sip()
+            roles.nathandle.sdp()
             roles.relay()
         end
 
@@ -59,7 +60,8 @@ function ksr_request_route()
 	end
 
     roles.nathandle.sip()
-    
+    roles.nathandle.sdp()
+
     if not roles.auth(KSR.pv.get("$fU"),KSR.pv.get("$si")..":"..KSR.pv.get("$sp")) then
         KSR.sl.sl_send_reply("403","Forbidden")
         KSR.x.exit()
@@ -85,6 +87,7 @@ end
 
 function ksr_reply_route()
     roles.nathandle.sip() 
+    roles.nathandle.sdp()
 end
 
 -- function branch_route_wrapper()
