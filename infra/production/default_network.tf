@@ -101,10 +101,10 @@ resource "azurerm_network_security_group" "web" {
     destination_address_prefix = "*"
     destination_port_range     = "8080"
     direction                  = "Inbound"
-    name                       = "allowTcpForRelay"
+    name                       = "allowRelay"
     description                = ""
     priority                   = 320
-    protocol                   = "TCP"
+    protocol                   = "*"
   }
   security_rule {
     access                     = "Allow"
