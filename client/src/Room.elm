@@ -39,7 +39,9 @@ type alias Model =
 
 initial : ( Model, Cmd Msg )
 initial =
-    ( { iceServers = []
+    ( { iceServers = [
+           { active = True, url = "turn:rl.arigativa.ru:8080?transport=udp", username = "turn", password = "turn" }
+        ]
       , interlocutor = "robomachine"
       , call = RemoteData.NotAsked
       }

@@ -1,0 +1,20 @@
+FROM namely/protoc-all
+
+RUN apk update
+RUN apk add npm
+
+RUN npm install -g ts-protoc-gen
+
+
+ADD ./client /client
+ADD ./protocols /protocols
+
+ENV PROTOC_GEN_TS_PATH "protoc-gen-ts"
+# Directory to write generated code to (.js and .d.ts files)
+ENV OUT_DIR="/client/generated"
+
+RUN protoc \
+    --plugin="protoc-gen-ts=protoc-gen-ts" \
+    --js_out="import_style=commonjs,binary:${OUT_DIR}" \
+    --ts_out="${OUT_DIR}" \
+    users.proto base.proto
