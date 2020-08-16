@@ -12,6 +12,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 final class WebRTCController(
   videoSrc: String,
+  stunServerUrl: String,
   servoController: ServoController,
 )(
   implicit gst: GstManaged.GSTInit.type
@@ -29,7 +30,7 @@ final class WebRTCController(
       val pipelineDescription = WebRTCController.pipelineDescription(
         videoSrc = videoSrc,
         rtcType = rtcType,
-        stunServerUrl = "stun://stun.l.google.com:19302",
+        stunServerUrl = stunServerUrl,
       )
 
       pipeline = PipelineManaged(
@@ -105,8 +106,8 @@ final class WebRTCController(
         if (name.startsWith(receiverName)) {
           val queue = ElementFactory.make("queue", "incomingBuffer")
           val convert = ElementFactory.make("videoconvert", "videoconvert")
-          val sink = ElementFactory.make("filesink", "filesink")
-          sink.set("location", "/dev/null")
+          val sink = ElementFactory.make("autovideosink", "autovideosink")
+//          sink.set("location", "/dev/null")
           pipeline.add(queue)
           pipeline.add(convert)
           pipeline.add(sink)
@@ -152,28 +153,34 @@ final class WebRTCController(
 
             if (start(rtpType) == StateChangeReturn.SUCCESS) {
               logger.info("Call accepted")
+              logger.info(
+                s"""offer:
+                   |${remoteSdp.toSdpString}""".stripMargin
+              )
+
               state = WebRTCControllerPlayState.Busy
 
               call.ring()
 
               webRTCBin.setRemoteOffer(remoteSdp)
-              logger.debug(s"Remote offer set: ${remoteSdp.toSdpString}")
               (for {
                 localIceCandidates <- webRTCBin.fetchIceCandidates()
                 localIceCandidatesStr = localIceCandidates
                   .map(c => s"${c.sdpMLineIndex} | ${c.candidate}")
                   .mkString(System.lineSeparator())
-                _ = logger.info(s"Ice candidates fetched: $localIceCandidatesStr")
+                _ = logger.debug(s"Ice candidates fetched: $localIceCandidatesStr")
                 answer <- webRTCBin.createAnswer()
-                _ = logger.info(s"Answer created: ${answer.toSdpString}")
+                _ = logger.debug(s"Answer created: ${answer.toSdpString}")
               } yield {
                 remoteSdp.media.zipWithIndex.foreach {
                   case (media, i) =>
                     val candidates = media.getRawAttributes("candidate")
-                    candidates.foreach { candidate =>
-                      println(s"Added: ${candidate.valueOpt.get}")
-                      webRTCBin.addIceCandidate(IceCandidate(i, candidate.valueOpt.get))
-                    }
+                    candidates
+                      .filter(_.valueOpt.get.contains("raddr"))
+                      .foreach { candidate =>
+                        logger.info(s"ice added: `$candidate`")
+                        webRTCBin.addIceCandidate(IceCandidate(i, candidate.valueOpt.get))
+                      }
                 }
 
                 webRTCBin.setLocalAnswer(answer)
@@ -181,6 +188,7 @@ final class WebRTCController(
                 val mediasWithCandidates = localIceCandidates.groupBy(_.sdpMLineIndex).map {
                   case (mIndex, candidates) =>
                     val attrs = candidates
+                      .filter(_.candidate.contains("raddr"))
                       .map(c => RawValueAttribute("candidate", c.candidate))
                     answer.media(mIndex).attributesAdded(attrs)
                 }
@@ -188,7 +196,10 @@ final class WebRTCController(
                 val answerWithCandidates = answer.copy(media = mediasWithCandidates.toSeq)
                 val sdpString = fixSdpForChrome(answerWithCandidates.toSdpString)
 
-                logger.debug(s"Answer is ready:\n $sdpString")
+                logger.info(
+                  s"""answer
+                     |$sdpString""".stripMargin
+                )
 
                 call.accept(sdpString)
               }).recover {
