@@ -5,7 +5,6 @@ import Bulletproof exposing (Story)
 import Bulletproof.Knob
 import Credentials exposing (Credentials)
 import JsSIP
-import RemoteControl
 import RemoteData
 import Room
 import Room.IceServer as IceServer
@@ -82,8 +81,8 @@ stories =
             , call =
                 RemoteData.Success
                     { stream = JsSIP.mockMediaStream
-                    , remoteControl = RemoteControl.initial
                     , sliders = Dict.empty
+                    , debounces = Dict.empty
                     }
          }
             |> Room.view credentials
