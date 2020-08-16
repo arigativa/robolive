@@ -182,7 +182,6 @@ final class WebRTCController(
                   case (media, i) =>
                     val candidates = media.getRawAttributes("candidate")
                     candidates
-                      .filter(_.valueOpt.get.contains("raddr"))
                       .foreach { candidate =>
                         logger.info(s"ice added: `$candidate`")
                         webRTCBin.addIceCandidate(IceCandidate(i, candidate.valueOpt.get))
@@ -194,7 +193,6 @@ final class WebRTCController(
                 val mediasWithCandidates = localIceCandidates.groupBy(_.sdpMLineIndex).map {
                   case (mIndex, candidates) =>
                     val attrs = candidates
-                      .filter(_.candidate.contains("raddr"))
                       .map(c => RawValueAttribute("candidate", c.candidate))
                     answer.media(mIndex).attributesAdded(attrs)
                 }
