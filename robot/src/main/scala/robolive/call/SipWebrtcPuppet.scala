@@ -25,6 +25,7 @@ object SipWebrtcPuppet {
       videoSrc = videoSrc,
       stunServerUrl = "stun://rl.arigativa.ru:8080",
       servoController = servoController,
+      false,
     )
     val sipEventsHandler = new SIPCallEventHandler(controller)
 

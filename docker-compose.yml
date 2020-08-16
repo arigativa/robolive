@@ -33,6 +33,7 @@ services:
       VIDEO_SRC: 'videotestsrc is-live=true pattern=ball ! videoconvert'
       SERVO_CONTROLLER: 'FAKE'
       SIGNALLING_URI: '169.28.1.1:9031'
+      STUN_URI: 'stun://169.28.1.4:8080'
       OPENSSL_CONF: ''
       INVENTORY_PORT: 3478
       INVENTORY_HOST: registry
@@ -72,7 +73,6 @@ services:
     ports:
       - 3478:3478
       - 3479:3479
-
 
 networks:
   testing_net:

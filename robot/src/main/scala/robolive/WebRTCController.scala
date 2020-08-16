@@ -14,9 +14,8 @@ final class WebRTCController(
   videoSrc: String,
   stunServerUrl: String,
   servoController: ServoController,
-)(
-  implicit gst: GstManaged.GSTInit.type
-) {
+  enableUserVideo: Boolean,
+)(implicit gst: GstManaged.GSTInit.type) {
   import WebRTCController._
 
   private val logger = LoggerFactory.getLogger(getClass.getName)
@@ -106,8 +105,15 @@ final class WebRTCController(
         if (name.startsWith(receiverName)) {
           val queue = ElementFactory.make("queue", "incomingBuffer")
           val convert = ElementFactory.make("videoconvert", "videoconvert")
-          val sink = ElementFactory.make("autovideosink", "autovideosink")
-//          sink.set("location", "/dev/null")
+          val sink = {
+            if (enableUserVideo) {
+              ElementFactory.make("autovideosink", "autovideosink")
+            } else {
+              val sink = ElementFactory.make("filesink", "filesink")
+              sink.set("location", "/dev/null")
+              sink
+            }
+          }
           pipeline.add(queue)
           pipeline.add(convert)
           pipeline.add(sink)
