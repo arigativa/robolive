@@ -181,11 +181,10 @@ final class WebRTCController(
                 remoteSdp.media.zipWithIndex.foreach {
                   case (media, i) =>
                     val candidates = media.getRawAttributes("candidate")
-                    candidates
-                      .foreach { candidate =>
-                        logger.info(s"ice added: `$candidate`")
-                        webRTCBin.addIceCandidate(IceCandidate(i, candidate.valueOpt.get))
-                      }
+                    candidates.foreach { candidate =>
+                      logger.info(s"ice added: `$candidate`")
+                      webRTCBin.addIceCandidate(IceCandidate(i, candidate.valueOpt.get))
+                    }
                 }
 
                 webRTCBin.setLocalAnswer(answer)
@@ -263,6 +262,12 @@ final class WebRTCController(
 
       result
     }
+
+    def set(servoId: Int, angle: Int): ServosState = {
+      val result = servos.updated(servoId, angle)
+      servoController.servoProxy(servoId, angle)
+      this.copy(servos = result)
+    }
   }
 
   var servosState = ServosState(Map.empty)
@@ -276,17 +281,11 @@ final class WebRTCController(
     import Keys._
 
     sealed trait ClientInput
-    case class KeyPressed(keyCode: Int) extends ClientInput
+    final case class KeyPressed(index: Int, angle: Int) extends ClientInput
 
     decode[KeyPressed](input) match {
-      case Right(KeyPressed(keyCode)) =>
-        keyCode match {
-          case ArrowUp => updateServoState(_.move(3, 10))
-          case ArrowDown => updateServoState(_.move(3, -10))
-          case ArrowLeft => updateServoState(_.move(0, 10))
-          case ArrowRight => updateServoState(_.move(0, -10))
-          case _ => logger.warn(s"unhandled user key press: $keyCode")
-        }
+      case Right(KeyPressed(index, angle)) =>
+        updateServoState(_.set(index, angle))
       case Left(err: Throwable) =>
         logger.warn("unexpected user input: $", err)
     }
