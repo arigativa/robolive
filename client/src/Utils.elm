@@ -1,6 +1,15 @@
-module Utils exposing (hasWhitespaces)
+module Utils exposing (hasWhitespaces, ifelse)
 
 import Regex
+
+
+ifelse : Bool -> x -> x -> x
+ifelse condition onTrue onFalse =
+    if condition then
+        onTrue
+
+    else
+        onFalse
 
 
 hasWhitespaces : String -> Bool

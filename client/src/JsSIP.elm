@@ -5,6 +5,8 @@ port module JsSIP exposing
     , UserAgent
     , call
     , hangup
+    , mockMediaStream
+    , mockUserAgent
     , onCalled
     , onEnd
     , onRegistred
@@ -15,11 +17,16 @@ port module JsSIP exposing
 
 import Html
 import Html.Attributes
-import Json.Encode exposing (Value, encode)
+import Json.Encode as Encode exposing (Value, encode)
 
 
 type UserAgent
     = UserAgent Value
+
+
+mockUserAgent : UserAgent
+mockUserAgent =
+    UserAgent Encode.null
 
 
 unwrapUserAgent : UserAgent -> Value
@@ -29,6 +36,11 @@ unwrapUserAgent (UserAgent ua) =
 
 type MediaStream
     = MediaStream Value
+
+
+mockMediaStream : MediaStream
+mockMediaStream =
+    MediaStream Encode.null
 
 
 srcObject : MediaStream -> Html.Attribute msg
