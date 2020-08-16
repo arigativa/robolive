@@ -18,7 +18,7 @@ services:
             ipv4_address: 169.28.1.1
 
   robot:
-    image: robolive-robot
+    image: robot
     build:
       context: .
       dockerfile: Dockerfile.allscala

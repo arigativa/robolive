@@ -37,7 +37,7 @@ CMD /app/bin/registry
 
 
 ################################
-# Stage 1.b: Build registry image
+# Stage 1.b: Build robot image
 
 FROM openjdk:11 as robot
 
