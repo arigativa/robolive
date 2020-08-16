@@ -33,6 +33,8 @@ object CallPuppetApp extends App {
   }
   val robotName = getEnv("ROBOT_NAME", "robomachine")
   val signallingUri = getEnv("SIGNALLING_URI", "rl.arigativa.ru:9031")
+  val stunUri = getEnv("STUN_URI", "stun://rl.arigativa.ru:8080")
+  val enableUserVideo = sys.env.contains("ENABLE_USER_VIDEO")
   val servoControllerType = getEnv("SERVO_CONTROLLER", default = "PYTHON_SHELL")
   val servoController = servoControllerType match {
     case "PYTHON_SHELL" => ServoController.makePythonShellServoController
@@ -50,7 +52,13 @@ object CallPuppetApp extends App {
   )
 
   implicit val gstInit: GstManaged.GSTInit.type = GstManaged(robotName, new Version(1, 14))
-  val controller = new WebRTCController(videoSrc, servoController)
+
+  val controller = new WebRTCController(
+    videoSrc = videoSrc,
+    stunServerUrl = stunUri,
+    servoController = servoController,
+    enableUserVideo,
+  )
 
   val latch = new CountDownLatch(1)
   sys.addShutdownHook {

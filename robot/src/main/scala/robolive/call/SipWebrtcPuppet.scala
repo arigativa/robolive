@@ -22,8 +22,10 @@ object SipWebrtcPuppet {
     val servoController = ServoController.makePythonShellServoController
 
     val controller = new WebRTCController(
-      videoSrc,
-      servoController,
+      videoSrc = videoSrc,
+      stunServerUrl = "stun://rl.arigativa.ru:8080",
+      servoController = servoController,
+      false,
     )
     val sipEventsHandler = new SIPCallEventHandler(controller)
 
