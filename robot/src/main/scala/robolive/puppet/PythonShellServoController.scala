@@ -1,8 +1,6 @@
-package robolive
+package robolive.puppet
 
 import java.util.concurrent.LinkedTransferQueue
-
-import scala.sys.process.ProcessIO
 
 trait ServoController {
   def servoProxy(servoId: Int, angle: Int): Unit

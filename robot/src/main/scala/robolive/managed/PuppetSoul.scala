@@ -1,69 +1,64 @@
 package robolive.managed
 
-import robolive.SipConfig
-import robolive.call.SipWebrtcPuppet
-import robolive.managed.state.RobotState.ExecutingCommand
-import robolive.managed.state.{ExitState, RobotState}
-import robolive.protocols.Inventory.Command.{Command, PuppetCall, RestartRobot}
+import Inventory.{AgentCommand, SetupAgent}
+import Inventory.AgentCommand.Command
+import org.slf4j.LoggerFactory
+import robolive.puppet.Puppet
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 trait PuppetSoul {
-  def executeCommand(currentState: RobotState)(receivedCommand: Command): RobotState
+  def executeCommand(
+    currentState: RobotState,
+    receivedCommand: AgentCommand,
+  ): RobotState
 }
 
-object PuppetSoul {
+final class CallPuppetSoul()(implicit ec: ExecutionContext) extends PuppetSoul {
+  private val logger = LoggerFactory.getLogger(getClass.getName)
 
-  def DefaultCommandExecutor(
-    defaultVideoSrc: String,
-  )(implicit ec: ExecutionContext): PuppetSoul =
-    new PuppetSoul {
-      override def executeCommand(
-        currentState: RobotState
-      )(receivedCommand: Command): RobotState = {
-        receivedCommand match {
+  override def executeCommand(
+    currentState: RobotState,
+    receivedCommand: AgentCommand,
+  ): RobotState = {
+    receivedCommand.command match {
+      case Command.Empty => currentState
+      case Command.Setup(settings) =>
+        logger.info(s"setup received: $settings")
+        currentState.runningPuppet match {
+          case Some(runningPuppet) =>
+            runningPuppet.stop()
+            startPuppet(currentState, settings)
 
-          case Command.Empty =>
-            currentState
-
-          case Command.PuppetCall(PuppetCall(sipConfig, videoSrc, _)) =>
-            cancelAllCommands(currentState)
-            runCommand(currentState)(receivedCommand) { () =>
-              val name = currentState.status.description.name
-              SipWebrtcPuppet.run(
-                name,
-                videoSrc.getOrElse(defaultVideoSrc),
-                SipConfig(
-                  sipConfig.registrarUri,
-                  sipConfig.username.getOrElse(name),
-                  sipConfig.protocol
-                )
-              )
-            }
-
-          case Command.Restart(RestartRobot(updateToRecent, rebootSystem, _)) =>
-            cancelAllCommands(currentState)
-            currentState.copy(
-              requestedExit = Some(
-                ExitState(0, updateToRecent.getOrElse(false), rebootSystem.getOrElse(false))
-              )
-            )
+          case None =>
+            startPuppet(currentState, settings)
         }
-      }
-
-      private def cancelAllCommands(currentState: RobotState): RobotState = {
-        currentState.runningCommands.foreach { cmd =>
-          cmd.runningThread.interrupt()
-        }
-        currentState.copy(runningCommands = Nil)
-      }
-
-      private def runCommand(
-        currentState: RobotState
-      )(command: Command)(code: () => Unit): RobotState = {
-        val newThread = new Thread(() => code())
-        val executingCommand = ExecutingCommand(command, newThread)
-        currentState.copy(runningCommands = executingCommand :: currentState.runningCommands)
-      }
+      case Command.Restart(_) =>
+        logger.info(s"restart received")
+        currentState.copy(status = "exit")
     }
+  }
+
+  private def startPuppet(
+    currentState: RobotState,
+    settings: SetupAgent
+  ): RobotState = {
+    val puppet = new Puppet(
+      robotName = currentState.name,
+      videoSrc = settings.videoSrc,
+      sipRobotName = settings.username,
+      signallingUri = settings.registrarUri,
+      stunUri = settings.stunUri,
+      enableUserVideo = settings.enableUserVideo,
+      servoControllerType = settings.servoControllerType,
+    )
+
+    puppet.start()
+
+    RobotState(
+      name = currentState.name,
+      status = "success",
+      runningPuppet = Some(puppet),
+    )
+  }
 }

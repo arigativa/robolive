@@ -1,4 +1,4 @@
-package robolive
+package robolive.puppet
 
 import org.freedesktop.gstreamer._
 import org.mjsip.sip.call.ExtendedCall
@@ -277,8 +277,8 @@ final class WebRTCController(
   }
 
   def clientInput(input: String): Unit = {
-    import io.circe._, io.circe.generic.auto._, io.circe.parser._, io.circe.syntax._
-    import Keys._
+    import io.circe.generic.auto._
+    import io.circe.parser._
 
     sealed trait ClientInput
     final case class KeyPressed(index: Int, angle: Int) extends ClientInput

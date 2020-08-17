@@ -1,9 +1,9 @@
 package robolive.managed
 
+import Inventory.RegistryInventoryGrpc
 import io.grpc.ManagedChannelBuilder
-import robolive.protocols.Inventory.RegistryInventoryGrpc
 
-object Inventory {
+object RobotInventory {
   def buildClient(
     host: String,
     port: Int,
