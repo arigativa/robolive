@@ -1,37 +1,32 @@
 syntax = "proto2";
 
-import public "Robot.proto";
+message SetupAgent {
+  required string registrarUri = 1;
+  required string protocol = 2;
+  required string username = 3; // name in a SIP call
+  required string stunUri = 4;
 
-package robolive.protocols;
+  required string videoSrc = 5;
+  required bool enableUserVideo = 6;
+  required string servoControllerType = 7;
 
-message RobotStatus {
-  required RobotShortDescription description = 1;
+  required string id = 8;
 }
 
-message Command {
+message RestartAgent {}
 
-  message PuppetCall {
-    required SipConfig sipConfig = 1;
-    optional string videoSrc = 2;
-
-    message SipConfig {
-      required string registrarUri = 1;
-      required string protocol = 2;
-      optional string username = 3; // name in a SIP call, if empty - robot's name will be used (see RobotShortDescription proto message)
-    }
-  }
-
-  message RestartRobot {
-    optional bool updateToRecent = 1;
-    optional bool rebootSystem = 2;
-  }
-
+message AgentCommand {
   oneof command {
-    PuppetCall puppetCall = 1;
-    RestartRobot restart = 2;
+    SetupAgent setup = 1;
+    RestartAgent restart = 2;
   }
+}
+
+message AgentStatus {
+  required string status = 1;
+  required string name = 2;
 }
 
 service RegistryInventory {
-  rpc Join(stream RobotStatus) returns (stream Command);
+  rpc Join(stream AgentStatus) returns (stream AgentCommand);
 }

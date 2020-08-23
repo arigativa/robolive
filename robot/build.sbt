@@ -3,8 +3,6 @@ name := "robot"
 version := "1.0"
 scalaVersion := "2.13.3"
 
-javacOptions ++= Seq("-source", "1.8", "-target", "1.8")
-
 libraryDependencies ++= Seq(
   "org.freedesktop.gstreamer" % "gst1-java-core" % "1.1.0",
   "ch.qos.logback" % "logback-classic" % "1.2.3",

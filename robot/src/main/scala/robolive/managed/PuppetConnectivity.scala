@@ -2,58 +2,69 @@ package robolive.managed
 
 import java.util.concurrent.atomic.AtomicReference
 
+import Inventory.{AgentCommand, AgentStatus, RegistryInventoryGrpc}
 import io.grpc.stub.StreamObserver
-import robolive.managed.state.{ExitState, RobotState}
-import robolive.protocols.Inventory.{Command, RegistryInventoryGrpc, RobotStatus}
+import org.slf4j.LoggerFactory
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
 object PuppetConnectivity {
+
+  final class CommandReceiver(
+    currentState: AtomicReference[RobotState],
+    stateUpdated: AgentStatus => Unit,
+    puppetSoul: PuppetSoul,
+    terminate: Promise[Unit]
+  ) extends StreamObserver[AgentCommand] {
+    private val logger = LoggerFactory.getLogger(getClass.getName)
+
+    override def onNext(command: AgentCommand): Unit = {
+      logger.info(s"received command: $command")
+      val newState = puppetSoul.executeCommand(currentState.get(), command)
+      currentState.set(newState)
+      stateUpdated(newState.toAgentStatus)
+    }
+
+    override def onError(error: Throwable): Unit = {
+      logger.error("error occured", error)
+      terminate.success(())
+    }
+
+    override def onCompleted(): Unit = {
+      logger.info("Inventory closed the connection")
+      terminate.success(())
+    }
+  }
 
   class RunningPuppet(
     client: RegistryInventoryGrpc.RegistryInventoryStub,
     puppetSoul: PuppetSoul,
     initialState: RobotState,
   )(implicit ec: ExecutionContext) {
-
-    val robotState = new AtomicReference[RobotState](initialState)
-
-    val commandReceiver: StreamObserver[Command] = new StreamObserver[Command] {
-      override def onNext(command: Command): Unit = {
-        println(s"Received command: $command")
-        robotState.updateAndGet(currentState => {
-          val newState = puppetSoul.executeCommand(currentState)(command.command)
-          if (newState.status != currentState.status) {
-            statusReporting.onNext(newState.status)
-          }
-          newState
-        })
-      }
-
-      override def onError(t: Throwable): Unit = {
-        println("Error occured")
-        t.printStackTrace()
-        terminatedPromise.success(ExitState(-1, lastError = Some(t.toString)))
-      }
-
-      override def onCompleted(): Unit = {
-        println("Inventory closed the connection")
-        terminatedPromise.success(ExitState(0))
-      }
+    private val logger = LoggerFactory.getLogger(getClass.getName)
+    private val terminatedPromise: Promise[Unit] = {
+      val terminate = Promise[Unit]()
+      terminate.future.onComplete(_ => statusReporting.onCompleted())
+      terminate
     }
 
-    val statusReporting: StreamObserver[RobotStatus] = client.join(commandReceiver)
-    statusReporting.onNext(initialState.status)
+    private val robotState = new AtomicReference[RobotState](initialState)
 
-    private val terminatedPromise: Promise[ExitState] = Promise()
+    val commandReceiver: StreamObserver[AgentCommand] = new CommandReceiver(
+      currentState = robotState,
+      stateUpdated = (status: AgentStatus) => statusReporting.onNext(status),
+      puppetSoul = puppetSoul,
+      terminate = terminatedPromise,
+    )
 
-    terminatedPromise.future.onComplete(_ => statusReporting.onCompleted())
+    val statusReporting: StreamObserver[AgentStatus] = client.join(commandReceiver)
+    statusReporting.onNext(initialState.toAgentStatus)
 
-    def terminated: Future[ExitState] = terminatedPromise.future
+    def terminated: Future[Unit] = terminatedPromise.future
 
     def stop(reason: String): Unit = {
-      terminatedPromise.success(ExitState(10, lastError = Some(reason)))
-      statusReporting.onCompleted()
+      logger.info(s"stopped, reason: `$reason`")
+      terminatedPromise.success(())
     }
   }
 

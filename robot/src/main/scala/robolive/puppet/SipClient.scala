@@ -1,16 +1,9 @@
-package robolive
+package robolive.puppet
 
 import java.util
 
 import org.mjsip.sip.address.{NameAddress, SipURI}
-import org.mjsip.sip.call.{
-  Call,
-  ExtendedCall,
-  ExtendedCallListener,
-  RegistrationClient,
-  RegistrationClientListener,
-  SipUser
-}
+import org.mjsip.sip.call._
 import org.mjsip.sip.message.SipMessage
 import org.mjsip.sip.provider.{SipProvider, SipProviderListener}
 import org.slf4j.LoggerFactory
@@ -32,8 +25,7 @@ final class SipTransportHandler(sipCallToEventAdapter: SIPCallEventHandler, sipU
 }
 
 final class SIPCallEventHandler(controller: WebRTCController)(
-  implicit ec: ExecutionContext,
-  gst: GstManaged.GSTInit.type
+  implicit ec: ExecutionContext
 ) extends ExtendedCallListener {
   private val logger = LoggerFactory.getLogger(getClass.getName)
 

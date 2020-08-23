@@ -1,61 +1,68 @@
 package robolive.server
 
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.AtomicBoolean
 
+import Inventory.{AgentCommand, AgentStatus, SetupAgent}
+import Inventory.RegistryInventoryGrpc.RegistryInventory
 import io.grpc.stub.StreamObserver
-import robolive.protocols.Inventory.RegistryInventoryGrpc.RegistryInventory
-import robolive.protocols.Inventory.{RobotStatus, Command => RobotCommand}
-import robolive.protocols.Robot.RobotID
-import robolive.server.RobotRegistry.SendCommand
+import org.slf4j.LoggerFactory
 
-class RobotRegistry(
-                     robotTable: ConcurrentHashMap[RobotID, (RobotStatus, SendCommand)],
-                   ) extends RegistryInventory {
+final class RobotRegistry(
+  videoSrc: String,
+  sipRobotName: String,
+  signallingUri: String,
+  stunUri: String,
+  enableUserVideo: Boolean,
+  servoControllerType: String,
+  robotTable: ConcurrentHashMap[String, RobotState],
+) extends RegistryInventory {
+  private val logger = LoggerFactory.getLogger(getClass.getName)
 
+  override def join(commands: StreamObserver[AgentCommand]): StreamObserver[AgentStatus] = {
+    val agentId = UUID.randomUUID().toString
+    val settingsSent = new AtomicBoolean(false)
 
-  override def join(commands: StreamObserver[RobotCommand]): StreamObserver[RobotStatus] = {
+    logger.info(s"robot joined: $agentId")
 
-    val statusReceiver: StreamObserver[RobotStatus] = new StreamObserver[RobotStatus] {
-      private val lastKnownId = new AtomicReference[RobotID]()
-
+    new StreamObserver[AgentStatus] {
       // todo send initial command (listen to sip call)
-      override def onNext(status: RobotStatus): Unit = {
-        val id = status.description.id
-        lastKnownId.updateAndGet(previousId => {
-          if (previousId != null) {
-            if (previousId != id) {
-              commands.onError(new RuntimeException(s"unexpected id change: from $previousId to $id"))
-            }
-          }
-          id
-        })
-        robotTable.put(id, (status, commands.onNext))
+      override def onNext(status: AgentStatus): Unit = {
+        logger.info(s"status receive: $status")
+        if (!settingsSent.get()) {
+          commands.onNext(
+            AgentCommand(
+              Inventory.AgentCommand.Command.Setup(
+                SetupAgent(
+                  registrarUri = signallingUri,
+                  protocol = "tcp",
+                  username = sipRobotName,
+                  stunUri = stunUri,
+                  videoSrc = videoSrc,
+                  enableUserVideo = enableUserVideo,
+                  servoControllerType = servoControllerType,
+                  id = agentId,
+                )
+              )
+            )
+          )
+          settingsSent.set(true)
+        }
+        robotTable.put(agentId, RobotState(status.status, commands.onNext))
       }
+
       override def onError(error: Throwable): Unit = {
-        lastKnownId.get() match {
-          case null =>
-          case id =>
-            robotTable.remove(id)
-            commands.onError(error)
-        }
+        logger.error(s"agent error ${error.getMessage}", error)
+        robotTable.remove(agentId)
+        commands.onError(error)
       }
+
       override def onCompleted(): Unit = {
-        lastKnownId.get() match {
-          case null =>
-          case id =>
-            robotTable.remove(id)
-            commands.onCompleted()
-        }
+        logger.info(s"agent `$agentId` disconnected")
+        robotTable.remove(agentId)
+        commands.onCompleted()
       }
     }
-
-    statusReceiver
   }
-
-}
-
-object RobotRegistry {
-
-  type SendCommand = RobotCommand => Unit
 }

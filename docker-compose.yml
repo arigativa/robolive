@@ -27,16 +27,13 @@ services:
     networks:
       testing_net:
         ipv4_address: 169.28.1.10
-    command: /app/bin/call-puppet-app # managed-robot-app
+    command: /app/bin/managed-robot-app #call-puppet-app # managed-robot-app
     environment:
       GST_DEBUG: '*:3'
-      VIDEO_SRC: 'videotestsrc is-live=true pattern=ball ! videoconvert'
-      SERVO_CONTROLLER: 'FAKE'
-      SIGNALLING_URI: '169.28.1.1:9031'
-      STUN_URI: 'stun://169.28.1.4:8080'
       OPENSSL_CONF: ''
       INVENTORY_PORT: 3478
       INVENTORY_HOST: registry
+      ROBOT_NAME: 'Robot in Docker'
     depends_on:
       - registry
 
@@ -67,6 +64,10 @@ services:
     environment:
       REGISTRY_PORT_FOR_ROBOT: 3478
       REGISTRY_PORT_FOR_OPERATOR: 3479
+      VIDEO_SRC: 'videotestsrc is-live=true pattern=ball ! videoconvert'
+      SERVO_CONTROLLER: 'FAKE'
+      SIGNALLING_URI: '169.28.1.1:9031'
+      STUN_URI: 'stun://169.28.1.4:8080'
     networks:
       testing_net:
         ipv4_address: 169.28.1.20
