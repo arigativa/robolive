@@ -3,7 +3,6 @@ module Room exposing (Model, Msg, initial, subscriptions, update, view)
 import AVL.Dict as Dict exposing (Dict)
 import Browser.Dom
 import Credentials exposing (Credentials)
-import Debounce exposing (Debounce)
 import Html exposing (Html, b, button, div, form, h1, h3, input, p, strong, text, video)
 import Html.Attributes
 import Html.Events
@@ -15,6 +14,7 @@ import RemoteData exposing (RemoteData)
 import Room.IceServer as IceServer
 import Slider
 import Task
+import Throttle exposing (Throttle)
 import Utils exposing (hasWhitespaces)
 
 
@@ -29,8 +29,7 @@ interlocutorInputID =
 
 type alias Connection =
     { stream : JsSIP.MediaStream
-    , sliders : Dict Int (Slider.Model Int)
-    , debounces : Dict Int (Debounce Int)
+    , sliders : Dict Int (Throttle (Slider.Model Int))
     }
 
 
@@ -51,29 +50,20 @@ initial =
     )
 
 
-initialDebounce : Debounce Int
-initialDebounce =
-    Debounce.init 300
-
-
-getDebounce : Int -> Dict Int (Debounce Int) -> Debounce Int
-getDebounce index debounces =
-    Maybe.withDefault initialDebounce (Dict.get index debounces)
-
-
-initialSlider : Slider.Model Int
-initialSlider =
+initialThrottledSlider : Throttle (Slider.Model Int)
+initialThrottledSlider =
     Slider.int
         { min = 0
         , max = 120
         , step = 1
         , initialValue = 0
         }
+        |> Throttle.init 300
 
 
-getSlider : Int -> Dict Int (Slider.Model Int) -> Slider.Model Int
+getSlider : Int -> Dict Int (Throttle (Slider.Model Int)) -> Throttle (Slider.Model Int)
 getSlider index sliders =
-    Maybe.withDefault initialSlider (Dict.get index sliders)
+    Maybe.withDefault initialThrottledSlider (Dict.get index sliders)
 
 
 
@@ -88,7 +78,7 @@ type Msg
     | CallDone (Result String JsSIP.MediaStream)
     | CallEnd
     | Hangup
-    | DebounceTick Int Debounce.Tick
+    | ThrottleTick Int Throttle.Tick
     | IceServerMsg Int IceServer.Msg
     | SliderMsg Int Slider.Msg
 
@@ -147,7 +137,6 @@ update msg model =
                 initialConnection =
                     { stream = stream
                     , sliders = Dict.empty
-                    , debounces = Dict.empty
                     }
             in
             ( { model | call = RemoteData.Success initialConnection }
@@ -177,21 +166,30 @@ update msg model =
             , Cmd.none
             )
 
-        DebounceTick index tick ->
+        ThrottleTick index tick ->
             case model.call of
                 RemoteData.Success connection ->
-                    case Debounce.getValue tick (getDebounce index connection.debounces) of
+                    let
+                        throttled =
+                            getSlider index connection.sliders
+
+                        nextSliders =
+                            Dict.insert index (Throttle.tick tick throttled) connection.sliders
+                    in
+                    ( { model
+                        | call = RemoteData.Success { connection | sliders = nextSliders }
+                      }
+                    , case Slider.getValue (Throttle.getValue throttled) of
                         Nothing ->
-                            ( model, Cmd.none )
+                            Cmd.none
 
                         Just value ->
-                            ( model
-                            , Encode.object
+                            Encode.object
                                 [ ( "index", Encode.int index )
                                 , ( "angle", Encode.int value )
                                 ]
                                 |> JsSIP.sendInfo
-                            )
+                    )
 
                 _ ->
                     ( model, Cmd.none )
@@ -200,28 +198,16 @@ update msg model =
             case model.call of
                 RemoteData.Success connection ->
                     let
-                        nextSlider =
-                            Slider.update msgOfSlider (getSlider index connection.sliders)
-
-                        debounce =
-                            getDebounce index connection.debounces
-
-                        ( nextDebounce, cmdOfDebounce ) =
-                            case Slider.getValue nextSlider of
-                                Nothing ->
-                                    ( debounce, Cmd.none )
-
-                                Just value ->
-                                    Debounce.push value debounce
+                        ( nextThrottle, cmdOfThrottle ) =
+                            Throttle.update
+                                (Slider.update msgOfSlider)
+                                (getSlider index connection.sliders)
 
                         nextConnection =
-                            { connection
-                                | sliders = Dict.insert index nextSlider connection.sliders
-                                , debounces = Dict.insert index nextDebounce connection.debounces
-                            }
+                            { connection | sliders = Dict.insert index nextThrottle connection.sliders }
                     in
                     ( { model | call = RemoteData.Success nextConnection }
-                    , Cmd.map (DebounceTick index) cmdOfDebounce
+                    , Cmd.map (ThrottleTick index) cmdOfThrottle
                     )
 
                 _ ->
@@ -383,6 +369,7 @@ view credentials model =
                             (\index ->
                                 sliders
                                     |> getSlider index
+                                    |> Throttle.getValue
                                     |> Slider.view
                                     |> Html.map (SliderMsg index)
                             )
