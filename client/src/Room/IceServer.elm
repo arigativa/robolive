@@ -125,6 +125,7 @@ view asFirst disabled { active, url, username, password } =
             , Html.Attributes.tabindex 0
             , Html.Attributes.value url
             , Html.Attributes.readonly (disabled || not active)
+            , Html.Attributes.size 50
             , Html.Events.onInput ChangeUrl
             , Html.Events.onBlur (LostFocus url)
             ]
