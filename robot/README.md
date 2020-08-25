@@ -8,6 +8,9 @@ issues:
 `** (robomachine:6): CRITICAL **: 10:33:47.357: gst_dtls_connection_stop: assertion 'self->priv->ssl' failed`
 "solved" by: `https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/-/issues/811`
 
+chrome candidates are not parsed:
+https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/-/issues/1139
+
 gstreamer debug page docs:
 https://gstreamer.freedesktop.org/documentation/tutorials/basic/debugging-tools.html?gi-language=c
 

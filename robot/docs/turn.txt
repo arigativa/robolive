@@ -1,3 +1,6 @@
+https://tools.ietf.org/html/rfc5389
+https://tools.ietf.org/html/rfc8656
+
                                    Peer A
                                    Server-Reflexive      +---------+
                                    Transport Address     |         |
