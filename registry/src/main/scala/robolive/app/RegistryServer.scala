@@ -2,10 +2,11 @@ package robolive.app
 
 import java.util.concurrent.ConcurrentHashMap
 
+import Control.RegistryControlGrpc.RegistryControl
 import Inventory.RegistryInventoryGrpc.RegistryInventory
 import io.grpc.{ServerBuilder, ServerServiceDefinition}
 import robolive.server
-import robolive.server.RobotRegistry
+import robolive.server.{ControlHandler, InventoryHandler}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
@@ -28,15 +29,17 @@ object RegistryServer extends App {
   val robotName: String = getEnv("ROBOT_NAME", "robomachine")
   val servoControllerType: String = getEnv("SERVO_CONTROLLER", default = "PYTHON_SHELL")
 
-  val inventoryServer = {
-    val robotRegistry = new RobotRegistry(
+  val robotsState = new ConcurrentHashMap[String, server.AgentState]()
+
+  val inventoryHandler = {
+    val robotRegistry = new InventoryHandler(
       sipRobotName = robotName,
       signallingUri = signallingUri,
       stunUri = stunUri,
       enableUserVideo = enableUserVideo,
       servoControllerType = servoControllerType,
       videoSrc = videoSrc,
-      robotTable = new ConcurrentHashMap[String, server.RobotState](),
+      robotTable = robotsState,
     )
 
     runServer(
@@ -45,7 +48,16 @@ object RegistryServer extends App {
     )
   }
 
-  Await.result(inventoryServer, Duration.Inf)
+  val controlHandler = {
+    val control = new ControlHandler(robotsState)
+    runServer(
+      ssd = RegistryControl.bindService(control, global),
+      port = OperatorPort
+    )
+  }
+
+  Await.result(inventoryHandler, Duration.Inf)
+  Await.result(controlHandler, Duration.Inf)
 
   def runServer(ssd: ServerServiceDefinition, port: Int): Future[Unit] =
     Future {
