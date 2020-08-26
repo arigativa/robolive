@@ -12,14 +12,14 @@ message AgentListResponse {
   repeated AgentView agentList = 1;
 }
 
-message RestartRobotRequest {
+message RestartAgentRequest {
   required string id = 1;
 }
 
-message RestartRobotResponse {}
+message RestartAgentResponse {}
 
 service RegistryControl {
-  rpc RobotsList(AgentListRequest) returns (AgentListResponse);
-  rpc RestartRobot(RestartRobotRequest) returns (RestartRobotResponse);
+  rpc AgentList(AgentListRequest) returns (AgentListResponse);
+  rpc RestartAgent(RestartAgentRequest) returns (RestartAgentResponse);
 }
 
