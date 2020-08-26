@@ -1,0 +1,25 @@
+syntax = "proto2";
+
+message AgentListRequest {}
+
+message AgentView {
+  required string status = 1;
+  required string name = 2;
+  required string id = 3;
+}
+
+message AgentListResponse {
+  repeated AgentView agentList = 1;
+}
+
+message RestartAgentRequest {
+  required string id = 1;
+}
+
+message RestartAgentResponse {}
+
+service RegistryControl {
+  rpc AgentList(AgentListRequest) returns (AgentListResponse);
+  rpc RestartAgent(RestartAgentRequest) returns (RestartAgentResponse);
+}
+

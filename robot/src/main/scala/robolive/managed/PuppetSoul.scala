@@ -57,7 +57,7 @@ final class CallPuppetSoul()(implicit ec: ExecutionContext) extends PuppetSoul {
 
     RobotState(
       name = currentState.name,
-      status = "success",
+      status = "wait",
       runningPuppet = Some(puppet),
     )
   }

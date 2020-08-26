@@ -9,14 +9,14 @@ import Inventory.RegistryInventoryGrpc.RegistryInventory
 import io.grpc.stub.StreamObserver
 import org.slf4j.LoggerFactory
 
-final class RobotRegistry(
+final class InventoryHandler(
   videoSrc: String,
   sipRobotName: String,
   signallingUri: String,
   stunUri: String,
   enableUserVideo: Boolean,
   servoControllerType: String,
-  robotTable: ConcurrentHashMap[String, RobotState],
+  robotTable: ConcurrentHashMap[String, AgentState],
 ) extends RegistryInventory {
   private val logger = LoggerFactory.getLogger(getClass.getName)
 
@@ -49,7 +49,7 @@ final class RobotRegistry(
           )
           settingsSent.set(true)
         }
-        robotTable.put(agentId, RobotState(status.status, commands.onNext))
+        robotTable.put(agentId, AgentState(status.status, status.name, commands.onNext))
       }
 
       override def onError(error: Throwable): Unit = {
