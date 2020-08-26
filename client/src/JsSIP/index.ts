@@ -122,28 +122,34 @@ export const register = (ports: {
             }
         );
 
-        session.on('peerconnection', () => console.log('peerconnection'))
-        session.on('sending', () => console.log('sending'))
-        session.on('progress', () => console.log('progress'))
-        session.on('accepted', () => console.log('accepted'))
-        session.on('confirmed', () => console.log('confirmed'))
-        session.on('newDTMF', () => console.log('newDTMF'))
-        session.on('newInfo', () => console.log('newInfo'))
-        session.on('hold', () => console.log('hold'))
-        session.on('unhold', () => console.log('unhold'))
-        session.on('muted', () => console.log('muted'))
-        session.on('unmuted', () => console.log('unmuted'))
-        session.on('reinvite', () => console.log('reinvite'))
-        session.on('update', () => console.log('update'))
-        session.on('refer', () => console.log('refer'))
-        session.on('replaces', () => console.log('replaces'))
-        session.on('sdp', () => console.log('sdp'))
-        session.on('icecandidate', () => console.log('icecandidate'))
-        session.on('getusermediafailed', () => console.log('getusermediafailed'))
-        session.on('peerconnection:createofferfailed', () => console.log('peerconnection:createofferfailed'))
-        session.on('peerconnection:createanswerfailed', () => console.log('peerconnection:createanswerfailed'))
-        session.on('peerconnection:setlocaldescriptionfailed', () => console.log('peerconnection:setlocaldescriptionfailed'))
-        session.on('peerconnection:setremotedescriptionfailed', () => console.log('peerconnection:setremotedescriptionfailed'))
+        function logCall(functionName) {
+            return function () {
+                console.log.apply(console, [functionName, ...arguments]);
+            };
+        }
+
+        session.on('peerconnection', logCall('peerconnection'))
+        session.on('sending', logCall('sending'))
+        session.on('progress', logCall('progress'))
+        session.on('accepted', logCall('accepted'))
+        session.on('confirmed', logCall('confirmed'))
+        session.on('newDTMF', logCall('newDTMF'))
+        session.on('newInfo', logCall('newInfo'))
+        session.on('hold', logCall('hold'))
+        session.on('unhold', logCall('unhold'))
+        session.on('muted', logCall('muted'))
+        session.on('unmuted', logCall('unmuted'))
+        session.on('reinvite', logCall('reinvite'))
+        session.on('update', logCall('update'))
+        session.on('refer', logCall('refer'))
+        session.on('replaces', logCall('replaces'))
+        session.on('sdp', logCall('sdp'))
+        session.on('icecandidate', logCall('icecandidate'))
+        session.on('getusermediafailed', logCall('getusermediafailed'))
+        session.on('peerconnection:createofferfailed', logCall('peerconnection:createofferfailed'))
+        session.on('peerconnection:createanswerfailed', logCall('peerconnection:createanswerfailed'))
+        session.on('peerconnection:setlocaldescriptionfailed', logCall('peerconnection:setlocaldescriptionfailed'))
+        session.on('peerconnection:setremotedescriptionfailed', logCall('peerconnection:setremotedescriptionfailed'))
 
         session.on('failed', event => ports.js_sip__on_call_failed?.send(event.cause));
 

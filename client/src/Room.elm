@@ -43,7 +43,10 @@ type alias Model =
 
 initial : ( Model, Cmd Msg )
 initial =
-    ( { iceServers = []
+    ( { iceServers = [
+            { active = False, url = "turn:rl.arigativa.ru:8080?transport=udp", username = "turn", password = "turn" }
+            , { active = False, url = "turn:rl.arigativa.ru:8080?transport=tcp", username = "turn", password = "turn" }
+        ]
       , interlocutor = "robomachine"
       , call = RemoteData.NotAsked
       }
@@ -265,6 +268,7 @@ viewIceServerCreator disabled =
             , Html.Attributes.placeholder "stun:127.0.0.1"
             , Html.Attributes.value ""
             , Html.Attributes.disabled disabled
+            , Html.Attributes.size 50
             , Html.Events.onInput AddIceServer
             ]
             []
