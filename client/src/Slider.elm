@@ -3,6 +3,7 @@ module Slider exposing (Model, Msg, float, getValue, int, update, view)
 import Html exposing (Html, div, input, span, text)
 import Html.Attributes
 import Html.Events
+import Html.Lazy
 
 
 
@@ -72,8 +73,8 @@ viewBorderValue value =
         ]
 
 
-view : Model a -> Html Msg
-view model =
+viewSlider : Model a -> Html Msg
+viewSlider model =
     let
         ( min, max, step ) =
             ( model.serialize model.min
@@ -111,3 +112,8 @@ view model =
             ]
             []
         ]
+
+
+view : Model a -> Html Msg
+view =
+    Html.Lazy.lazy viewSlider

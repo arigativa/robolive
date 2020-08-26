@@ -1,19 +1,16 @@
 module Room exposing (Model, Msg, initial, subscriptions, update, view)
 
-import AVL.Dict as Dict exposing (Dict)
 import Browser.Dom
 import Credentials exposing (Credentials)
-import Debounce exposing (Debounce)
-import Html exposing (Html, b, button, div, form, h1, h3, input, p, strong, text, video)
+import Html exposing (Html, b, button, div, form, h1, h3, input, p, strong, text)
 import Html.Attributes
 import Html.Events
 import Html.Lazy
 import JsSIP
-import Json.Encode as Encode
 import List.Extra
 import RemoteData exposing (RemoteData)
+import Room.Connection as Connection
 import Room.IceServer as IceServer
-import Slider
 import Task
 import Utils exposing (hasWhitespaces)
 
@@ -27,17 +24,10 @@ interlocutorInputID =
 -- M O D E L
 
 
-type alias Connection =
-    { stream : JsSIP.MediaStream
-    , sliders : Dict Int (Slider.Model Int)
-    , debounces : Dict Int (Debounce Int)
-    }
-
-
 type alias Model =
     { iceServers : List IceServer.Model
     , interlocutor : String
-    , call : RemoteData String Connection
+    , call : RemoteData String Connection.Model
     }
 
 
@@ -54,31 +44,6 @@ initial =
     )
 
 
-initialDebounce : Debounce Int
-initialDebounce =
-    Debounce.init 300
-
-
-getDebounce : Int -> Dict Int (Debounce Int) -> Debounce Int
-getDebounce index debounces =
-    Maybe.withDefault initialDebounce (Dict.get index debounces)
-
-
-initialSlider : Slider.Model Int
-initialSlider =
-    Slider.int
-        { min = 0
-        , max = 120
-        , step = 1
-        , initialValue = 0
-        }
-
-
-getSlider : Int -> Dict Int (Slider.Model Int) -> Slider.Model Int
-getSlider index sliders =
-    Maybe.withDefault initialSlider (Dict.get index sliders)
-
-
 
 -- U P D A T E
 
@@ -91,9 +56,8 @@ type Msg
     | CallDone (Result String JsSIP.MediaStream)
     | CallEnd
     | Hangup
-    | DebounceTick Int Debounce.Tick
     | IceServerMsg Int IceServer.Msg
-    | SliderMsg Int Slider.Msg
+    | ConnectionMsg Connection.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -146,14 +110,7 @@ update msg model =
             )
 
         CallDone (Ok stream) ->
-            let
-                initialConnection =
-                    { stream = stream
-                    , sliders = Dict.empty
-                    , debounces = Dict.empty
-                    }
-            in
-            ( { model | call = RemoteData.Success initialConnection }
+            ( { model | call = RemoteData.Success (Connection.init stream) }
             , Cmd.none
             )
 
@@ -180,51 +137,15 @@ update msg model =
             , Cmd.none
             )
 
-        DebounceTick index tick ->
-            case model.call of
-                RemoteData.Success connection ->
-                    case Debounce.getValue tick (getDebounce index connection.debounces) of
-                        Nothing ->
-                            ( model, Cmd.none )
-
-                        Just value ->
-                            ( model
-                            , Encode.object
-                                [ ( "index", Encode.int index )
-                                , ( "angle", Encode.int value )
-                                ]
-                                |> JsSIP.sendInfo
-                            )
-
-                _ ->
-                    ( model, Cmd.none )
-
-        SliderMsg index msgOfSlider ->
+        ConnectionMsg msgOfConnection ->
             case model.call of
                 RemoteData.Success connection ->
                     let
-                        nextSlider =
-                            Slider.update msgOfSlider (getSlider index connection.sliders)
-
-                        debounce =
-                            getDebounce index connection.debounces
-
-                        ( nextDebounce, cmdOfDebounce ) =
-                            case Slider.getValue nextSlider of
-                                Nothing ->
-                                    ( debounce, Cmd.none )
-
-                                Just value ->
-                                    Debounce.push value debounce
-
-                        nextConnection =
-                            { connection
-                                | sliders = Dict.insert index nextSlider connection.sliders
-                                , debounces = Dict.insert index nextDebounce connection.debounces
-                            }
+                        ( nextConnection, cmdOfConnection ) =
+                            Connection.update msgOfConnection connection
                     in
                     ( { model | call = RemoteData.Success nextConnection }
-                    , Cmd.map (DebounceTick index) cmdOfDebounce
+                    , Cmd.map ConnectionMsg cmdOfConnection
                     )
 
                 _ ->
@@ -365,7 +286,7 @@ view credentials model =
             RemoteData.Failure reason ->
                 viewCallForm credentials False (Just reason) model.iceServers model.interlocutor
 
-            RemoteData.Success { stream, sliders } ->
+            RemoteData.Success connection ->
                 div []
                     [ p []
                         [ text "On call with "
@@ -377,19 +298,6 @@ view credentials model =
                             ]
                             [ text "Hangup" ]
                         ]
-                    , video
-                        [ Html.Attributes.autoplay True
-                        , JsSIP.srcObject stream
-                        ]
-                        []
-                    , List.range 0 5
-                        |> List.map
-                            (\index ->
-                                sliders
-                                    |> getSlider index
-                                    |> Slider.view
-                                    |> Html.map (SliderMsg index)
-                            )
-                        |> div []
+                    , Html.map ConnectionMsg (Connection.view connection)
                     ]
         ]
