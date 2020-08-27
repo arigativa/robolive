@@ -79,3 +79,10 @@ export VIDEO_SRC='nvarguscamerasrc sensor_mode=3 ! video/x-raw(memory:NVMM),widt
 | 3 | 1280 x 720  |  60 |     16666667 |
 | 4 | 1280 x 720  | 120 |      8333333 |
 
+#Build protobuf for frontend
+Will create ./client/generated folder with generated protobuf code.  
+Do not change, all changes will be overwritten by protoc.  
+If you want to change something consider change .proto files in `protocols` folder  
+```shell script
+DOCKER_BUILDKIT=1 docker build -t client_proto --output client/ -f Dockerfile.client_proto .
+```

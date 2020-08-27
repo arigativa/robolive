@@ -1,0 +1,23 @@
+FROM namely/protoc-all as protoc_ts
+
+RUN apk update
+RUN apk add npm
+
+RUN npm install ts-protoc-gen
+
+ADD ./protocols /protocols
+
+ENV PROTOC_GEN_TS_PATH "./node_modules/.bin/protoc-gen-ts"
+
+# Directory to write generated code to (.js and .d.ts files)
+RUN mkdir /generated
+ENV OUT_DIR="/generated"
+
+RUN protoc \
+    --plugin="protoc-gen-ts=${PROTOC_GEN_TS_PATH}" \
+    --js_out="import_style=commonjs,binary:${OUT_DIR}" \
+    --ts_out="${OUT_DIR}" \
+    --proto_path /protocols Control.proto Inventory.proto
+
+FROM scratch as artifact
+COPY --from=protoc_ts /generated /generated
