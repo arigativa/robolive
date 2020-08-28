@@ -143,7 +143,7 @@ final class WebRTCController(
   }
 
   private def fixSdpForChrome(sdp: String) = {
-    sdp + System.lineSeparator()
+    sdp + System.lineSeparator() // probably should be just "\n", because it shouldn't depend on the system where robot is run
   }
 
   def makeCall(call: ExtendedCall, remoteSdp: SdpMessage)(

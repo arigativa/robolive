@@ -1,16 +1,16 @@
 package robolive.gstreamer
 
-import java.util.{Timer, TimerTask}
-import java.util.concurrent.ConcurrentLinkedQueue
-
 import org.freedesktop.gstreamer.webrtc._
-import org.freedesktop.gstreamer.{Element, Pad, Pipeline, SDPMessage, StateChangeReturn}
+import org.freedesktop.gstreamer._
 import org.slf4j.LoggerFactory
-import sdp.SdpMessage
 import robolive.gstreamer.GstManaged.GSTInit
 import robolive.gstreamer.bindings.GstWebRTCDataChannel
+import robolive.utils.Async.makeCollectionFromCallback
+import sdp.SdpMessage
 
+import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.util.{Failure, Success}
 
 final class WebRTCBinManaged(webRTCBin: WebRTCBin) extends AutoCloseable {
   import WebRTCBinManaged._
@@ -41,31 +41,68 @@ final class WebRTCBinManaged(webRTCBin: WebRTCBin) extends AutoCloseable {
     p.future
   }
 
-  def fetchIceCandidates()(implicit ec: ExecutionContext): Future[Seq[IceCandidate]] = {
-    import scala.jdk.CollectionConverters._
+  /**
+   *
+   * We wait for [[totalTimeout]] until webrtcbin reported COMPLETE state
+   * Once ICE fetching state is COMPLETE, webrtcbin will send all items one by one
+   * So we assume here that it's not necessary to wait for a long time if the state is COMPLETE
+   * and we switch to [[shortTimeout]] that will be necessary.
+   *
+   * To recap timeline of events will look like this
+   *  1. ICE gathering state is GATHERING
+   *  2. few seconds passed
+   *  3. WebRTCBin.ON_ICE_CANDIDATE callback is called with first candidate, ICE gathering state is COMPLETE
+   *  4. all other candidates are being sent one after another
+   *
+   * Some real log of fetching:
+   *   10:49:18,587 Fetching ICE candidates
+   *   10:49:22,084 ICE candidate fetched: 1 1 UDP 2013266431 fe80::42:8dff:fe9d:743e 59461 typ host
+   *   10:49:22,086 ICE candidate fetched: 2 1 TCP 1015027455 fe80::42:8dff:fe9d:743e 9 typ host tcptype active
+   *   10:49:22,088 ICE candidate fetched: 3 1 TCP 1010833151 fe80::42:8dff:fe9d:743e 50113 typ host tcptype passive
+   *   ...
+   *   10:49:22,171 ICE candidate fetched: 59 1 TCP 1015026687 192.168.1.72 9 typ host tcptype active
+   *   10:49:22,172 ICE candidate fetched: 60 1 TCP 1010832383 192.168.1.72 35221 typ host tcptype passive
+   *   10:49:22,173 ICE candidate fetched: 1 2 UDP 2013266430 fe80::42:8dff:fe9d:743e 37946 typ host
+   *   10:49:22,175 ICE candidate fetched: 2 2 TCP 1015027454 fe80::42:8dff:fe9d:743e 9 typ host tcptype active
+   *   ...
+   *   10:49:22,250 ICE candidate fetched: 79 1 UDP 1677722105 85.149.49.186 54479 typ srflx raddr 192.168.1.72 rport 54479
+   *   10:49:22,251 ICE candidate fetched: 80 1 TCP 847254527 85.149.49.186 9 typ srflx raddr 192.168.1.72 rport 9 tcptype active
+   *   10:49:22,251 ICE candidate fetched: 81 1 TCP 843060223 85.149.49.186 35221 typ srflx raddr 192.168.1.72 rport 35221 tcptype passive
+   *
+   * @param totalTimeout time to wait for ICE candidate to be added to result
+   * @param shortTimeout time to wait for ICE candidate to be added to result after ICE gathering state became COMPLETE
+   * @return
+   */
+  def fetchIceCandidates(
+    totalTimeout: FiniteDuration = 10.seconds,
+    shortTimeout: FiniteDuration = 500.millis
+  )(implicit ec: ExecutionContext): Future[Seq[IceCandidate]] = {
 
-    val p = Promise[Seq[IceCandidate]]()
-    val cs = new ConcurrentLinkedQueue[IceCandidate]()
+    logger.info("Fetching ICE candidates")
 
-    val timer = {
-      val completeTask = new TimerTask {
-        override def run(): Unit = p.success(cs.iterator().asScala.toSeq)
-      }
-      val timer = new Timer("Ice gathering timer")
-      timer.schedule(completeTask, 2000L)
-      timer
+    val (tryAddItem, result) = makeCollectionFromCallback[IceCandidate]("ICE gathering", totalTimeout, shortTimeout)
+
+    result.onComplete {
+      case Failure(exception) => logger.error("ICE candidates fetching failed", exception)
+      case Success(candidates) => logger.info(s"Fetched ${candidates.size} ICE candidates")
     }
 
     val cb: WebRTCBin.ON_ICE_CANDIDATE = (sdpMLineIndex: Int, candidate: String) => {
       val value = candidate.substring(candidate.indexOf(":") + 1)
-      logger.debug(s"Ice candidate fetched: $value")
-      cs.add(IceCandidate(sdpMLineIndex, value))
+      val isAlmostDone = webRTCBin.getICEGatheringState == WebRTCICEGatheringState.COMPLETE
+
+      if (tryAddItem(IceCandidate(sdpMLineIndex, value), isAlmostDone)) {
+        logger.debug(s"ICE candidate fetched: $value")
+      } else {
+        logger.warn(s"ICE candidate fetched: $value, but the operation result was timed out")
+      }
     }
+
     webRTCBin.connect(cb)
-    val resFuture = p.future
-    resFuture.foreach(_ => timer.cancel())
-    resFuture
+
+    result
   }
+
 
   def createOffer(): Future[SdpMessage] = {
     val p = Promise[SdpMessage]()
