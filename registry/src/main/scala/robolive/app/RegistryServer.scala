@@ -6,7 +6,8 @@ import Control.RegistryControlGrpc.RegistryControl
 import Inventory.RegistryInventoryGrpc.RegistryInventory
 import io.grpc.{ServerBuilder, ServerServiceDefinition}
 import robolive.server
-import robolive.server.{ControlHandler, InventoryHandler}
+import robolive.server.control.{ControlHandler, ControlJsonEndpoint}
+import robolive.server.inventory.InventoryHandler
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
@@ -14,7 +15,8 @@ import scala.concurrent.{Await, Future}
 
 object RegistryServer extends App {
   val InventoryPort = getEnv("REGISTRY_PORT_FOR_ROBOT", "3478").toInt
-  val OperatorPort = getEnv("REGISTRY_PORT_FOR_OPERATOR", "3479").toInt
+  val ControlPort = getEnv("REGISTRY_PORT_FOR_OPERATOR", "3479").toInt
+  val ControlPortJson = getEnv("REGISTRY_PORT_FOR_OPERATOR_JSON", "3480").toInt
 
   val videoSrc: String = {
     val default =
@@ -50,12 +52,22 @@ object RegistryServer extends App {
     val control = new ControlHandler(robotsState)
     runServer(
       ssd = RegistryControl.bindService(control, global),
-      port = OperatorPort
+      port = ControlPort
+    )
+  }
+
+  val controlJsonHandler = {
+    val control = new ControlHandler(robotsState)
+    val controlJsonEndpoint = new ControlJsonEndpoint(control)(global)
+    runServer(
+      ssd = controlJsonEndpoint.definition,
+      port = ControlPortJson
     )
   }
 
   Await.result(inventoryHandler, Duration.Inf)
   Await.result(controlHandler, Duration.Inf)
+  Await.result(controlJsonHandler, Duration.Inf)
 
   def runServer(ssd: ServerServiceDefinition, port: Int): Future[Unit] =
     Future {

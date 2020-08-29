@@ -1,13 +1,14 @@
-package robolive.server
+package robolive.server.inventory
 
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
-import Inventory.{AgentCommand, AgentStatus, SetupAgent}
 import Inventory.RegistryInventoryGrpc.RegistryInventory
+import Inventory.{AgentCommand, AgentStatus, SetupAgent}
 import io.grpc.stub.StreamObserver
 import org.slf4j.LoggerFactory
+import robolive.server.AgentState
 
 final class InventoryHandler(
   videoSrc: String,

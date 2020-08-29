@@ -1,11 +1,11 @@
-package robolive.server
+package robolive.server.control
 
 import java.util.concurrent.ConcurrentHashMap
 
-import Control.{AgentListRequest, AgentListResponse, RestartAgentRequest, RestartAgentResponse}
 import Control.RegistryControlGrpc.RegistryControl
-import Control.AgentView
+import Control._
 import Inventory.{AgentCommand, RestartAgent}
+import robolive.server.AgentState
 
 import scala.concurrent.{ExecutionContext, Future}
 
