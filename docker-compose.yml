@@ -48,8 +48,10 @@ services:
     restart: always
     ports:
         - 8080:8080
+        - 8080:8080/udp
         - 4443:4443
         - 45000-45100:45000-45100
+        - 45000-45100:45000-45100/udp
     volumes:
         - "./tmp/config:/etc/coturn"
     networks:
