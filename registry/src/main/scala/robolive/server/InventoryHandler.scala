@@ -11,7 +11,6 @@ import org.slf4j.LoggerFactory
 
 final class InventoryHandler(
   videoSrc: String,
-  sipRobotName: String,
   signallingUri: String,
   stunUri: String,
   enableUserVideo: Boolean,
@@ -24,12 +23,13 @@ final class InventoryHandler(
     val agentId = UUID.randomUUID().toString
     val settingsSent = new AtomicBoolean(false)
 
-    logger.info(s"robot joined: $agentId")
+    logger.info(s"agent joined: $agentId")
 
     new StreamObserver[AgentStatus] {
       // todo send initial command (listen to sip call)
       override def onNext(status: AgentStatus): Unit = {
         logger.info(s"status receive: $status")
+        val sipName = makeAgentSipName(agentId, status.name)
         if (!settingsSent.get()) {
           commands.onNext(
             AgentCommand(
@@ -37,7 +37,7 @@ final class InventoryHandler(
                 SetupAgent(
                   registrarUri = signallingUri,
                   protocol = "tcp",
-                  username = sipRobotName,
+                  sipName = sipName,
                   stunUri = stunUri,
                   videoSrc = videoSrc,
                   enableUserVideo = enableUserVideo,
@@ -49,7 +49,15 @@ final class InventoryHandler(
           )
           settingsSent.set(true)
         }
-        robotTable.put(agentId, AgentState(status.status, status.name, commands.onNext))
+        robotTable.put(
+          agentId,
+          AgentState(
+            name = status.name,
+            sipName = sipName,
+            status = status.status,
+            sendMessageCallback = commands.onNext,
+          )
+        )
       }
 
       override def onError(error: Throwable): Unit = {
@@ -64,5 +72,10 @@ final class InventoryHandler(
         commands.onCompleted()
       }
     }
+  }
+
+  private def makeAgentSipName(id: String, agentName: String): String = {
+    locally(id) // s"$id_$agentName"
+    agentName
   }
 }

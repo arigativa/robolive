@@ -3,7 +3,7 @@ syntax = "proto2";
 message SetupAgent {
   required string registrarUri = 1;
   required string protocol = 2;
-  required string username = 3; // name in a SIP call
+  required string sipName = 3;
   required string stunUri = 4;
 
   required string videoSrc = 5;

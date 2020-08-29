@@ -46,7 +46,7 @@ final class CallPuppetSoul()(implicit ec: ExecutionContext) extends PuppetSoul {
     val puppet = new Puppet(
       robotName = currentState.name,
       videoSrc = settings.videoSrc,
-      sipRobotName = settings.username,
+      sipRobotName = settings.sipName,
       signallingUri = settings.registrarUri,
       stunUri = settings.stunUri,
       enableUserVideo = settings.enableUserVideo,
