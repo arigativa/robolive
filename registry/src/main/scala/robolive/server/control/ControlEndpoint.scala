@@ -88,18 +88,22 @@ object ControlEndpoint {
       decodeA = Decoder.decodeArray[Byte].map(ByteString.copyFrom),
       encodeA = Encoder.encodeVector[Byte].contramap[ByteString](bs => Vector.from(bs.toByteArray))
     )
-    implicit val unknownFieldCodec: Codec[UnknownFieldSet.Field] = deriveCodec
-    implicit val unknownFieldsSetCodec: Codec[UnknownFieldSet] = deriveCodec
+    implicit val unknownFieldsSetCodec: Codec[UnknownFieldSet] = Codec.from(
+      decodeA = Decoder.decodeUnit.map(_ => UnknownFieldSet(Map.empty)),
+      encodeA = Encoder.encodeUnit.contramap(_ => Map.empty)
+    )
 
     implicit val agentViewCodec: Codec[Control.AgentView] = deriveCodec
 
-    implicit val agentListRequest: Encoder[Control.AgentListRequest] = deriveEncoder
-    implicit val agentListResponse: Decoder[Control.AgentListResponse] = deriveDecoder
+    implicit val agentListRequest: Decoder[Control.AgentListRequest] = deriveDecoder
+    implicit val agentListEncoder: Encoder[Control.AgentListRequest] = deriveEncoder
 
-    implicit val restartAgentRequest: Encoder[Control.RestartAgentRequest] = deriveEncoder
-    implicit val restartAgentResponse: Decoder[Control.RestartAgentResponse] = deriveDecoder
+    implicit val agentListResponse: Encoder[Control.AgentListResponse] = deriveEncoder
 
-    def mkRequestMarshaller[T: Encoder]: Marshaller[T] = {
+    implicit val restartAgentRequest: Decoder[Control.RestartAgentRequest] = deriveDecoder
+    implicit val restartAgentResponse: Encoder[Control.RestartAgentResponse] = deriveEncoder
+
+    def mkResponseMarshaller[T: Encoder]: Marshaller[T] = {
       import io.circe.syntax._
 
       new Marshaller[T] {
@@ -112,7 +116,7 @@ object ControlEndpoint {
       }
     }
 
-    def mkResponseMarshaller[T: Decoder]: Marshaller[T] = {
+    def mkRequestMarshaller[T: Decoder]: Marshaller[T] = {
       new Marshaller[T] {
         override def stream(value: T): InputStream = ???
 
