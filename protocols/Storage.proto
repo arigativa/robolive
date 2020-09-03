@@ -1,0 +1,13 @@
+syntax = "proto2";
+
+message ReadRequest {
+  repeated string keys = 1;
+}
+
+message ReadResponse {
+  map<string, string> values = 1;
+}
+
+service StorageEndpoint {
+  rpc Get(ReadRequest) returns (ReadResponse);
+}

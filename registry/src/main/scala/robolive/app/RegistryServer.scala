@@ -2,19 +2,28 @@ package robolive.app
 
 import java.util.concurrent.ConcurrentHashMap
 
-import Control.RegistryControlGrpc.RegistryControl
-import Inventory.RegistryInventoryGrpc.RegistryInventory
+import Agent.AgentEndpointGrpc.AgentEndpoint
+import Client.ClientEndpointGrpc.ClientEndpoint
+import Info.InfoEndpointGrpc.InfoEndpoint
+import Storage.StorageEndpointGrpc.StorageEndpoint
 import io.grpc.{ServerBuilder, ServerServiceDefinition}
 import robolive.server
-import robolive.server.{ControlHandler, InventoryHandler}
+import robolive.server.{
+  AgentEndpointHandler,
+  ClientEndpointHandler,
+  InfoEndpointHandler,
+  StorageEndpointHandler
+}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 
 object RegistryServer extends App {
-  val InventoryPort = getEnv("REGISTRY_PORT_FOR_ROBOT", "3478").toInt
-  val OperatorPort = getEnv("REGISTRY_PORT_FOR_OPERATOR", "3479").toInt
+  val AgentPort = getEnv("REGISTRY_PORT_FOR_AGENT", "3476").toInt
+  val InfoPort = getEnv("REGISTRY_PORT_FOR_INFO", "3477").toInt
+  val ClientPort = getEnv("REGISTRY_PORT_FOR_CLIENT", "3478").toInt
+  val StoragePort = getEnv("REGISTRY_PORT_FOR_STORAGE", "3479").toInt
 
   val videoSrc: String = {
     val default =
@@ -28,36 +37,59 @@ object RegistryServer extends App {
 
   val robotName: String = getEnv("ROBOT_NAME", "robomachine")
   val servoControllerType: String = getEnv("SERVO_CONTROLLER", default = "PYTHON_SHELL")
+  val turnUri: String = getEnv("TURN_URI", "turn:rl.arigativa.ru:8080?transport=tcp")
+
+  val configMap = Map(
+    "videoSrc" -> videoSrc,
+    "sipName" -> robotName,
+    "signallingUri" -> signallingUri,
+    "stunUri" -> stunUri,
+    "enableUserVideo" -> enableUserVideo.toString,
+    "servoControllerType" -> servoControllerType,
+    "turnUri" -> turnUri,
+  )
 
   val robotsState = new ConcurrentHashMap[String, server.AgentState]()
 
-  val inventoryHandler = {
-    val robotRegistry = new InventoryHandler(
-      sipRobotName = robotName,
-      signallingUri = signallingUri,
-      stunUri = stunUri,
-      enableUserVideo = enableUserVideo,
-      servoControllerType = servoControllerType,
-      videoSrc = videoSrc,
-      robotTable = robotsState,
+  val agentEndpoint = {
+    val agentEndpointHandler = new AgentEndpointHandler(
+      agentTable = robotsState,
     )
 
     runServer(
-      ssd = RegistryInventory.bindService(robotRegistry, global),
-      port = InventoryPort
+      ssd = AgentEndpoint.bindService(agentEndpointHandler, global),
+      port = AgentPort
     )
   }
 
-  val controlHandler = {
-    val control = new ControlHandler(robotsState)
+  val infoEndpoint = {
+    val infoEndpointHandler = new InfoEndpointHandler(robotsState)
     runServer(
-      ssd = RegistryControl.bindService(control, global),
-      port = OperatorPort
+      ssd = InfoEndpoint.bindService(infoEndpointHandler, global),
+      port = InfoPort
     )
   }
 
-  Await.result(inventoryHandler, Duration.Inf)
-  Await.result(controlHandler, Duration.Inf)
+  val clientEndpoint = {
+    val clientEndpointHandler = new ClientEndpointHandler(robotsState)
+    runServer(
+      ssd = ClientEndpoint.bindService(clientEndpointHandler, global),
+      port = ClientPort
+    )
+  }
+
+  val storageEndpoint = {
+    val storageEndpointHandler = new StorageEndpointHandler(configMap)
+    runServer(
+      ssd = StorageEndpoint.bindService(storageEndpointHandler, global),
+      port = StoragePort
+    )
+  }
+
+  Await.result(agentEndpoint, Duration.Inf)
+  Await.result(infoEndpoint, Duration.Inf)
+  Await.result(clientEndpoint, Duration.Inf)
+  Await.result(storageEndpoint, Duration.Inf)
 
   def runServer(ssd: ServerServiceDefinition, port: Int): Future[Unit] =
     Future {

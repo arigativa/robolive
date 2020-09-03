@@ -36,7 +36,7 @@ final class Puppet(
     )
   }
 
-  def start(): Unit = {
+  def start(): Puppet = {
     logger.info(s"Starting Robolive inc. robot")
     logger.info(s"Hello, I'm $robotName")
     logger.info(s"Trying to connect to signalling `$signallingUri`")
@@ -49,6 +49,7 @@ final class Puppet(
 
     val sipEventsHandler = new SIPCallEventHandler(controller)
     new SipClient(sipEventsHandler, sipConfig)
+    this
   }
 
   def stop(): Unit = { // TODO: stop SIPClient

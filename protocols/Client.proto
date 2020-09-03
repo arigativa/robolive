@@ -1,0 +1,25 @@
+syntax = "proto2";
+
+message JoinRequest {
+  required string name = 1;
+  required string targetId = 2;
+  map<string, string> settings = 3;
+}
+
+message JoinResponse {
+  message Success {
+    map<string, string> settings  = 1;
+  }
+  message Failure {
+    required string reason = 1;
+  }
+
+  oneof message {
+    Success success = 1;
+    Failure failure = 2;
+  }
+}
+
+service ClientEndpoint {
+  rpc Join(JoinRequest) returns (JoinResponse);
+}
