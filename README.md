@@ -1,4 +1,46 @@
-# Useful materials
+# Project overview:
+## Non technical overview:
+The aim of this project is to build a system which allows multiple agents to interact   
+with each other via different communication channels.
+Agent - is a unit of the system, which can:
+- do some actions (e.g.: move robotic arm, open doors, etc.)
+- consume data (e.g.: commands to open door or move robotic arm, video\audio streams)
+- produce data (e.g.: commands to open door or move robotic arm, video\audio streams)
+With that in mind, examples of agents are:
+- camera, which can send media (video\audio streams)
+- user, who can consume such streams and give commands to camera to move
+- automatic pet feeder, which could be controlled by the camera when pet comes closer
+- and many more 
+
+Communication channel is a transport protocol together with application level protocol, for example:
+- sip
+- grpc
+- telegram messages
+
+over:
+- ethernet
+- wifi
+- bluetooth
+
+As being said - not only user can control agents, but agents themselves could be controlled by each other.  
+Such capabilities will be enabled by visual data flow language, which allows users to 
+build their own agents interconnection network.  
+For example, the goal could be to turn on an electrical fan when the temperature will reach certain point.
+This task could be achieved (roughly) with following diagram:  
+```
+thermomether --|temperature|--> fan: turn on if temperature >= 26
+``` 
+
+
+One of the goals of the project is to provide DIY (do it yourself) people an ability to create their own devices,
+based on popular chips. To make this possible an SDK (software development kit) will be developed, which will allow
+to write only logic and the rest of discussed features, as interconnections between agents, will be `free`.  
+
+Data flow programming and user interactions with agents will be performed through graphical user interface, either via web browser or
+smartphone.   
+ 
+
+## Useful materials
 
 [Introductionary WebRTC article](https://habr.com/ru/company/yandex/blog/419951/)    
 [Hole punching explained](https://bford.info/pub/net/p2pnat/)   
@@ -9,13 +51,13 @@
 [WebRTC Signalling](https://www.html5rocks.com/en/tutorials/webrtc/infrastructure/)  
 [Sample frontend applciaiton](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Signaling_and_video_calling)  
 
-# Demos and samples
+## Demos and samples
 [GStreamer WebRTC](https://github.com/centricular/gstwebrtc-demos)  
 [Awesome WebRTC](https://github.com/openrtc-io/awesome-webrtc)
 
 [WebPhone Demo](https://rl.arigativa.ru/webPhone/)
 
-# Configure Docker registry
+## Configure Docker registry
 
 Install aws-cli (`snap install aws-cli --classic` for ubuntu)
 
@@ -34,36 +76,36 @@ Login Succeeded
 
 ```
 
-# Build
+## Build
 
-## Run (option 1). With docker-compose
+### Run (option 1). With docker-compose
 `--build` will make sure that all images are built from current Dockerfile's
 ```bash
 docker-compose up --build
 ```
 
-## Run (option 2). Without docker-compose
+### Run (option 2). Without docker-compose
 ```bash
 docker run -p 5000:5000 robolive_signalling
 docker run -e "SERVER=ws://$(ip -4 addr show docker0 | grep -Po 'inet \K[\d.]+'):5000" robolive_robot
 docker run -p 8080:80 robolive_static
 ```
 
-# Deploy
+## Deploy
 
-## Deploy production
+### Deploy production
 ```
 cd deployment/production
 terraform init
 terraform apply
 ```
 
-# Running locally
+### Run locally
 ```shell script
 export VIDEO_SRC='videotestsrc is-live=true pattern=ball ! videoconvert'
 export SIGNALLING_URI='localhost:9031'
 ``` 
-# Running on Jetson Nano
+### Run on Jetson Nano
 
 To run robot on Jetson Nano with CSI camera you can override video/audio source:
 ```shell script
@@ -79,7 +121,7 @@ export VIDEO_SRC='nvarguscamerasrc sensor_mode=3 ! video/x-raw(memory:NVMM),widt
 | 3 | 1280 x 720  |  60 |     16666667 |
 | 4 | 1280 x 720  | 120 |      8333333 |
 
-#Build protobuf for frontend
+### Build protobuf for frontend
 Will create ./client/generated folder with generated protobuf code.  
 Do not change, all changes will be overwritten by protoc.  
 If you want to change something consider change .proto files in `protocols` folder  
