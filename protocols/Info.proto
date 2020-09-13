@@ -12,14 +12,7 @@ message AgentListResponse {
   repeated AgentView agentList = 1;
 }
 
-message RestartAgentRequest {
-  required string id = 1;
-}
-
-message RestartAgentResponse {}
-
-service RegistryControl {
+service InfoEndpoint {
   rpc AgentList(AgentListRequest) returns (AgentListResponse);
-  rpc RestartAgent(RestartAgentRequest) returns (RestartAgentResponse);
 }
 

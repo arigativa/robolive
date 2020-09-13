@@ -1,27 +1,43 @@
 package robolive.app
 
-import robolive.managed.PuppetConnectivity.RunningPuppet
-import robolive.managed.{CallPuppetSoul, RobotInventory, RobotState}
+import Agent.AgentEndpointGrpc
+import Storage.StorageEndpointGrpc
+import io.grpc.ManagedChannelBuilder
+import robolive.managed.RunningPuppet
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.{Random, Try}
 
 object ManagedRobotApp extends App {
 
-  object InventoryConnection {
-    val host: String = getEnv("INVENTORY_HOST", "localhost")
-    val port: Int = getEnv("INVENTORY_PORT", "3478").toInt
+  object RegistryConnection {
+    val Host: String = getEnv("REGISTRY_HOST", "localhost")
+    val StoragePort: Int = getEnv("REGISTRY_PORT_FOR_STORAGE", "3479").toInt
+    val AgentPort: Int = getEnv("REGISTRY_PORT_FOR_AGENT", "3476").toInt
+
     val usePlaintext: Boolean = getEnv("INVENTORY_USE_PLAINTEXT", "true").toBoolean
   }
 
-  val inventoryClient =
-    RobotInventory.buildClient(
-      InventoryConnection.host,
-      InventoryConnection.port,
-      InventoryConnection.usePlaintext
-    )
+  val agentEndpointClient: AgentEndpointGrpc.AgentEndpointStub = {
+    val channel = {
+      val b =
+        ManagedChannelBuilder.forAddress(RegistryConnection.Host, RegistryConnection.AgentPort)
+      if (RegistryConnection.usePlaintext) b.usePlaintext()
+      b.build()
+    }
+    AgentEndpointGrpc.stub(channel)
+  }
+
+  val storageEndpointClient: StorageEndpointGrpc.StorageEndpointStub = {
+    val channel = {
+      val b =
+        ManagedChannelBuilder.forAddress(RegistryConnection.Host, RegistryConnection.StoragePort)
+      if (RegistryConnection.usePlaintext) b.usePlaintext()
+      b.build()
+    }
+    StorageEndpointGrpc.stub(channel)
+  }
 
   val robotName = getEnv(
     name = "ROBOT_NAME",
@@ -30,14 +46,12 @@ object ManagedRobotApp extends App {
 
   val runningPuppet =
     new RunningPuppet(
-      client = inventoryClient,
-      puppetSoul = new CallPuppetSoul(),
-      initialState = RobotState(
-        name = robotName,
-        status = "wait",
-        runningPuppet = None,
-      )
+      name = robotName,
+      agentEndpointClient = agentEndpointClient,
+      storageEndpointClient = storageEndpointClient,
     )
+
+  runningPuppet.register()
 
   sys.addShutdownHook {
     runningPuppet.stop("killed by OS")

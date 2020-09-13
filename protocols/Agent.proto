@@ -1,0 +1,43 @@
+syntax = "proto2";
+
+message AgentMessage {
+  message RegisterRequest {
+    required string name = 1;
+  }
+
+  message JoinDecision {
+    message Accepted {
+      map<string, string> settings = 1;
+    }
+    message Declined {
+      required string reason = 1;
+    }
+    oneof message {
+      Accepted accepted = 1;
+      Declined declined = 2;
+    }
+  }
+
+  oneof message {
+    RegisterRequest register = 1;
+    JoinDecision join = 2;
+  }
+}
+
+message RegistryMessage {
+  message RegisterResponse {}
+
+  message Connected {
+    required string name = 1;
+    map<string, string> settings = 2;
+  }
+
+  oneof message {
+    RegisterResponse registered = 1;
+    Connected connected = 2;
+  }
+}
+
+service AgentEndpoint {
+  rpc Register(stream AgentMessage) returns (stream RegistryMessage);
+}

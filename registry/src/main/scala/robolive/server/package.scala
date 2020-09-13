@@ -1,9 +1,20 @@
 package robolive
 
-import Inventory.AgentCommand
+import Agent.RegistryMessage
+
+import scala.concurrent.Promise
 
 package object server {
-  type SendMessage = AgentCommand => Unit
+  type AgentChannel = RegistryMessage => Unit
+  type Reason = String
 
-  final case class AgentState(status: String, name: String, sendMessageCallback: SendMessage)
+  sealed trait AgentState
+
+  object AgentState {
+    final case class Registered(name: String, callback: AgentChannel) extends AgentState
+    final case class Trying(
+      name: String,
+      result: Promise[Map[String, String]],
+    ) extends AgentState
+  }
 }
