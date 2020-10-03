@@ -18,7 +18,6 @@
   },
   "husky": {
     "hooks": {
-      "prepare-commit-msg": "./scripts/git-commit-message.sh $HUSKY_GIT_PARAMS",
       "pre-commit": "npm run compile & lint-staged",
       "pre-push": "npm run test -- --passWithNoTests --watchAll=false & npm run cy:run"
     }
