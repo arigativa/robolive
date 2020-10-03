@@ -1,0 +1,75 @@
+{
+  "name": "weather-forecast",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "npm run build && npx serve -s ./build -p 3000",
+    "dev": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "compile": "tsc --project ./tsconfig.json",
+    "lint": "npm run compile & eslint . --config=.eslintrc.prod.json --ext=js,ts,tsx",
+    "prettify": "prettier . --write",
+    "analyze": "source-map-explorer 'build/static/js/**/*.js' --gzip",
+    "storybook": "start-storybook -p 9009 -s public",
+    "storybook:build": "build-storybook -s public",
+    "cy:open": "cypress open",
+    "cy:run": "cypress run --browser chrome"
+  },
+  "husky": {
+    "hooks": {
+      "prepare-commit-msg": "./scripts/git-commit-message.sh $HUSKY_GIT_PARAMS",
+      "pre-commit": "npm run compile & lint-staged",
+      "pre-push": "npm run test -- --passWithNoTests --watchAll=false & npm run cy:run"
+    }
+  },
+  "lint-staged": {
+    "**/*.{js,jsx,ts,tsx,json,css,scss,md}": [
+      "prettier --write"
+    ],
+    "**/*.{js,jsx,ts,tsx}": [
+      "eslint --config=.eslintrc.prod.json --fix"
+    ]
+  },
+  "dependencies": {
+    "@material-ui/core": "^4.11.0",
+    "@material-ui/icons": "^4.9.1",
+    "@material-ui/lab": "^4.0.0-alpha.56",
+    "@types/react": "^16.9.0",
+    "@types/react-dom": "^16.9.0",
+    "@types/recharts": "^1.8.14",
+    "dayjs": "^1.8.33",
+    "frctl": "^2.0.0",
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1",
+    "recharts": "^1.8.5",
+    "redux": "^4.0.5",
+    "redux-devtools-extension": "^2.13.8"
+  },
+  "devDependencies": {
+    "@bahmutov/add-typescript-to-cypress": "^2.1.2",
+    "@storybook/addon-actions": "^5.3.19",
+    "@storybook/addon-knobs": "^5.3.19",
+    "@storybook/addon-links": "^5.3.19",
+    "@storybook/addons": "^5.3.19",
+    "@storybook/preset-create-react-app": "^3.1.4",
+    "@storybook/react": "^5.3.19",
+    "@types/jest": "^26.0.9",
+    "@types/node": "^14.0.27",
+    "@typescript-eslint/eslint-plugin": "^3.8.0",
+    "@typescript-eslint/parser": "^3.8.0",
+    "cypress": "^4.12.1",
+    "cypress-browser-permissions": "^1.0.5",
+    "eslint-config-prettier": "^6.11.0",
+    "eslint-config-react-app": "^5.2.1",
+    "eslint-plugin-prettier": "^3.1.4",
+    "eslint-plugin-react": "^7.20.5",
+    "husky": "^4.2.5",
+    "lint-staged": "^10.2.11",
+    "prettier": "^2.0.5",
+    "react-scripts": "^3.4.1",
+    "serve": "^11.3.2",
+    "source-map-explorer": "^2.4.2",
+    "typescript": "^3.9.7"
+  }
+}
