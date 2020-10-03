@@ -36,12 +36,9 @@
     "@material-ui/lab": "^4.0.0-alpha.56",
     "@types/react": "^16.9.0",
     "@types/react-dom": "^16.9.0",
-    "@types/recharts": "^1.8.14",
-    "dayjs": "^1.8.33",
     "frctl": "^2.0.0",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
-    "recharts": "^1.8.5",
     "redux": "^4.0.5",
     "redux-devtools-extension": "^2.13.8"
   },

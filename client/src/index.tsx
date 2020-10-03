@@ -6,18 +6,18 @@ import CssBaseline from '@material-ui/core/CssBaseline'
 
 import * as serviceWorker from 'serviceWorker'
 import { useStore } from 'store'
-import * as App from 'App'
+import * as Counter from 'Counter'
 
 const Root: React.FC = () => {
   const [state, dispatch] = useStore({
-    init: React.useMemo(() => App.init('Munich'), []),
-    update: App.update
+    init: Counter.init,
+    update: Counter.update
   })
 
   return (
     <React.StrictMode>
       <CssBaseline>
-        <App.View state={state} dispatch={dispatch} />
+        <Counter.View state={state} dispatch={dispatch} />
       </CssBaseline>
     </React.StrictMode>
   )

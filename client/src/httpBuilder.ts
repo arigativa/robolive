@@ -1,5 +1,4 @@
 import { Cata } from 'frctl/Basics'
-import Maybe, { Nothing, Just } from 'frctl/Maybe'
 import Either, { Right } from 'frctl/Either'
 import Decode from 'frctl/Json/Decode'
 import Encode from 'frctl/Json/Encode'
@@ -168,13 +167,13 @@ export type BodyContent = Readonly<{
 }>
 
 export type Body = Readonly<{
-  content: Maybe<BodyContent>
+  content?: BodyContent
 }>
 
-export const emptyBody: Body = { content: Maybe.Nothing }
+export const emptyBody: Body = {}
 
 export const stringBody = (type: string, value: string): Body => {
-  return { content: Just({ type, value }) }
+  return { content: { type, value } }
 }
 
 export const jsonBody = (encoder: Encode.Value): Body => {
@@ -217,7 +216,7 @@ class RequestImpl<T> implements Request<T> {
     private readonly headers: Array<Header>,
     private readonly body: Body,
     private readonly expect_: Expect<T>,
-    private readonly timeout: Maybe<number>,
+    private readonly timeout: number,
     private readonly withCredentials_: boolean,
     private readonly queryParams: Array<[string, string]>
   ) {}
@@ -237,7 +236,7 @@ class RequestImpl<T> implements Request<T> {
     headers?: Array<Header>
     body?: Body
     expect?: Expect<R>
-    timeout?: Maybe<number>
+    timeout?: number
     withCredentials?: boolean
     queryParams?: Array<[string, string]>
   }): Request<R> {
@@ -276,11 +275,11 @@ class RequestImpl<T> implements Request<T> {
   }
 
   public withTimeout(milliseconds: number): Request<T> {
-    return this.merge({ timeout: Just(milliseconds) })
+    return this.merge({ timeout: milliseconds })
   }
 
   public withoutTimeout(): Request<T> {
-    return this.merge({ timeout: Nothing })
+    return this.withTimeout(0)
   }
 
   public withCredentials(): Request<T> {
@@ -379,26 +378,16 @@ class RequestImpl<T> implements Request<T> {
       xhr.responseType = this.expect_.responseType
       xhr.withCredentials = this.withCredentials_
 
-      this.timeout.cata({
-        Nothing(): void {
-          // do nothing
-        },
+      if (this.timeout > 0) {
+        xhr.timeout = this.timeout
+      }
 
-        Just(timeout: number): void {
-          xhr.timeout = timeout
-        }
-      })
-
-      this.body.content.cata({
-        Nothing(): void {
-          xhr.send()
-        },
-
-        Just({ type, value }: BodyContent): void {
-          xhr.setRequestHeader('Content-Type', type)
-          xhr.send(value)
-        }
-      })
+      if (this.body.content) {
+        xhr.setRequestHeader('Content-Type', this.body.content.type)
+        xhr.send(this.body.content.value)
+      } else {
+        xhr.send()
+      }
     }
   }
 }
@@ -410,7 +399,7 @@ const setupRequest = (method: string) => (url: string): Request<null> => {
     [],
     emptyBody,
     expectWhatever,
-    Nothing,
+    0,
     false,
     []
   )
