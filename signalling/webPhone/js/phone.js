@@ -288,7 +288,13 @@ window.phoneEngine = {
       webCallSession = webPhoneUA.call('sip:' + to + '@' +options.server, {
         //mediaStream: microphoneStream,
         mediaConstraints: {audio: false, video: true},
-        pcConfig: {rtcpMuxPolicy: 'negotiate'},
+        pcConfig: {
+            rtcpMuxPolicy: 'negotiate',
+            iceServers: [
+                { urls: 'stun:127.0.0.1:8080?transport=udp' },
+                { urls: 'turn:127.0.0.1:8080?transport=udp', 'username': 'test', 'credential': 'test' }
+          ]
+        },
         extraHeaders: extraHeaders
       });
       webCallSession.connection.addEventListener('addstream', (e) => {

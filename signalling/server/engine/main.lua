@@ -62,7 +62,7 @@ function ksr_request_route()
     roles.nathandle.sip()
     roles.nathandle.sdp()
 
-    if not roles.auth(KSR.pv.get("$fU"),KSR.pv.get("$si")..":"..KSR.pv.get("$sp")) then
+    if not roles.auth.handle(KSR.pv.get("$fU"),KSR.pv.get("$si")..":"..KSR.pv.get("$sp")) then
         KSR.sl.sl_send_reply("403","Forbidden")
         KSR.x.exit()
     end
@@ -101,8 +101,8 @@ end
 
 function ksr_xhttp_wrapper()
 
-    if type(roles.http) == "function" then
-        roles.http()
+    if type(roles.http_server) == "function" then
+        roles.http_server()
     end
 
 end

@@ -8,7 +8,7 @@ RUN echo "Installing build tools" && apt install -y git bison gcc g++ flex make 
 RUN echo "Installing kamailio build dependencies [1/2]" && apt install -y libssl-dev libcurl4-openssl-dev libxml2-dev
 RUN echo "Installing kamailio build dependencies [2/2]" && apt install -y  libpcre3-dev libunistring-dev liblua5.1-dev
 
-RUN echo "Cloning kamailio" && git clone --depth 1 -b 5.3 https://github.com/kamailio/kamailio /kamailio-build
+RUN echo "Cloning kamailio" && git clone --depth 1 -b 5.4 https://github.com/kamailio/kamailio /kamailio-build
 
 WORKDIR /kamailio-build/src
 
@@ -29,6 +29,7 @@ RUN apt update
 RUN echo "Installing kamailio runtime dependencies [1/2]" && apt install -y libssl1.1 openssl libcurl4 libxml2
 RUN echo "Installing kamailio runtime dependencies [2/2]" && apt install -y libpcre16-3 libpcre32-3 libpcrecpp0v5 lua5.1 luarocks
 RUN luarocks install lua-cjson
+RUN luarocks install net-url
 
 RUN mkdir /opt/kamailio
 WORKDIR /opt/kamailio
