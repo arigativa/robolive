@@ -1,6 +1,13 @@
 local config = require "config"
+local auth = require "roles.auth"
 
 local wsport
+
+local function getURL()
+    local URL = KSR.pv.get("$hu")
+    KSR.info("URL arrived: "..URL.."\n");
+    return URL -- parse URL properly
+end
 
 local function getWsPort(port) 
     if not port then
@@ -41,12 +48,30 @@ end
 local function http()
 
     wsport = getWsPort(port) 
-   
+
     local port = KSR.pv.get("$Rp")
     KSR.log("info","received HTTP request on port: "..port.."\n")
 
     if port ~= wsport then
         KSR.log("info","Restricted request at port: "..port.."\n")
+        KSR.x.exit()
+    end
+
+    local url = KSR.pv.get("$hu")
+    local contentType = KSR.pv.get("$cT")
+   
+    if url == "/users/create" then
+        local body = KSR.pv.get("$rb")
+        local res,err = auth.create(body)
+        if not res then
+            KSR.err("Can't create users\n")
+            if err then
+                KSR.xhttp.xhttp_reply(err.suggestedCode, err.suggestedReason,"","")
+            end
+        else
+            KSR.info("Succesfully created\n")
+            KSR.xhttp.xhttp_reply("201", "Created", "", "")
+        end
         KSR.x.exit()
     end
 
