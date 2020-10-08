@@ -8,9 +8,9 @@ mainClass in Compile := Some("robolive.app.RegistryServer")
 libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % "1.2.3",
   "org.slf4j" % "jul-to-slf4j" % "1.7.30",
-
   "io.grpc" % "grpc-netty" % scalapb.compiler.Version.grpcJavaVersion,
   "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
+  "com.softwaremill.sttp.client" %% "async-http-client-backend-future" % "2.2.9",
 )
 
 PB.protoSources in Compile := Seq(file("protocols"))

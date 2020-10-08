@@ -48,7 +48,8 @@ final class Puppet(
     )
 
     val sipEventsHandler = new SIPCallEventHandler(controller)
-    new SipClient(sipEventsHandler, sipConfig)
+    val registrationClientHandler = new RegistrationClientHandler(controller)
+    new SipClient(sipEventsHandler, registrationClientHandler, sipConfig)
     this
   }
 
