@@ -5,6 +5,7 @@ import java.util.concurrent.ConcurrentHashMap
 import Agent.AgentEndpointGrpc.AgentEndpoint
 import Client.ClientEndpointGrpc.ClientEndpoint
 import Info.InfoEndpointGrpc.InfoEndpoint
+import SipChannel.SipChannelEndpointGrpc.SipChannelEndpoint
 import Storage.StorageEndpointGrpc.StorageEndpoint
 import io.grpc.{ServerBuilder, ServerServiceDefinition}
 import robolive.server
@@ -12,8 +13,12 @@ import robolive.server.{
   AgentEndpointHandler,
   ClientEndpointHandler,
   InfoEndpointHandler,
+  SipChannelEndpointHandler,
   StorageEndpointHandler
 }
+import sttp.client.SttpBackend
+import sttp.client.asynchttpclient.WebSocketHandler
+import sttp.client.asynchttpclient.future.AsyncHttpClientFutureBackend
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
@@ -24,7 +29,7 @@ object RegistryServer extends App {
   val InfoPort = getEnv("REGISTRY_PORT_FOR_INFO", "3477").toInt
   val ClientPort = getEnv("REGISTRY_PORT_FOR_CLIENT", "3478").toInt
   val StoragePort = getEnv("REGISTRY_PORT_FOR_STORAGE", "3479").toInt
-
+  val SipChannelPort = getEnv("REGISTRY_PORT_FOR_SIP_CHANNEL", "3480").toInt
   val videoSrc: String = {
     val default =
       "nvarguscamerasrc sensor_mode=3 ! video/x-raw(memory:NVMM),width=1280, height=720, framerate=60/1, format=NV12 ! nvvidconv flip-method=0 ! videoconvert"
@@ -50,7 +55,6 @@ object RegistryServer extends App {
   )
 
   val robotsState = new ConcurrentHashMap[String, server.AgentState]()
-
   val agentEndpoint = {
     val agentEndpointHandler = new AgentEndpointHandler(
       agentTable = robotsState,
@@ -86,10 +90,25 @@ object RegistryServer extends App {
     )
   }
 
+  val sipChannelEndpoint = {
+    val sipSessionsState = new ConcurrentHashMap[(String, String), Long]()
+    val backend: SttpBackend[Future, Nothing, WebSocketHandler] = AsyncHttpClientFutureBackend()
+    val sipChannelEndpointHandler = new SipChannelEndpointHandler(
+      backend = backend,
+      sipUri = signallingUri,
+      sessionStorage = sipSessionsState,
+    )
+    runServer(
+      ssd = SipChannelEndpoint.bindService(sipChannelEndpointHandler, global),
+      port = SipChannelPort
+    )
+  }
+
   Await.result(agentEndpoint, Duration.Inf)
   Await.result(infoEndpoint, Duration.Inf)
   Await.result(clientEndpoint, Duration.Inf)
   Await.result(storageEndpoint, Duration.Inf)
+  Await.result(sipChannelEndpoint, Duration.Inf)
 
   def runServer(ssd: ServerServiceDefinition, port: Int): Future[Unit] =
     Future {

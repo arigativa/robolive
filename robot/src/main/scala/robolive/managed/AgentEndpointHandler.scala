@@ -1,8 +1,10 @@
 package robolive.managed
 
+import java.util.{Timer, TimerTask}
 import java.util.concurrent.atomic.AtomicReference
 
 import Agent._
+import SipChannel.{AllocateRequest, SipChannelEndpointGrpc}
 import Storage.{ReadRequest, StorageEndpointGrpc}
 import io.grpc.stub.StreamObserver
 import org.slf4j.LoggerFactory
@@ -15,10 +17,31 @@ private final class AgentEndpointHandler(
   agentName: String,
   currentState: AtomicReference[AgentState],
   storageEndpointClient: StorageEndpointGrpc.StorageEndpointStub,
+  sipChannelEndpointClient: SipChannelEndpointGrpc.SipChannelEndpointStub,
   sendMessage: AgentMessage => Unit,
 )(implicit ex: ExecutionContext)
     extends StreamObserver[RegistryMessage] {
   private val logger = LoggerFactory.getLogger(getClass.getName)
+
+  private val timer = new Timer("SipSession rescheduler")
+
+  def rescheduleTask: TimerTask = new TimerTask {
+    override def run(): Unit = {
+      currentState.get() match {
+        case AgentState.Registered =>
+          timer.cancel()
+
+        case AgentState.Busy(_, clientName, agentName, duration) =>
+          sipChannelEndpointClient
+            .allocate(AllocateRequest(Some(clientName), Some(agentName), Some(duration)))
+            .foreach { response =>
+              logger.info("Rescheduling sip session")
+              val duration = (response.durationSeconds - 5) * 1000
+              timer.schedule(rescheduleTask, duration)
+            }
+      }
+    }
+  }
 
   override def onNext(registryMessage: RegistryMessage): Unit = {
     logger.info(s"received command: $registryMessage")
@@ -36,82 +59,97 @@ private final class AgentEndpointHandler(
         currentState.get() match {
           case AgentState.Registered =>
             logger.info("request settings from storage")
-            storageEndpointClient
-              .get(
-                ReadRequest(
-                  Seq(
-                    "videoSrc",
-                    "sipName",
-                    "signallingUri",
-                    "stunUri",
-                    "enableUserVideo",
-                    "servoControllerType",
-                    "turnUri"
-                  )
-                )
-              )
-              .map { response =>
-                logger.info(s"got settings from storage: `$response`")
-                def settings(key: String): Option[String] = response.values.get(key)
-
-                val videoSrc = settings("videoSrc").get
-                val sipRobotName = settings("sipName").get
-                val signallingUri = settings("signallingUri").get
-                val stunUri = settings("stunUri").get
-                val enableUserVideo = settings("enableUserVideo").get.toBoolean
-                val servoControllerType = settings("servoControllerType").get
-
-                val puppet = new Puppet(
-                  robotName = agentName,
-                  videoSrc = videoSrc,
-                  sipRobotName = sipRobotName,
-                  signallingUri = signallingUri,
-                  stunUri = stunUri,
-                  enableUserVideo = enableUserVideo,
-                  servoControllerType = servoControllerType,
-                )
-
-                logger.info("trying to start puppet")
-
-                scala.util.Try(puppet.start()) match {
-                  case Success(puppet) =>
-                    logger.info("accepting incoming connection")
-
-                    val turnUri = settings("turnUri").get
-
-                    currentState.set(AgentState.Busy(puppet))
-
-                    sendMessage {
-                      accept(
-                        Map(
-                          "sipAgentName" -> sipRobotName,
-                          "sipClientName" -> clientConnectionRequest.name,
-                          "signallingUri" -> signallingUri,
-                          "stunUri" -> stunUri,
-                          "turnUri" -> turnUri,
-                        )
+            (for {
+              storageResponse <- {
+                storageEndpointClient
+                  .get(
+                    ReadRequest(
+                      Seq(
+                        "videoSrc",
+                        "signallingUri",
+                        "stunUri",
+                        "enableUserVideo",
+                        "servoControllerType",
+                        "turnUri"
                       )
-                    }
-
-                  case Failure(exception) =>
-                    logger.error("declining incoming connection: failed to start puppet", exception)
-                    sendMessage {
-                      decline(s"exception while starting up: ${exception.getMessage}")
-                    }
-                }
-              }
-              .recover {
-                case exception =>
-                  logger.error(
-                    "declining incoming connection: error during puppet initialization",
-                    exception
+                    )
                   )
+              }
+              sipChannelAllocationResponse <- sipChannelEndpointClient.allocate(AllocateRequest())
+            } yield {
+              logger.info(s"got settings from storage: `$storageResponse`")
+              def settings(key: String): Option[String] = storageResponse.values.get(key)
+
+              val sipAgentName = sipChannelAllocationResponse.agentName
+              val sipClientName = sipChannelAllocationResponse.clientName
+              val videoSrc = settings("videoSrc").get
+              val signallingUri = settings("signallingUri").get
+              val stunUri = settings("stunUri").get
+              val enableUserVideo = settings("enableUserVideo").get.toBoolean
+              val servoControllerType = settings("servoControllerType").get
+
+              val puppet = new Puppet(
+                robotName = agentName,
+                videoSrc = videoSrc,
+                sipRobotName = sipAgentName,
+                signallingUri = signallingUri,
+                stunUri = stunUri,
+                enableUserVideo = enableUserVideo,
+                servoControllerType = servoControllerType,
+              )
+
+              logger.info("trying to start puppet")
+
+              scala.util.Try(puppet.start()) match {
+                case Success(puppet) =>
+                  logger.info("accepting incoming connection")
+
+                  val turnUri = settings("turnUri").get
+
+                  currentState.set(
+                    AgentState.Busy(
+                      puppet = puppet,
+                      clientName = sipClientName,
+                      agentName = sipAgentName,
+                      duration = sipChannelAllocationResponse.durationSeconds
+                    )
+                  )
+
+                  timer.schedule(
+                    rescheduleTask,
+                    sipChannelAllocationResponse.durationSeconds * 1000
+                  )
+
+                  sendMessage {
+                    accept(
+                      Map(
+                        "sipAgentName" -> sipAgentName,
+                        "sipClientName" -> sipClientName,
+                        "signallingUri" -> signallingUri,
+                        "stunUri" -> stunUri,
+                        "turnUri" -> turnUri,
+                      )
+                    )
+                  }
+
+                case Failure(exception) =>
+                  logger.error("declining incoming connection: failed to start puppet", exception)
                   sendMessage {
                     decline(s"exception while starting up: ${exception.getMessage}")
                   }
               }
+            }).recover {
+              case exception =>
+                logger.error(
+                  "declining incoming connection: error during puppet initialization",
+                  exception
+                )
+                sendMessage {
+                  decline(s"exception while starting up: ${exception.getMessage}")
+                }
+            }
 
-          case AgentState.Busy(_) =>
+          case AgentState.Busy(_, _, _, _) =>
             val declineMessage = "declined connection request, reason: Busy"
 
             logger.info(declineMessage)
@@ -139,7 +177,7 @@ private final class AgentEndpointHandler(
   override def onCompleted(): Unit = {
     logger.info("Inventory closed the connection")
     currentState.get() match {
-      case AgentState.Busy(puppet) => puppet.stop()
+      case AgentState.Busy(puppet, _, _, _) => puppet.stop()
       case null | _ =>
     }
   }

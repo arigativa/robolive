@@ -1,0 +1,18 @@
+syntax = "proto2";
+
+message AllocateRequest {
+  optional string clientName = 1;
+  optional string agentName = 2;
+  optional int64 durationSeconds = 3;
+}
+
+message AllocateResponse {
+  required string clientName = 1;
+  required string agentName = 2;
+  required int64 durationSeconds = 3;
+}
+
+service SipChannelEndpoint {
+  rpc Allocate(AllocateRequest) returns (AllocateResponse);
+}
+
