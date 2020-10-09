@@ -1,5 +1,6 @@
 package robolive.managed
 
+import java.util.{Timer, TimerTask}
 import java.util.concurrent.atomic.AtomicReference
 
 import Agent._
@@ -21,6 +22,26 @@ private final class AgentEndpointHandler(
 )(implicit ex: ExecutionContext)
     extends StreamObserver[RegistryMessage] {
   private val logger = LoggerFactory.getLogger(getClass.getName)
+
+  private val timer = new Timer("SipSession rescheduler")
+
+  def rescheduleTask: TimerTask = new TimerTask {
+    override def run(): Unit = {
+      currentState.get() match {
+        case AgentState.Registered =>
+          timer.cancel()
+
+        case AgentState.Busy(_, clientName, agentName, duration) =>
+          sipChannelEndpointClient
+            .allocate(AllocateRequest(Some(clientName), Some(agentName), Some(duration)))
+            .foreach { response =>
+              logger.info("Rescheduling sip session")
+              val duration = (response.durationSeconds - 5) * 1000
+              timer.schedule(rescheduleTask, duration)
+            }
+      }
+    }
+  }
 
   override def onNext(registryMessage: RegistryMessage): Unit = {
     logger.info(s"received command: $registryMessage")
@@ -85,7 +106,19 @@ private final class AgentEndpointHandler(
 
                   val turnUri = settings("turnUri").get
 
-                  currentState.set(AgentState.Busy(puppet))
+                  currentState.set(
+                    AgentState.Busy(
+                      puppet = puppet,
+                      clientName = sipClientName,
+                      agentName = sipAgentName,
+                      duration = sipChannelAllocationResponse.durationSeconds
+                    )
+                  )
+
+                  timer.schedule(
+                    rescheduleTask,
+                    sipChannelAllocationResponse.durationSeconds * 1000
+                  )
 
                   sendMessage {
                     accept(
@@ -116,7 +149,7 @@ private final class AgentEndpointHandler(
                 }
             }
 
-          case AgentState.Busy(_) =>
+          case AgentState.Busy(_, _, _, _) =>
             val declineMessage = "declined connection request, reason: Busy"
 
             logger.info(declineMessage)
@@ -144,7 +177,7 @@ private final class AgentEndpointHandler(
   override def onCompleted(): Unit = {
     logger.info("Inventory closed the connection")
     currentState.get() match {
-      case AgentState.Busy(puppet) => puppet.stop()
+      case AgentState.Busy(puppet, _, _, _) => puppet.stop()
       case null | _ =>
     }
   }

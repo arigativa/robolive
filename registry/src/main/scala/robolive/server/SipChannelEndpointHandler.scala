@@ -1,6 +1,7 @@
 package robolive.server
 
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 import SipChannel.{AllocateRequest, AllocateResponse}
 import SipChannel.SipChannelEndpointGrpc.SipChannelEndpoint
@@ -11,6 +12,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 final class SipChannelEndpointHandler(
   backend: SttpBackend[Future, Nothing, WebSocketHandler],
+  sessionStorage: ConcurrentHashMap[(String, String), Long],
   sipUri: String,
 )(implicit ec: ExecutionContext)
     extends SipChannelEndpoint {
@@ -19,10 +21,19 @@ final class SipChannelEndpointHandler(
   def allocate(
     request: AllocateRequest
   ): Future[AllocateResponse] = {
-    locally(request)
+    val (clientName, agentName) = (for {
+      clientName <- request.clientName
+      agentName <- request.agentName
+      if sessionStorage.contains((clientName, agentName))
+    } yield {
+      (clientName, agentName)
+    }).getOrElse {
+      val clientName = UUID.randomUUID().toString
+      val agentName = UUID.randomUUID().toString
+      (clientName, agentName)
+    }
 
-    val clientName = UUID.randomUUID().toString
-    val agentName = UUID.randomUUID().toString
+    val duration: Long = request.durationSeconds.filter(_ < 600).getOrElse(10)
 
     quickRequest
       .post(uri"http://$sipUri/users/create")
@@ -30,18 +41,19 @@ final class SipChannelEndpointHandler(
                |[
                |        { 
                |            "username": "$clientName",
-               |            "deadline": 120
+               |            "deadline": $duration
                |        },
                |        { 
                |            "username": "$agentName",
-               |            "deadline": 120
+               |            "deadline": $duration
                |        }
                |    ]""".stripMargin)
       .send()
       .flatMap { response =>
         if (response.code.isSuccess) {
           Future.successful {
-            AllocateResponse(clientName, agentName, 120)
+            sessionStorage.put((clientName, agentName), duration)
+            AllocateResponse(clientName, agentName, duration)
           }
         } else {
           Future.failed {

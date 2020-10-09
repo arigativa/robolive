@@ -55,7 +55,6 @@ object RegistryServer extends App {
   )
 
   val robotsState = new ConcurrentHashMap[String, server.AgentState]()
-
   val agentEndpoint = {
     val agentEndpointHandler = new AgentEndpointHandler(
       agentTable = robotsState,
@@ -92,10 +91,12 @@ object RegistryServer extends App {
   }
 
   val sipChannelEndpoint = {
+    val sipSessionsState = new ConcurrentHashMap[(String, String), Long]()
     val backend: SttpBackend[Future, Nothing, WebSocketHandler] = AsyncHttpClientFutureBackend()
     val sipChannelEndpointHandler = new SipChannelEndpointHandler(
       backend = backend,
       sipUri = signallingUri,
+      sessionStorage = sipSessionsState,
     )
     runServer(
       ssd = SipChannelEndpoint.bindService(sipChannelEndpointHandler, global),
