@@ -2,6 +2,7 @@ node_modules
 build
 storybook-static
 yarn.lock
+generated
 
 npm-debug.log*
 yarn-debug.log*

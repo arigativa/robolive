@@ -2,10 +2,11 @@ import './index.css'
 
 import React from 'react'
 import ReactDOM from 'react-dom'
-import CssBaseline from '@material-ui/core/CssBaseline'
+import { CSSReset, ThemeProvider, theme } from '@chakra-ui/core'
 
 import * as serviceWorker from 'serviceWorker'
 import { useStore } from 'store'
+
 import * as Counter from 'Counter'
 
 const Root: React.FC = () => {
@@ -16,9 +17,11 @@ const Root: React.FC = () => {
 
   return (
     <React.StrictMode>
-      <CssBaseline>
+      <ThemeProvider theme={theme}>
+        <CSSReset />
+
         <Counter.View state={state} dispatch={dispatch} />
-      </CssBaseline>
+      </ThemeProvider>
     </React.StrictMode>
   )
 }

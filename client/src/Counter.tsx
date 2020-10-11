@@ -1,5 +1,5 @@
 import React from 'react'
-import Button from '@material-ui/core/Button'
+import { Button } from '@chakra-ui/core'
 
 import { Dispatch, Effects } from 'core'
 
@@ -76,11 +76,14 @@ export const View: React.FC<{
   dispatch: Dispatch<Action>
 }> = ({ state, dispatch }) => (
   <div>
-    <Button color="primary" onClick={() => dispatch(Delay(2000, Decrement))}>
+    <Button
+      variantColor="green"
+      onClick={() => dispatch(Delay(2000, Decrement))}
+    >
       -
     </Button>
     {state.count}
-    <Button color="primary" onClick={() => dispatch(Increment)}>
+    <Button variantColor="red" onClick={() => dispatch(Increment)}>
       +
     </Button>
   </div>
