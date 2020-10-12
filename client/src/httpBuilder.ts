@@ -1,5 +1,6 @@
 import { Cata } from 'frctl/Basics'
 import Either, { Right } from 'frctl/Either'
+import Maybe, { Nothing, Just } from 'frctl/Maybe'
 import Decode from 'frctl/Json/Decode'
 import Encode from 'frctl/Json/Encode'
 
@@ -166,13 +167,17 @@ export type BodyContent = Readonly<{
 }>
 
 export type Body = Readonly<{
-  content?: BodyContent
+  content: Maybe<BodyContent>
 }>
 
-export const emptyBody: Body = {}
+export const emptyBody: Body = {
+  content: Nothing
+}
 
 export const stringBody = (type: string, value: string): Body => {
-  return { content: { type, value } }
+  return {
+    content: Just({ type, value })
+  }
 }
 
 export const jsonBody = (encoder: Encode.Value): Body => {
@@ -381,12 +386,16 @@ class RequestImpl<T> implements Request<T> {
         xhr.timeout = this.timeout
       }
 
-      if (this.body.content) {
-        xhr.setRequestHeader('Content-Type', this.body.content.type)
-        xhr.send(this.body.content.value)
-      } else {
-        xhr.send()
-      }
+      this.body.content.cata({
+        Nothing() {
+          xhr.send()
+        },
+
+        Just(content) {
+          xhr.setRequestHeader('Content-Type', content.type)
+          xhr.send(content.value)
+        }
+      })
     }
   }
 }
