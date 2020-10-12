@@ -16,6 +16,6 @@ export const initial: State = {
 // U P D A T E
 
 export type Action =
-  | { type: 'CangeUsername'; value: string }
+  | { type: 'ChangeUsername'; value: string }
   | { type: 'SignIn' }
   | { type: 'Register'; result: Either<string, null> }

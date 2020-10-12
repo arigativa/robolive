@@ -18,7 +18,7 @@ export type Action = ReduxAction
  * and handlers drilling and keep all state global at the same time
  * when the app becomes bigger and bigger.
  *
- * This is an extremelly simplified [redux-loop](https://github.com/redux-loop/redux-loop)
+ * This is an extremely simplified [redux-loop](https://github.com/redux-loop/redux-loop)
  */
 export type Effect<A> = (dispatch: Dispatch<A>) => void
 
@@ -43,7 +43,7 @@ export const mapEffect = <A, R>(
 /**
  * Transforms effects to produce R actions instead of A actions.
  *
- * @param tagger funciton to transform A → R
+ * @param tagger function to transform A → R
  * @param effects effects producing A
  * @see mapEffect
  */
@@ -62,7 +62,7 @@ export type Dispatch<A> = (action: A) => void
 /**
  * Creates redux store fabric.
  * Returns a fabric to create redux store with initial state, initial effects
- * and update funciton to produce new state and new side effects.
+ * and update function to produce new state and new side effects.
  *
  * @param createStore original redux.createStore fabric
  *
@@ -113,11 +113,11 @@ export const createStoreWithEffects = <S, A extends Action, Ext, StateExt>(
   update: (action: A, state: S) => [S, Effects<A>],
   enhancer?: StoreEnhancer<Ext, StateExt>
 ): Store<S, A> => {
-  let initialised = false
+  let initialized = false
 
   const effectReducer = (state: S, action: A): S => {
-    if (!initialised) {
-      initialised = true
+    if (!initialized) {
+      initialized = true
 
       return state
     }
