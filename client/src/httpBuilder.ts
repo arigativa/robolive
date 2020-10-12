@@ -33,14 +33,13 @@ const buildUrlWithQuery = (
   return url + '?' + queryParams.map(queryPair).join('&')
 }
 
-const parseHeaders = (rawHeaders: string): { [name: string]: string } => {
-  const headers: { [name: string]: string } = {}
+const parseHeaders = (rawHeaders: string): Record<string, string> => {
+  const headers: Record<string, string> = {}
+  const headerPairs = rawHeaders.split('\u000d\u000a')
 
-  if (!rawHeaders) {
+  if (headerPairs.length === 0) {
     return headers
   }
-
-  const headerPairs = rawHeaders.split('\u000d\u000a')
 
   for (const headerPair of headerPairs) {
     const delimiterIndex = headerPair.indexOf('\u003a\u0020')
@@ -134,7 +133,7 @@ export type Response<T> = Readonly<{
   url: string
   statusCode: number
   statusText: string
-  headers: { [name: string]: string }
+  headers: Record<string, string>
   body: T
 }>
 
