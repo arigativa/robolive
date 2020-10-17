@@ -46,8 +46,8 @@ export type Schema<A extends Case<string, unknown>, R> =
   | (Partial<CaseOfSchema<A, R>> & { _(): R })
 
 export const match = <A extends Case<string, unknown>, R>(
-  schema: Schema<A, R>,
-  case_: A
+  case_: A,
+  schema: Schema<A, R>
 ): R => {
   if (case_.type in schema) {
     return (schema as Record<string, (payload: unknown) => R>)[case_.type](
