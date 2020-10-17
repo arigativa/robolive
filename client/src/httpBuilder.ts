@@ -4,7 +4,7 @@ import Maybe, { Nothing, Just } from 'frctl/Maybe'
 import Decode from 'frctl/Json/Decode'
 import Encode from 'frctl/Json/Encode'
 
-import { Action, Effect } from 'core'
+import { CaseOf, Effect } from 'core'
 import { callOrElse } from 'utils'
 
 /**
@@ -210,7 +210,7 @@ export type Request<T> = {
   expectString(): Request<string>
   expectJson<R>(decoder: Decode.Decoder<R>): Request<R>
 
-  send<A extends Action>(tagger: (result: Either<Error, T>) => A): Effect<A>
+  send<A extends CaseOf>(tagger: (result: Either<Error, T>) => A): Effect<A>
 }
 
 class RequestImpl<T> implements Request<T> {
@@ -322,7 +322,7 @@ class RequestImpl<T> implements Request<T> {
     return this.expect(expectJson(decoder))
   }
 
-  public send<A extends Action>(
+  public send<A extends CaseOf>(
     tagger: (result: Either<Error, T>) => A
   ): Effect<A> {
     return dispatch => {
