@@ -2,17 +2,54 @@ import { PreloadedState, StoreEnhancer, StoreCreator, Store } from 'redux'
 
 import { once } from 'utils'
 
-export type CaseOf<T extends string = string, P = unknown> = {
+export type Case<T extends string = string, P = never> = {
   type: T
-  payload?: P
+  payload: P
 }
 
-export function CaseOf<T extends string>(type: T): () => CaseOf<T>
-export function CaseOf<T extends string, P>(
+export type CreateCaseWithoutPayload<T extends string = string> = {
   type: T
-): (payload: P) => CaseOf<T, P>
-export function CaseOf<T extends string, P>(type: T) {
-  return (payload: P): CaseOf<T, P> => ({ type, payload })
+  (): Case<T>
+}
+
+export type CreateCaseWithPayload<T extends string = string, P = never> = {
+  type: T
+  (payload: P): Case<T, P>
+}
+
+export function caseOf<T extends string>(type: T): CreateCaseWithoutPayload<T>
+export function caseOf<T extends string, P>(
+  type: T
+): CreateCaseWithPayload<T, P>
+export function caseOf<T extends string, P>(
+  type: T
+): CreateCaseWithPayload<T, P> {
+  const creator = (payload: P): Case<T, P> => ({ type, payload })
+
+  creator.type = type
+
+  return creator
+}
+
+type CaseOfSchema<A extends Case<string, unknown>, R> = {
+  [K in A['type']]: (payload: Extract<A, { type: K }>['payload']) => R
+}
+
+export type Schema<A extends Case<string, unknown>, R> =
+  | CaseOfSchema<A, R>
+  | (Partial<CaseOfSchema<A, R>> & { _(): R })
+
+export const match = <A extends Case<string, unknown>, R>(
+  schema: Schema<A, R>,
+  case_: A
+): R => {
+  if (case_.type in schema) {
+    return (schema as Record<string, (payload: unknown) => R>)[case_.type](
+      case_.payload
+    )
+  }
+
+  return (schema as { _(): R })._()
 }
 
 /**
@@ -111,7 +148,7 @@ export type Dispatch<A> = (action: A) => void
  *   }
  * })
  */
-export const createStoreWithEffects = <S, A extends CaseOf, Ext, StateExt>(
+export const createStoreWithEffects = <S, A extends Case, Ext, StateExt>(
   createStore: StoreCreator
 ) => (
   [initialState, initialEffects]: [S, Effects<A>],
