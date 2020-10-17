@@ -1,14 +1,19 @@
-import {
-  Action as ReduxAction,
-  PreloadedState,
-  StoreEnhancer,
-  StoreCreator,
-  Store
-} from 'redux'
+import { PreloadedState, StoreEnhancer, StoreCreator, Store } from 'redux'
 
 import { once } from 'utils'
 
-export type Action = ReduxAction
+export type CaseOf<T extends string = string, P = unknown> = {
+  type: T
+  payload?: P
+}
+
+export function CaseOf<T extends string>(type: T): () => CaseOf<T>
+export function CaseOf<T extends string, P>(
+  type: T
+): (payload: P) => CaseOf<T, P>
+export function CaseOf<T extends string, P>(type: T) {
+  return (payload: P): CaseOf<T, P> => ({ type, payload })
+}
 
 /**
  * Effect allows to call Action in async moment.
@@ -106,7 +111,7 @@ export type Dispatch<A> = (action: A) => void
  *   }
  * })
  */
-export const createStoreWithEffects = <S, A extends Action, Ext, StateExt>(
+export const createStoreWithEffects = <S, A extends CaseOf, Ext, StateExt>(
   createStore: StoreCreator
 ) => (
   [initialState, initialEffects]: [S, Effects<A>],
