@@ -1,7 +1,7 @@
 import Either from 'frctl/Either'
 import RemoteData from 'frctl/RemoteData/Optional'
 
-import { CaseOf, Effects } from 'core'
+import { caseOf, match, Effects } from 'core'
 
 // S T A T E
 
@@ -22,11 +22,22 @@ export type Action =
   | ReturnType<typeof Register>
   | ReturnType<typeof ChangeUsername>
 
-const SignIn = CaseOf('SignIn')()
-const Register = CaseOf<'Register', Either<string, null>>('Register')
-const ChangeUsername = CaseOf<'ChangeUsername', string>('ChangeUsername')
+const SignIn = caseOf('SignIn')()
+const Register = caseOf<'Register', Either<string, null>>('Register')
+const ChangeUsername = caseOf<'ChangeUsername', string>('ChangeUsername')
 
 export type Stage = ReturnType<typeof Updated> | ReturnType<typeof Registered>
 
-const Updated = CaseOf<'Updated', [State, Effects<Action>]>('Updated')
-const Registered = CaseOf<'Registered', string>('Registered')
+const Updated = caseOf<'Updated', [State, Effects<Action>]>('Updated')
+const Registered = caseOf<'Registered', string>('Registered')
+
+export const update = (action: Action, state: State): Stage => {
+  return match<Action, Stage>(
+    {
+      SignIn: () => Updated([state, []]),
+      ChangeUsername: Registered,
+      _: () => Updated([state, []])
+    },
+    action
+  )
+}
