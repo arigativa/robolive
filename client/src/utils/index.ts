@@ -50,3 +50,7 @@ export const round = (float: number, precision?: number): number => {
 
   return Math.round(pow * float) / pow
 }
+
+export const hasWhitespaces = (input: string): boolean => {
+  return /.*\s+.*/.test(input)
+}
