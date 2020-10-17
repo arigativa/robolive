@@ -45,77 +45,73 @@ const Updated = caseOf<'Updated', [State, Effects<Action>]>('Updated')
 const Registered = caseOf<'Registered', Credentials>('Registered')
 
 export const update = (action: Action, state: State): Stage => {
-  return match<Action, Stage>(
-    {
-      ChangeUsername: username => {
+  return match<Action, Stage>(action, {
+    ChangeUsername: username => {
+      return Updated([
+        {
+          ...state,
+          username
+        },
+        []
+      ])
+    },
+
+    SignIn: () => {
+      if (hasWhitespaces(state.username)) {
         return Updated([
           {
             ...state,
-            username
+            registration: RemoteData.Failure(
+              'Username must have no white spaces'
+            )
           },
           []
         ])
-      },
+      }
 
-      SignIn: () => {
-        if (hasWhitespaces(state.username)) {
-          return Updated([
-            {
-              ...state,
-              registration: RemoteData.Failure(
-                'Username must have no white spaces'
-              )
-            },
-            []
-          ])
-        }
-
-        if (state.username.length === 0) {
-          return Updated([
-            {
-              ...state,
-              registration: RemoteData.Failure('Username must be not empty')
-            },
-            []
-          ])
-        }
-
+      if (state.username.length === 0) {
         return Updated([
           {
             ...state,
-            registration: RemoteData.Loading
+            registration: RemoteData.Failure('Username must be not empty')
           },
-          [
-            dispatch =>
-              SIP.register({
-                protocol: 'wss',
-                server: 'rl.arigativa.ru',
-                port: 4443,
-                register: true,
-                username: state.username,
-                onRegistration: result => dispatch(Register(result))
-              })
-          ]
+          []
         ])
-      },
+      }
 
-      Register: result =>
-        result.cata<Stage>({
-          Left: error =>
-            Updated([
-              {
-                ...state,
-                registration: RemoteData.Failure(error)
-              },
-              []
-            ]),
-
-          Right: userAgent =>
-            Registered({ username: state.username, userAgent })
-        })
+      return Updated([
+        {
+          ...state,
+          registration: RemoteData.Loading
+        },
+        [
+          dispatch =>
+            SIP.register({
+              protocol: 'ws',
+              server: 'rl.arigativa.ru',
+              port: 4443,
+              register: true,
+              username: state.username,
+              onRegistration: result => dispatch(Register(result))
+            })
+        ]
+      ])
     },
-    action
-  )
+
+    Register: result =>
+      result.cata<Stage>({
+        Left: error =>
+          Updated([
+            {
+              ...state,
+              registration: RemoteData.Failure(error)
+            },
+            []
+          ]),
+
+        Right: userAgent => Registered({ username: state.username, userAgent })
+      })
+  })
 }
 
 // V I E W

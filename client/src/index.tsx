@@ -6,13 +6,18 @@ import { CSSReset, ThemeProvider, theme } from '@chakra-ui/core'
 
 import * as serviceWorker from 'serviceWorker'
 import { useStore } from 'store'
+import { Effects } from 'core'
 
-import * as Counter from 'Counter'
+import * as Main from 'Main'
 
 const Root: React.FC = () => {
+  const init = React.useMemo<[Main.State, Effects<Main.Action>]>(
+    () => [Main.initial, []],
+    []
+  )
   const [state, dispatch] = useStore({
-    init: Counter.init,
-    update: Counter.update
+    init,
+    update: Main.update
   })
 
   return (
@@ -20,7 +25,7 @@ const Root: React.FC = () => {
       <ThemeProvider theme={theme}>
         <CSSReset />
 
-        <Counter.View state={state} dispatch={dispatch} />
+        <Main.View state={state} dispatch={dispatch} />
       </ThemeProvider>
     </React.StrictMode>
   )
