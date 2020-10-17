@@ -1,6 +1,15 @@
 import React from 'react'
 import Either from 'frctl/Either'
 import RemoteData from 'frctl/RemoteData/Optional'
+import {
+  Box,
+  FormControl,
+  FormLabel,
+  FormHelperText,
+  Input,
+  Heading,
+  Button
+} from '@chakra-ui/core'
 
 import { Dispatch, Effects, caseOf, match } from 'core'
 import * as SIP from 'sip'
@@ -118,8 +127,8 @@ export const View: React.FC<{
   const busy = state.registration.isLoading()
 
   return (
-    <div>
-      <h1>Registration</h1>
+    <Box p={4}>
+      <Heading>Registration</Heading>
 
       <form
         onSubmit={event => {
@@ -127,28 +136,44 @@ export const View: React.FC<{
           event.preventDefault()
         }}
       >
-        <input
-          type="text"
-          placeholder="Username"
+        <FormControl mt={4}>
+          <FormLabel htmlFor="username">Username</FormLabel>
+
+          <Input
+            type="text"
+            placeholder="Username"
+            tabIndex={0}
+            autoFocus
+            isReadOnly={busy}
+            value={state.username}
+            onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+              dispatch(ChangeUsername(event.target.value))
+            }
+          />
+
+          {state.registration
+            .swap()
+            .toMaybe()
+            .fold(
+              () => null,
+              message => (
+                <FormHelperText color="red.300">
+                  <strong>Registration failed:</strong> {message}
+                </FormHelperText>
+              )
+            )}
+        </FormControl>
+
+        <Button
+          mt={4}
+          variantColor="blue"
+          type="submit"
+          isDisabled={busy}
           tabIndex={0}
-          autoFocus
-          readOnly={busy}
-          value={state.username}
-          onChange={event => dispatch(ChangeUsername(event.target.value))}
-        />
-
-        <button type="submit" disabled={busy} tabIndex={0}>
+        >
           Sign In
-        </button>
+        </Button>
       </form>
-
-      {state.registration
-        .mapFailure(message => (
-          <p>
-            <strong>Registration failed:</strong> {message}
-          </p>
-        ))
-        .getOrElse(null)}
-    </div>
+    </Box>
   )
 }
