@@ -1,4 +1,10 @@
-import { PreloadedState, StoreEnhancer, StoreCreator, Store } from 'redux'
+import {
+  Action,
+  PreloadedState,
+  StoreEnhancer,
+  StoreCreator,
+  Store
+} from 'redux'
 
 import { once } from 'utils'
 
@@ -148,7 +154,7 @@ export type Dispatch<A> = (action: A) => void
  *   }
  * })
  */
-export const createStoreWithEffects = <S, A extends Case, Ext, StateExt>(
+export const createStoreWithEffects = <S, A extends Action, Ext, StateExt>(
   createStore: StoreCreator
 ) => (
   [initialState, initialEffects]: [S, Effects<A>],
