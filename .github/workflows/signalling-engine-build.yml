@@ -19,6 +19,12 @@ jobs:
         working-directory: signalling/server
     steps:
       - name: Package server
+        run: ls -lah
+      - name: Package server
+        run: pwd
+      - name: Package server
+        run: find
+      - name: Package server
         run: tar -czvf /tmp/engine.tar.gz -C . engine
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v2
