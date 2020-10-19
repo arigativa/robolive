@@ -14,9 +14,12 @@ on:
 jobs:
   build-kamailio-engine:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: signalling/server
     steps:
       - name: Package server
-        run: tar -czvf /tmp/engine.tar.gz -C signalling/server/ engine
+        run: tar -czvf /tmp/engine.tar.gz -C . engine
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v2
         with:
