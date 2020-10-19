@@ -15,12 +15,7 @@ jobs:
   build-kamailio-engine:
     runs-on: ubuntu-latest
     steps:
-      - name: Package server
-        run: ls -lah
-      - name: Package server
-        run: pwd
-      - name: Package server
-        run: find
+      - uses: actions/checkout@v2
       - name: Package server
         run: tar -czvf /tmp/engine.tar.gz -C signalling/server engine
       - name: Upload a Build Artifact
