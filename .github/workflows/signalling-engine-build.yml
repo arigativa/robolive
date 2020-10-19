@@ -1,0 +1,22 @@
+name: Build signalling server (engine)
+
+on:
+  push:
+    paths:
+      - 'signalling/server/engine'
+    branches: [ master ]
+  pull_request:
+    paths:
+      - 'signalling/server/engine'
+
+jobs:
+  build-kamailio-engine:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Package server
+        run: tar -czvf /tmp/engine.tar.gz -C signalling/server/ engine
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: engine.tar.gz
+          path: /tmp/engine.tar.gz
