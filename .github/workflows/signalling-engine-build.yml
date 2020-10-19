@@ -1,14 +1,5 @@
 name: Build signalling server (engine)
 
-on:
-  push:
-    paths:
-      - 'signalling/server/engine/'
-    branches: [ master ]
-  pull_request:
-    paths:
-      - 'signalling/server/engine/'
-
 jobs:
   build-kamailio-engine:
     runs-on: ubuntu-latest
