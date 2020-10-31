@@ -31,9 +31,11 @@ services:
     environment:
       GST_DEBUG: '*:3'
       OPENSSL_CONF: ''
-      INVENTORY_PORT: 3478
-      INVENTORY_HOST: registry
+      REGISTRY_HOST: registry
       ROBOT_NAME: 'Robot in Docker'
+      REGISTRY_PORT_FOR_AGENT: 3476
+      REGISTRY_PORT_FOR_STORAGE: 3479
+      REGISTRY_PORT_FOR_SIP_CHANNEL: 3480
     depends_on:
       - registry
 
@@ -64,18 +66,25 @@ services:
       target: registry
     container_name: registry
     environment:
-      REGISTRY_PORT_FOR_ROBOT: 3478
-      REGISTRY_PORT_FOR_OPERATOR: 3479
+      REGISTRY_PORT_FOR_AGENT: 3476
+      REGISTRY_PORT_FOR_INFO: 3477
+      REGISTRY_PORT_FOR_CLIENT: 3478
+      REGISTRY_PORT_FOR_STORAGE: 3479
+      REGISTRY_PORT_FOR_SIP_CHANNEL: 3480
       VIDEO_SRC: 'videotestsrc is-live=true pattern=ball ! videoconvert'
       SERVO_CONTROLLER: 'FAKE'
       SIGNALLING_URI: '169.28.1.1:9031'
       STUN_URI: 'stun://169.28.1.4:8080'
+      TURN_URI: 'turn:rl.arigativa.ru:8080?transport=tcp'
     networks:
       testing_net:
         ipv4_address: 169.28.1.20
     ports:
+      - 3476:3476
+      - 3477:3477
       - 3478:3478
       - 3479:3479
+      - 3480:3480
 
 networks:
   testing_net:
