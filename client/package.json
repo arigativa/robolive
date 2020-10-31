@@ -1,6 +1,5 @@
 {
-  "name": "weather-forecast",
-  "version": "0.1.0",
+  "name": "robolive",
   "private": true,
   "scripts": {
     "start": "npm run build && npx serve -s ./build -p 3000",
