@@ -7,7 +7,11 @@ debug.enable('JsSIP:*')
 
 export { UA as UserAgent } from 'jssip/lib/JsSIP'
 
-export type WebSocketProtocol = 'ws' | 'wss'
+// eslint-disable-next-line no-shadow
+export enum WebSocketProtocol {
+  WS = 'ws',
+  WSS = 'wss'
+}
 
 const buildWebSocketUrl = (
   protocol: WebSocketProtocol,

@@ -13,6 +13,7 @@ import {
 
 import { Dispatch, Effects, caseOf, match } from 'core'
 import * as SIP from 'sip'
+import { SIP_PROTOCOL, SIP_SERVER, SIP_PORT } from 'env'
 import { Credentials } from 'credentials'
 import { hasWhitespaces } from 'utils'
 
@@ -24,7 +25,7 @@ export type State = {
 }
 
 export const initial: State = {
-  username: 'robohuman',
+  username: '',
   registration: RemoteData.NotAsked
 }
 
@@ -87,9 +88,9 @@ export const update = (action: Action, state: State): Stage => {
         [
           dispatch =>
             SIP.register({
-              protocol: 'ws',
-              server: 'rl.arigativa.ru',
-              port: 4443,
+              protocol: SIP_PROTOCOL,
+              server: SIP_SERVER,
+              port: SIP_PORT,
               register: true,
               username: state.username,
               onRegistration: result => dispatch(Register(result))
