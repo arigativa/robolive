@@ -1,11 +1,9 @@
-import { Cata } from 'frctl/Basics'
 import Either, { Right } from 'frctl/Either'
 import Maybe, { Nothing, Just } from 'frctl/Maybe'
 import Decode from 'frctl/Json/Decode'
 import Encode from 'frctl/Json/Encode'
 
-import { Case, Effect } from 'core'
-import { callOrElse } from 'utils'
+import { Effect, caseOf } from 'core'
 
 /**
  * Adapts frctl/Http to use with redux
@@ -59,65 +57,24 @@ const parseHeaders = (rawHeaders: string): Record<string, string> => {
 
 /* E R R O R */
 
-export type ErrorPattern<T> = Cata<{
-  Timeout(): T
-  NetworkError(): T
-  BadUrl(url: string): T
-  BadStatus(response: Response<string>): T
-  BadBody(error: Decode.Error, response: Response<string>): T
-}>
+export type HttpError =
+  | typeof HttpError.Timeout
+  | typeof HttpError.NetworkError
+  | ReturnType<typeof HttpError.BadUrl>
+  | ReturnType<typeof HttpError.BadStatus>
+  | ReturnType<typeof HttpError.BadBody>
 
-export type Error = {
-  cata<T>(pattern: ErrorPattern<T>): T
-}
+const Timeout = caseOf('Timeout')()
+const NetworkError = caseOf('NetworkError')()
+const BadUrl = caseOf<'BadUrl', string>('BadUrl')
+const BadStatus = caseOf<'BadStatus', Response<string>>('BadStatus')
+const BadBody = caseOf<
+  'BadBody',
+  { decodeError: Decode.Error; response: Response<string> }
+>('BadBody')
 
-const Timeout: Error = {
-  cata<T>(pattern: ErrorPattern<T>): T {
-    return callOrElse(pattern._, pattern.Timeout)
-  }
-}
-
-const NetworkError: Error = {
-  cata<T>(pattern: ErrorPattern<T>): T {
-    return callOrElse(pattern._, pattern.NetworkError)
-  }
-}
-
-class BadUrl implements Error {
-  constructor(private readonly url: string) {}
-
-  public cata<T>(pattern: ErrorPattern<T>): T {
-    return callOrElse(pattern._, pattern.BadUrl, this.url)
-  }
-}
-
-class BadStatus implements Error {
-  constructor(private readonly response: Response<string>) {}
-
-  public cata<T>(pattern: ErrorPattern<T>): T {
-    return callOrElse(pattern._, pattern.BadStatus, this.response)
-  }
-}
-
-class BadBody implements Error {
-  constructor(
-    private readonly error: Decode.Error,
-    private readonly response: Response<string>
-  ) {}
-
-  public cata<T>(pattern: ErrorPattern<T>): T {
-    return callOrElse(pattern._, pattern.BadBody, this.error, this.response)
-  }
-}
-
-export const Error = {
-  Timeout,
-  NetworkError,
-  BadUrl: (url: string): Error => new BadUrl(url),
-  BadStatus: (response: Response<string>): Error => new BadStatus(response),
-  BadBody: (error: Decode.Error, response: Response<string>): Error =>
-    new BadBody(error, response)
-}
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const HttpError = { Timeout, NetworkError, BadUrl, BadStatus, BadBody }
 
 /* H E A D E R */
 
@@ -210,7 +167,7 @@ export type Request<T> = {
   expectString(): Request<string>
   expectJson<R>(decoder: Decode.Decoder<R>): Request<R>
 
-  send<A extends Case>(tagger: (result: Either<Error, T>) => A): Effect<A>
+  send<A>(tagger: (result: Either<HttpError, T>) => A): Effect<A>
 }
 
 class RequestImpl<T> implements Request<T> {
@@ -322,18 +279,16 @@ class RequestImpl<T> implements Request<T> {
     return this.expect(expectJson(decoder))
   }
 
-  public send<A extends Case>(
-    tagger: (result: Either<Error, T>) => A
-  ): Effect<A> {
+  public send<A>(tagger: (result: Either<HttpError, T>) => A): Effect<A> {
     return dispatch => {
       const xhr = new XMLHttpRequest()
 
       xhr.addEventListener('error', () => {
-        dispatch(tagger(Either.Left(Error.NetworkError)))
+        dispatch(tagger(Either.Left(NetworkError)))
       })
 
       xhr.addEventListener('timeout', () => {
-        dispatch(tagger(Either.Left(Error.Timeout)))
+        dispatch(tagger(Either.Left(Timeout)))
       })
 
       xhr.addEventListener('load', () => {
@@ -346,17 +301,20 @@ class RequestImpl<T> implements Request<T> {
         }
 
         if (xhr.status < 200 || xhr.status >= 300) {
-          dispatch(tagger(Either.Left(Error.BadStatus(stringResponse))))
+          dispatch(tagger(Either.Left(BadStatus(stringResponse))))
         } else {
           dispatch(
             tagger(
               this.expect_
                 .responseToResult({
                   ...stringResponse,
-                  body: xhr.response as string
+                  body: xhr.response || ''
                 })
                 .mapLeft(decodeError =>
-                  Error.BadBody(decodeError, stringResponse)
+                  BadBody({
+                    decodeError,
+                    response: stringResponse
+                  })
                 )
             )
           )
@@ -370,7 +328,7 @@ class RequestImpl<T> implements Request<T> {
           true
         )
       } catch (e) {
-        dispatch(tagger(Either.Left(Error.BadUrl(this.url))))
+        dispatch(tagger(Either.Left(BadUrl(this.url))))
 
         return
       }

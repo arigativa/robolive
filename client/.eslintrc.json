@@ -81,7 +81,20 @@
     "no-var": "error", // https://eslint.org/docs/rules/no-var
 
     // Typescript Eslint
-    "@typescript-eslint/explicit-function-return-type": "off"
+    "@typescript-eslint/explicit-function-return-type": "off",
+    "@typescript-eslint/no-redeclare": [
+      "warn",
+      { "ignoreDeclarationMerge": true }
+    ],
+
+    // ESLint plugin import
+    "import/no-anonymous-default-export": [
+      "warn",
+      {
+        "allowArray": true,
+        "allowObject": true
+      }
+    ]
   },
 
   "overrides": [
