@@ -33,12 +33,12 @@ export const update = (
       match<Screen, [State, Effects<Action>]>(state.screen, {
         LoginScreen: login =>
           match(Login.update(subAction, login), {
-            Updated: ([nextLogin, effects]) => [
+            Updated: nextLogin => [
               {
                 ...state,
                 screen: LoginScreen(nextLogin)
               },
-              mapEffects(LoginAction, effects)
+              []
             ],
 
             Registered: () => [{ screen: RoomScreen('asd') }, []]

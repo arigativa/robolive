@@ -17,8 +17,8 @@
   },
   "husky": {
     "hooks": {
-      "pre-commit": "npm run typecheck && lint-staged",
-      "pre-push": "npm run test -- --passWithNoTests --watchAll=false"
+      "pre-commit": "npm run typecheck",
+      "pre-push": "lint-staged && npm run test -- --passWithNoTests --watchAll=false"
     }
   },
   "lint-staged": {
