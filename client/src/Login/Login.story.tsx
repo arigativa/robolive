@@ -1,7 +1,7 @@
 import React from 'react'
 import { action } from '@storybook/addon-actions'
 import { text } from '@storybook/addon-knobs'
-import RemoteData from 'frctl/RemoteData/Optional'
+import Maybe from 'frctl/Maybe'
 
 import * as Login from '.'
 
@@ -33,16 +33,6 @@ export const WithValues: React.FC = () => (
   />
 )
 
-export const Loading: React.FC = () => (
-  <Login.View
-    state={{
-      ...Login.initial,
-      registration: RemoteData.Loading
-    }}
-    dispatch={action('dispatch')}
-  />
-)
-
 export const Failure: React.FC = () => {
   const message = text('Error Message', 'Oops something went wrong')
 
@@ -50,10 +40,7 @@ export const Failure: React.FC = () => {
     <Login.View
       state={{
         ...Login.initial,
-        registration:
-          message.length === 0
-            ? RemoteData.NotAsked
-            : RemoteData.Failure(message)
+        error: message.length === 0 ? Maybe.Nothing : Maybe.Just(message)
       }}
       dispatch={action('dispatch')}
     />
