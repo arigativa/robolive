@@ -6,11 +6,13 @@ import SipChannel.SipChannelEndpointGrpc
 import Storage.StorageEndpointGrpc
 import io.grpc.stub.StreamObserver
 import org.slf4j.LoggerFactory
+import robolive.gstreamer.VideoSources
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
 final class RunningPuppet(
   name: String,
+  videoSources: VideoSources,
   agentEndpointClient: Agent.AgentEndpointGrpc.AgentEndpointStub,
   storageEndpointClient: StorageEndpointGrpc.StorageEndpointStub,
   sipChannelEndpointClient: SipChannelEndpointGrpc.SipChannelEndpointStub,
@@ -22,6 +24,7 @@ final class RunningPuppet(
 
     val commandReceiver: StreamObserver[RegistryMessage] = new AgentEndpointHandler(
       agentName = name,
+      videoSources = videoSources,
       currentState = agentState,
       storageEndpointClient = storageEndpointClient,
       sipChannelEndpointClient = sipChannelEndpointClient,

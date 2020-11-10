@@ -36,6 +36,8 @@ initial =
     ( { iceServers = [
             { active = False, url = "turn:rl.arigativa.ru:8080?transport=udp", username = "turn", password = "turn" }
             , { active = False, url = "turn:rl.arigativa.ru:8080?transport=tcp", username = "turn", password = "turn" }
+            , { active = False, url = "turn:192.168.1.72:8080?transport=udp", username = "turn", password = "turn" }
+            , { active = False, url = "turn:192.168.1.72:8080?transport=tcp", username = "turn", password = "turn" }
         ]
       , interlocutor = "robomachine"
       , call = RemoteData.NotAsked
@@ -96,7 +98,7 @@ update msg model =
                 ( { model | call = RemoteData.Loading }
                 , JsSIP.call
                     { userAgent = userAgent
-                    , server = "rl.arigativa.ru"
+                    , server = "192.168.1.72"
                     , username = model.interlocutor
                     , withAudio = False
                     , withVideo = True

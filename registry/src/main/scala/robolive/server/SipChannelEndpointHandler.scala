@@ -28,12 +28,12 @@ final class SipChannelEndpointHandler(
     } yield {
       (clientName, agentName)
     }).getOrElse {
-      val clientName = UUID.randomUUID().toString
-      val agentName = UUID.randomUUID().toString
+      val clientName = s"client-${UUID.randomUUID().toString}"
+      val agentName = s"agent-${UUID.randomUUID().toString}"
       (clientName, agentName)
     }
 
-    val duration: Long = request.durationSeconds.filter(_ < 600).getOrElse(10)
+    val duration: Long = request.durationSeconds.filter(_ < 600).getOrElse(600)
 
     quickRequest
       .post(uri"http://$sipUri/users/create")

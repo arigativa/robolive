@@ -113,6 +113,8 @@ export AUDIO_SRC='audiotestsrc wave=silence ! audioconvert'
 export VIDEO_SRC='nvarguscamerasrc sensor_mode=3 ! video/x-raw(memory:NVMM),width=1280, height=720, framerate=60/1, format=NV12 ! nvvidconv flip-method=0 ! videoconvert'
 ```
 
+#### sensor_mode values
+
 | # | Resolution  | FPS | Exposure, us |  
 |---|:-----------:| ---:| ------------:|
 | 0 | 3264 x 2464 |  21 |     47619048 |

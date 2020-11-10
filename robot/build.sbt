@@ -9,6 +9,8 @@ libraryDependencies ++= Seq(
   "org.slf4j" % "jul-to-slf4j" % "1.7.30",
   "io.grpc" % "grpc-netty-shaded" % scalapb.compiler.Version.grpcJavaVersion,
   "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
+
+  "org.scalatest" %% "scalatest" % "3.2.2" % "test",
 )
 
 val circeVersion = "0.12.3"
