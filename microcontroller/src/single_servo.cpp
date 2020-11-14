@@ -60,6 +60,9 @@ void loop() {
         Serial.print("Turning servo on angle: ");
         Serial.println(state.lastCommand.angle, DEC);
         state.servo.write(state.lastCommand.angle);
+        delay(state.lastCommand.timeOpenedInMs);
+        Serial.print("Turning servo to `0` angle");
+        state.servo.write(0);
         state.lastCommandExecuted = true;
     }
 }
