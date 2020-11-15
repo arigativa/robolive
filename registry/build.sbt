@@ -11,6 +11,9 @@ libraryDependencies ++= Seq(
   "io.grpc" % "grpc-netty" % scalapb.compiler.Version.grpcJavaVersion,
   "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
   "com.softwaremill.sttp.client" %% "async-http-client-backend-future" % "2.2.9",
+
+  "com.linecorp.armeria" % "armeria" % "1.2.0",
+  "com.linecorp.armeria" % "armeria-grpc" % "1.2.0",
 )
 
 PB.protoSources in Compile := Seq(file("protocols"))

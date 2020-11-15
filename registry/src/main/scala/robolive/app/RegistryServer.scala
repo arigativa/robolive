@@ -7,19 +7,17 @@ import Client.ClientEndpointGrpc.ClientEndpoint
 import Info.InfoEndpointGrpc.InfoEndpoint
 import SipChannel.SipChannelEndpointGrpc.SipChannelEndpoint
 import Storage.StorageEndpointGrpc.StorageEndpoint
-import io.grpc.{ServerBuilder, ServerServiceDefinition}
+import com.linecorp.armeria.common.SessionProtocol
+import com.linecorp.armeria.server.grpc.GrpcService
+import io.grpc.ServerServiceDefinition
+import com.linecorp.armeria.server.{Server, ServerBuilder, ServerPort}
 import robolive.server
-import robolive.server.{
-  AgentEndpointHandler,
-  ClientEndpointHandler,
-  InfoEndpointHandler,
-  SipChannelEndpointHandler,
-  StorageEndpointHandler
-}
+import robolive.server.{AgentEndpointHandler, ClientEndpointHandler, InfoEndpointHandler, SipChannelEndpointHandler, StorageEndpointHandler}
 import sttp.client.SttpBackend
 import sttp.client.asynchttpclient.WebSocketHandler
 import sttp.client.asynchttpclient.future.AsyncHttpClientFutureBackend
 
+import scala.jdk.CollectionConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
@@ -108,15 +106,21 @@ object RegistryServer extends App {
 
   def runServer(ssd: ServerServiceDefinition, port: Int): Future[Unit] =
     Future {
-      val serverBuilder = ServerBuilder.forPort(port).addService(ssd).asInstanceOf[ServerBuilder[_]]
-      val server = serverBuilder.build.start
+      val server =
+        Server.builder()
+          .service(GrpcService.builder().addService(ssd).build())
+//          .port(port, (SessionProtocol.httpValues().asScala ++ SessionProtocol.httpsValues().asScala).asJava)
+          .port(port, Seq(SessionProtocol.HTTP).asJava)
+          .build()
+
+      server.start().get()
 
       // make sure our server is stopped when jvm is shut down
       Runtime.getRuntime.addShutdownHook(new Thread() {
-        override def run(): Unit = server.shutdown()
+        override def run(): Unit = server.stop()
       })
 
-      server.awaitTermination()
+      server.blockUntilShutdown()
     }
 
   def getEnv(name: String, default: String): String =
