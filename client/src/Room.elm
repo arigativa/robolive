@@ -98,7 +98,7 @@ update msg model =
                 ( { model | call = RemoteData.Loading }
                 , JsSIP.call
                     { userAgent = userAgent
-                    , server = "192.168.1.72"
+                    , server = "rl.arigativa.ru" -- "192.168.1.72"
                     , username = model.interlocutor
                     , withAudio = False
                     , withVideo = True
