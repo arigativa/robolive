@@ -1,7 +1,7 @@
 import '../src/index.css'
 
 import React from 'react'
-import { CSSReset, ThemeProvider, theme } from '@chakra-ui/core'
+import { CSSReset, ThemeProvider, theme } from '@chakra-ui/react'
 import { addDecorator } from '@storybook/react'
 
 import { withKnobs } from '@storybook/addon-knobs'

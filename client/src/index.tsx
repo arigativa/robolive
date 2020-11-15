@@ -2,7 +2,7 @@ import './index.css'
 
 import React from 'react'
 import ReactDOM from 'react-dom'
-import { CSSReset, ThemeProvider, theme } from '@chakra-ui/core'
+import { CSSReset, ThemeProvider, theme } from '@chakra-ui/react'
 
 import * as serviceWorker from 'serviceWorker'
 import { useStore } from 'store'

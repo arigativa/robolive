@@ -8,7 +8,7 @@ import {
   Input,
   Heading,
   Button
-} from '@chakra-ui/core'
+} from '@chakra-ui/react'
 
 import { Dispatch, caseOf, match } from 'core'
 import { hasWhitespaces } from 'utils'
@@ -105,7 +105,7 @@ export const View: React.FC<{
         )}
       </FormControl>
 
-      <Button mt={4} variantColor="blue" type="submit" tabIndex={0}>
+      <Button mt={4} colorScheme="blue" type="submit" tabIndex={0}>
         Sign In
       </Button>
     </form>
