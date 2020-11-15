@@ -21,20 +21,21 @@ on:
       - released
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Package server
-        run: tar -czvf /tmp/engine.tar.gz -C signalling/server engine
-      - name: Upload a Build Artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: engine.tar.gz
-          path: /tmp/engine.tar.gz
+#  build:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v2
+#      - name: Package server
+#        run: tar -czvf /tmp/engine.tar.gz -C signalling/server engine
+#      - name: Upload a Build Artifact
+#        uses: actions/upload-artifact@v2
+#        with:
+#          name: engine.tar.gz
+#          path: /tmp/engine.tar.gz
 
   upload-artifact:
 #    needs: build
+    runs-on: ubuntu-latest
     steps:
       - run: cat ${{ github.event_path }}
       - run: echo ${{ github.event_name }}
