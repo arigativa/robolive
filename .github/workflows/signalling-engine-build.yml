@@ -30,7 +30,7 @@ jobs:
   upload-artifact:
     needs: build
     runs-on: ubuntu-latest
-    # if: ${{ github.event_name }}
+    if: ${{ github.event_name == "release" }}
     steps:
       - uses: actions/download-artifact@master
         with:
