@@ -39,6 +39,8 @@ jobs:
     steps:
       - run: cat ${{ github.event_path }}
       - run: echo ${{ github.event_name }}
+      - run: echo ${{ github.event.release.upload_url }}
+
 
 #      - name: Upload signalling engine
 #        id: upload-release-asset
