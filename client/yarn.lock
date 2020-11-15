@@ -2675,16 +2675,16 @@
     pretty-hrtime "^1.0.3"
     regenerator-runtime "^0.13.3"
 
-"@storybook/preset-create-react-app@^3.1.4":
-  version "3.1.4"
-  resolved "https://registry.yarnpkg.com/@storybook/preset-create-react-app/-/preset-create-react-app-3.1.4.tgz#64bb674f69fe860ef1a4909e686775adf6c05fdd"
-  integrity sha512-VwzGCvv+HnEDXxSwF6ITRIZ4EaMhiMu1Mxrwm+nb49XTT2VME8VTzmbDjrdpZXPXUJrwLYmvqzaBT/qGZoMlgA==
+"@storybook/preset-create-react-app@^3.1.5":
+  version "3.1.5"
+  resolved "https://registry.yarnpkg.com/@storybook/preset-create-react-app/-/preset-create-react-app-3.1.5.tgz#af46c9d64c384980d458fe99c10dcbaa623f93fd"
+  integrity sha512-tzYcCRD5j22/HoDZ1tvsKaVnzyd4qqTE9sn3cx56Reb0XHcm4XkvG87jx0NvBGPCZrsThyBAtB3+XNxoFbI+9Q==
   dependencies:
     "@types/babel__core" "^7.1.7"
     "@types/webpack" "^4.41.13"
     babel-plugin-react-docgen "^4.1.0"
     pnp-webpack-plugin "^1.6.4"
-    react-docgen-typescript-plugin "^0.5.0"
+    react-docgen-typescript-plugin "^0.6.2"
     semver "^7.3.2"
 
 "@storybook/react@^5.3.19":
@@ -3271,10 +3271,10 @@
   resolved "https://registry.yarnpkg.com/@types/node/-/node-14.11.10.tgz#8c102aba13bf5253f35146affbf8b26275069bef"
   integrity sha512-yV1nWZPlMFpoXyoknm4S56y2nlTAuFYaJuQtYRAOU7xA/FJ9RY0Xm7QOkaYMMmr8ESdHIuUb6oQgR/0+2NqlyA==
 
-"@types/node@^14.14.6":
-  version "14.14.6"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-14.14.6.tgz#146d3da57b3c636cc0d1769396ce1cfa8991147f"
-  integrity sha512-6QlRuqsQ/Ox/aJEQWBEJG7A9+u7oSYl3mem/K8IzxXG/kAGbV1YPD9Bg9Zw3vyxC/YP+zONKwy8hGkSt1jxFMw==
+"@types/node@^14.14.7":
+  version "14.14.7"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-14.14.7.tgz#8ea1e8f8eae2430cf440564b98c6dfce1ec5945d"
+  integrity sha512-Zw1vhUSQZYw+7u5dAwNbIA9TuTotpzY/OF7sJM9FqPOF3SPjKnxrjoTktXDZgUjybf4cWVBP7O8wvKdSaGHweg==
 
 "@types/normalize-package-data@^2.4.0":
   version "2.4.0"
@@ -3366,10 +3366,10 @@
     "@types/prop-types" "*"
     csstype "^3.0.2"
 
-"@types/react@^16.9.55":
-  version "16.9.55"
-  resolved "https://registry.yarnpkg.com/@types/react/-/react-16.9.55.tgz#47078587f5bfe028a23b6b46c7b94ac0d436acff"
-  integrity sha512-6KLe6lkILeRwyyy7yG9rULKJ0sXplUsl98MGoCfpteXf9sPWFWWMknDcsvubcpaTdBuxtsLF6HDUwdApZL/xIg==
+"@types/react@^16.9.56":
+  version "16.9.56"
+  resolved "https://registry.yarnpkg.com/@types/react/-/react-16.9.56.tgz#ea25847b53c5bec064933095fc366b1462e2adf0"
+  integrity sha512-gIkl4J44G/qxbuC6r2Xh+D3CGZpJ+NdWTItAPmZbR5mUS+JQ8Zvzpl0ea5qT/ZT3ZNTUcDKUVqV3xBE8wv/DyQ==
   dependencies:
     "@types/prop-types" "*"
     csstype "^3.0.2"
@@ -9992,10 +9992,10 @@ jsprim@^1.2.2:
     json-schema "0.2.3"
     verror "1.10.0"
 
-jssip@^3.5.10:
-  version "3.5.10"
-  resolved "https://registry.yarnpkg.com/jssip/-/jssip-3.5.10.tgz#ba147d44448b1e5d76dddbf6181071451b11cc24"
-  integrity sha512-Rz/bmBFmACFUkWJOy4LuSsAaDtfsBcDvlmFzqD/sPzpqPQG8XezmyU4l1w4EXtbROLP1cMLnrvDqem7ucSd11Q==
+jssip@^3.5.11:
+  version "3.5.11"
+  resolved "https://registry.yarnpkg.com/jssip/-/jssip-3.5.11.tgz#47b0c9c69f97b40a651c581cb45ce33ae768ec6a"
+  integrity sha512-whL3Fcma98QskbuaTAHtMUNYPAOO9bAiETGyDYQvZozcbq34IblslOun0iT3ez9oi56gO1OTCemA8FUL7EeIhw==
   dependencies:
     "@types/debug" "^4.1.5"
     "@types/node" "^14.0.6"
@@ -12868,10 +12868,10 @@ react-docgen-typescript-loader@^3.7.2:
     loader-utils "^1.2.3"
     react-docgen-typescript "^1.15.0"
 
-react-docgen-typescript-plugin@^0.5.0:
-  version "0.5.2"
-  resolved "https://registry.yarnpkg.com/react-docgen-typescript-plugin/-/react-docgen-typescript-plugin-0.5.2.tgz#2b294d75ef3145c36303da82be5d447cb67dc0dc"
-  integrity sha512-NQfWyWLmzUnedkiN2nPDb6Nkm68ik6fqbC3UvgjqYSeZsbKijXUA4bmV6aU7qICOXdop9PevPdjEgJuAN0nNVQ==
+react-docgen-typescript-plugin@^0.6.2:
+  version "0.6.2"
+  resolved "https://registry.yarnpkg.com/react-docgen-typescript-plugin/-/react-docgen-typescript-plugin-0.6.2.tgz#c83305206c61d5c7e004eaf2dc4661367ddc105d"
+  integrity sha512-Orw0WKdJGAg5eMZGbEMw/rKonoxbi8epU6RJWTW3ukWuTarxckFXTltGvm8XADAWlBHak30KD71XThtJruxfTg==
   dependencies:
     debug "^4.1.1"
     endent "^2.0.1"
