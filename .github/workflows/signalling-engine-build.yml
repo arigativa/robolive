@@ -10,9 +10,11 @@ on:
     paths:
       - 'signalling/server/engine/*'
       - 'signalling/server/engine/**'
+  release:
+    types: ["created"]
 
 jobs:
-  build-kamailio-engine:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -23,3 +25,20 @@ jobs:
         with:
           name: engine.tar.gz
           path: /tmp/engine.tar.gz
+
+  upload-artifact:
+#    needs: build
+    steps:
+      - run: cat ${{ github.event_path }}
+      - run: echo ${{ github.event_name }}
+
+#      - name: Upload signalling engine
+#        id: upload-release-asset
+#        uses: actions/upload-release-asset@v1
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        with:
+#          upload_url:  # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
+#          asset_path: ./my-artifact.zip
+#          asset_name: my-artifact.zip
+#          asset_content_type: application/zip
