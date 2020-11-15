@@ -3,6 +3,11 @@ import Either from 'frctl/Either'
 import RemoteData from 'frctl/RemoteData'
 
 import { Effects, Dispatch, caseOf, match } from 'core'
+import { AgentListRequest } from '../generated/Info_pb'
+import { InfoEndpointClient } from '../generated/Info_pb_service'
+import { BrowserHeaders } from 'browser-headers'
+
+const req = new InfoEndpointClient('https://localhost:3477')
 
 // S T A T E
 
@@ -14,7 +19,23 @@ export const init: [State, Effects<Action>] = [
   {
     robots: RemoteData.Loading
   },
-  []
+  [
+    () => {
+      req.agentList(
+        new AgentListRequest(),
+        new BrowserHeaders(),
+        (err, data) => {
+          if (err) {
+            // eslint-disable-next-line no-console
+            console.error(err)
+          } else {
+            // eslint-disable-next-line no-console
+            console.log(data)
+          }
+        }
+      )
+    }
+  ]
 ]
 
 // U P D A T E
