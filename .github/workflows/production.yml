@@ -72,8 +72,13 @@ jobs:
       - name: Setting up Ansible environment
         run: pip install -r requirements.txt && ansible-galaxy role install -r requirements.yml
 
+      - run: echo ${{ secrets.GITHUB_TOKEN }}
+
+      - run: curl 'https://${{ secrets.GITHUB_TOKEN }}:@api.github.com/repos/arigativa/robolive/releases/${{ github.event.release.id }}' || true
+
       - uses: dsaltares/fetch-gh-release-asset@aa37ae5c44d3c9820bc12fe675e8670ecd93bd1c
         with:
+          repo: arigativa/robolive
           file: "engine.tar.gz"
           version: ${{ github.event.release.id }}
           token: ${{ secrets.GITHUB_TOKEN }}
