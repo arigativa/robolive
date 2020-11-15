@@ -12,43 +12,33 @@ on:
       - 'signalling/server/engine/**'
   release:
     types:
-      - published
-      - unpublished
       - created
-      - edited
-      - deleted
-      - prereleased
-      - released
 
 jobs:
-#  build:
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@v2
-#      - name: Package server
-#        run: tar -czvf /tmp/engine.tar.gz -C signalling/server engine
-#      - name: Upload a Build Artifact
-#        uses: actions/upload-artifact@v2
-#        with:
-#          name: engine.tar.gz
-#          path: /tmp/engine.tar.gz
-
-  upload-artifact:
-#    needs: build
+  build:
     runs-on: ubuntu-latest
     steps:
-      - run: cat ${{ github.event_path }}
-      - run: echo ${{ github.event_name }}
-      - run: echo ${{ github.event.release.upload_url }}
+      - uses: actions/checkout@v2
+      - name: Package server
+        run: tar -czvf /tmp/engine.tar.gz -C signalling/server engine
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: engine.tar.gz
+          path: /tmp/engine.tar.gz
 
-
-#      - name: Upload signalling engine
-#        id: upload-release-asset
-#        uses: actions/upload-release-asset@v1
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        with:
-#          upload_url:  # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
-#          asset_path: ./my-artifact.zip
-#          asset_name: my-artifact.zip
-#          asset_content_type: application/zip
+  upload-artifact:
+    needs: build
+    runs-on: ubuntu-latest
+    # if: ${{ github.event_name }}
+    steps:
+      - name: Upload signalling engine
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: /tmp/engine.tar.gz
+          asset_name: engine.tar.gz
+          asset_content_type: "application/tar+gzip"
