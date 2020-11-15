@@ -31,11 +31,11 @@ local function handleWS()
     KSR.log("info","HTTP received\n")
     local host = KSR.hdr.get("Host")
     
-    if not host or not KSR.is_myself("sip:"..host) then
-        KSR.log("L_WARN", "Bad host "..host.."\n")
-        KSR.xhttp.xhttp_reply("403", "Forbidden", "", "")
-        return false
-    end
+    -- if not host or not KSR.is_myself("sip:"..host) then
+    --     KSR.log("L_WARN", "Bad host "..host.."\n")
+    --     KSR.xhttp.xhttp_reply("403", "Forbidden", "", "")
+    --     return false
+    -- end
         
     if not KSR.websocket.handle_handshake() then
         KSR.xhttp.xhttp_reply("404", "Not found", "", "")

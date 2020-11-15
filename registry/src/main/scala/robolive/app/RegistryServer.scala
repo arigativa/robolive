@@ -30,11 +30,7 @@ object RegistryServer extends App {
   val ClientPort = getEnv("REGISTRY_PORT_FOR_CLIENT", "3478").toInt
   val StoragePort = getEnv("REGISTRY_PORT_FOR_STORAGE", "3479").toInt
   val SipChannelPort = getEnv("REGISTRY_PORT_FOR_SIP_CHANNEL", "3480").toInt
-  val videoSrc: String = {
-    val default =
-      "nvarguscamerasrc sensor_mode=3 ! video/x-raw(memory:NVMM),width=1280, height=720, framerate=60/1, format=NV12 ! nvvidconv flip-method=0 ! videoconvert"
-    getEnv("VIDEO_SRC", default)
-  }
+  val videoSrcFn: String = getEnv("VIDEO_SRC_FN", "circles")
   val signallingUri: String = getEnv("SIGNALLING_URI", "rl.arigativa.ru:9031")
   val stunUri: String = getEnv("STUN_URI", "stun://rl.arigativa.ru:8080")
 
@@ -45,7 +41,7 @@ object RegistryServer extends App {
   val turnUri: String = getEnv("TURN_URI", "turn:rl.arigativa.ru:8080?transport=tcp")
 
   val configMap = Map(
-    "videoSrc" -> videoSrc,
+    "videoSrcFn" -> videoSrcFn,
     "sipName" -> robotName,
     "signallingUri" -> signallingUri,
     "stunUri" -> stunUri,

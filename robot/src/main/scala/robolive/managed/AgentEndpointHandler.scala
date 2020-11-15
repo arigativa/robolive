@@ -1,13 +1,14 @@
 package robolive.managed
 
-import java.util.{Timer, TimerTask}
 import java.util.concurrent.atomic.AtomicReference
+import java.util.{Timer, TimerTask}
 
 import Agent._
 import SipChannel.{AllocateRequest, SipChannelEndpointGrpc}
 import Storage.{ReadRequest, StorageEndpointGrpc}
 import io.grpc.stub.StreamObserver
 import org.slf4j.LoggerFactory
+import robolive.gstreamer.VideoSources
 import robolive.puppet.Puppet
 
 import scala.concurrent.ExecutionContext
@@ -15,6 +16,7 @@ import scala.util.{Failure, Success}
 
 private final class AgentEndpointHandler(
   agentName: String,
+  videoSources: VideoSources,
   currentState: AtomicReference[AgentState],
   storageEndpointClient: StorageEndpointGrpc.StorageEndpointStub,
   sipChannelEndpointClient: SipChannelEndpointGrpc.SipChannelEndpointStub,
@@ -65,7 +67,7 @@ private final class AgentEndpointHandler(
                   .get(
                     ReadRequest(
                       Seq(
-                        "videoSrc",
+                        "videoSrcFn",
                         "signallingUri",
                         "stunUri",
                         "enableUserVideo",
@@ -78,19 +80,25 @@ private final class AgentEndpointHandler(
               sipChannelAllocationResponse <- sipChannelEndpointClient.allocate(AllocateRequest())
             } yield {
               logger.info(s"got settings from storage: `$storageResponse`")
-              def settings(key: String): Option[String] = storageResponse.values.get(key)
+              def settings(key: String): Option[String] =
+                clientConnectionRequest.settings.get(key)
+                  .orElse(storageResponse.values.get(key))
 
               val sipAgentName = sipChannelAllocationResponse.agentName
               val sipClientName = sipChannelAllocationResponse.clientName
-              val videoSrc = settings("videoSrc").get
+              val videoSrcFn = settings("videoSrcFn").get
               val signallingUri = settings("signallingUri").get
               val stunUri = settings("stunUri").get
               val enableUserVideo = settings("enableUserVideo").get.toBoolean
               val servoControllerType = settings("servoControllerType").get
 
+              val videoSource = videoSources.getSource(videoSrcFn)
+
+              logger.info(s"using video source: $videoSource")
+
               val puppet = new Puppet(
                 robotName = agentName,
-                videoSrc = videoSrc,
+                videoSrc = videoSource,
                 sipRobotName = sipAgentName,
                 signallingUri = signallingUri,
                 stunUri = stunUri,

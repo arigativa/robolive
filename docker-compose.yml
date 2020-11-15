@@ -71,11 +71,11 @@ services:
       REGISTRY_PORT_FOR_CLIENT: 3478
       REGISTRY_PORT_FOR_STORAGE: 3479
       REGISTRY_PORT_FOR_SIP_CHANNEL: 3480
-      VIDEO_SRC: 'videotestsrc is-live=true pattern=ball ! videoconvert'
+      VIDEO_SRC_FN: 'circles'
       SERVO_CONTROLLER: 'FAKE'
-      SIGNALLING_URI: '169.28.1.1:9031'
-      STUN_URI: 'stun://169.28.1.4:8080'
-      TURN_URI: 'turn:rl.arigativa.ru:8080?transport=tcp'
+      SIGNALLING_URI: '169.28.1.1:9031' # '192.168.1.72:9031'
+      STUN_URI: 'stun://169.28.1.4:8080' # 'stun://192.168.1.72:8080'
+      TURN_URI: 'turn:rl.arigativa.ru:8080?transport=tcp' # 'turn:169.28.1.4:8080?transport=tcp'
     networks:
       testing_net:
         ipv4_address: 169.28.1.20

@@ -4,6 +4,7 @@ import Agent.AgentEndpointGrpc
 import SipChannel.SipChannelEndpointGrpc
 import Storage.StorageEndpointGrpc
 import io.grpc.ManagedChannelBuilder
+import robolive.gstreamer.{SimpleFunctionCalculator, VideoSources}
 import robolive.managed.RunningPuppet
 
 import scala.concurrent.Await
@@ -56,9 +57,19 @@ object ManagedRobotApp extends App {
     default = throw new RuntimeException("`ROBOT_NAME` environment variable is undefined")
   )
 
+  val videoSources = new VideoSources(
+      new SimpleFunctionCalculator(Map(
+        "jetson_camera_scaled(sensor_id,sensor_mode,height)" -> "nvarguscamerasrc sensor_id=$$sensor_id$$ sensor_mode=$$sensor_mode$$ ! video/x-raw(memory:NVMM),width=1280, height=720, framerate=60/1, format=NV12 ! nvvidconv flip-method=0 ! videoconvert ! videoscale ! video/x-raw,height=$$height$$",
+        "jetson_camera(sensor_id,sensor_mode)" -> "nvarguscamerasrc sensor_id=$$sensor_id$$ sensor_mode=$$sensor_mode$$ ! video/x-raw(memory:NVMM),width=1280, height=720, framerate=60/1, format=NV12 ! nvvidconv flip-method=0 ! videoconvert",
+        "circles" -> "videotestsrc is-live=true pattern=ball ! videoconvert",
+      )),
+    "circles"
+  )
+
   val runningPuppet =
     new RunningPuppet(
       name = robotName,
+      videoSources = videoSources,
       agentEndpointClient = agentEndpointClient,
       storageEndpointClient = storageEndpointClient,
       sipChannelEndpointClient = sipEndpointClient,
