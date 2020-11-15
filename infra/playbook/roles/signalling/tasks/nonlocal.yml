@@ -98,7 +98,7 @@
 
 - name: Extract engine scripts
   unarchive:
-    src: engine.tar.gz
+    src: "{{ signalling_kamailio_engine_package }}"
     dest: "{{ signalling_conf_dir }}"
     owner: root
     group: root
