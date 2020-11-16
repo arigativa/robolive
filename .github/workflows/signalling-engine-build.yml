@@ -5,11 +5,13 @@ on:
     paths:
       - 'signalling/server/engine/*'
       - 'signalling/server/engine/**'
+      - '.github/workflows/**'
     branches: [ master ]
   pull_request:
     paths:
       - 'signalling/server/engine/*'
       - 'signalling/server/engine/**'
+      - '.github/workflows/**'
   release:
     types:
       - created

@@ -9,6 +9,7 @@ on:
       - 'mjsip/**'
       - 'protocols/**'
       - 'registry/**'
+      - '.github/workflows/**'
     branches:
       - master
   pull_request:
@@ -19,6 +20,7 @@ on:
       - 'mjsip/**'
       - 'protocols/**'
       - 'registry/**'
+      - '.github/workflows/**'
   release:
     types:
       - created
@@ -28,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: olafurpg/setup-scala@v5
+      - uses: olafurpg/setup-scala@v10
 
       - run: sbt compile
       - run: sbt 'project registry' universal:packageBin

@@ -4,11 +4,13 @@ on:
   push:
     paths:
       - 'client/**'
+      - '.github/workflows/**'
     branches:
       - master
   pull_request:
     paths:
       - 'client/**'
+      - '.github/workflows/**'
   release:
     types:
       - created
