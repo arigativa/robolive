@@ -51,4 +51,9 @@ RUN apt update && apt install -y \
 
 COPY --from=built /dist/robot /app
 
-CMD ["/app/bin/call-puppet-app"]
+
+ENV PATH="/app/bin:${PATH}"
+
+WORKDIR /app
+
+CMD ["call-puppet-app"]
