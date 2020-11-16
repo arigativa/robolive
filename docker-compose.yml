@@ -27,7 +27,7 @@ services:
     networks:
       testing_net:
         ipv4_address: 169.28.1.10
-    command: /app/bin/managed-robot-app #call-puppet-app # managed-robot-app
+    command: managed-robot-app #call-puppet-app # managed-robot-app
     environment:
       GST_DEBUG: '*:3'
       OPENSSL_CONF: ''

@@ -9,9 +9,12 @@ on:
   pull_request:
     paths:
       - 'client/**'
+  release:
+    types:
+      - created
 
 jobs:
-  build-client:
+  build:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -21,7 +24,7 @@ jobs:
 
     - uses: actions/setup-node@v1
 
-    - run: npm install
+    - run: yarn install
 
     - run: npm run build
 
@@ -31,5 +34,25 @@ jobs:
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v2
       with:
-        name: client-distr.tar.gz
-        path: /tmp/client-distr.tar.gz
+        name: webclient.tar.gz
+        path: /tmp/webclient.tar.gz
+
+  upload-artifact:
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'release' }}
+    steps:
+      - uses: actions/download-artifact@master
+        with:
+          name: webclient.tar.gz
+          path: /tmp/
+      - name: Upload signalling engine
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: /tmp/webclient.tar.gz
+          asset_name: webclient.tar.gz
+          asset_content_type: "application/tar+gzip"
