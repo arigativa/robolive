@@ -8,11 +8,14 @@
    You will get a release with just two assets:
    ![](./docs/prereleased-published.png)
     
-2. Wait [jobs](https://github.com/arigativa/robolive/actions) to build all the artifacts (only `engine.tar.gz` at the moment)
+2. Wait [jobs](https://github.com/arigativa/robolive/actions) to build all the artifacts
     
    ![](./docs/workflow-to-wait.png)
    
-   Check `engine.tar.gz` on release page:
+   Check these for being present on release page:
+   * `engine.tar.gz`
+   * `registry.zip`
+   * `webclient.tar.gz`
    ![](./docs/release-complete.png)
 
 3. Release
