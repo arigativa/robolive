@@ -6,8 +6,6 @@ import {
   Store
 } from 'redux'
 
-import { once } from 'utils'
-
 export type Case<T extends string = string, P = never> = {
   type: T
   payload: P
@@ -68,38 +66,91 @@ export const match = <A extends Case<string, unknown>, R>(
  *
  * This is an extremely simplified [redux-loop](https://github.com/redux-loop/redux-loop)
  */
-export type Effect<A> = (dispatch: Dispatch<A>) => void
 
-/**
- * An array of effects
- */
-export type Effects<A> = Array<Effect<A>>
+export interface Cmd<T> {
+  map<R>(fn: (action: T) => R): Cmd<R>
 
-/**
- * Transforms effect to produce R action instead of A action.
- *
- * @param tagger function to transform A → R
- * @param effect effect producing A
- */
-export const mapEffect = <A, R>(
-  tagger: (action: A) => R,
-  effect: Effect<A>
-): Effect<R> => {
-  return dispatch => effect(action => dispatch(tagger(action)))
+  execute(register: (promise: Promise<T>) => void): void
 }
 
-/**
- * Transforms effects to produce R actions instead of A actions.
- *
- * @param tagger function to transform A → R
- * @param effects effects producing A
- * @see mapEffect
- */
-export const mapEffects = <A, R>(
-  tagger: (action: A) => R,
-  effects: Effects<A>
-): Effects<R> => {
-  return effects.map(effect => mapEffect(tagger, effect))
+const none: Cmd<never> = {
+  map(): Cmd<never> {
+    return none
+  },
+
+  execute(): void {
+    // do nothing
+  }
+}
+
+class Mapper<T, R> implements Cmd<R> {
+  public constructor(
+    private readonly fn: (action: T) => R,
+    private readonly cmd: Cmd<T>
+  ) {}
+
+  public map<G>(fn: (action: R) => G): Cmd<G> {
+    return new Mapper(fn, this)
+  }
+
+  public execute(register: (effect: Promise<R>) => void): void {
+    this.cmd.execute((effect: Promise<T>): void => {
+      register(effect.then(this.fn))
+    })
+  }
+}
+
+class Batch<T> implements Cmd<T> {
+  public constructor(private readonly commands: Array<Cmd<T>>) {}
+
+  public map<R>(fn: (action: T) => R): Cmd<R> {
+    return new Mapper(fn, this)
+  }
+
+  public execute(register: (effect: Promise<T>) => void): void {
+    for (const cmd of this.commands) {
+      cmd.execute(register)
+    }
+  }
+}
+
+const batch = <T>(commands: Array<Cmd<T>>): Cmd<T> => {
+  const commands_: Array<Cmd<T>> = commands.filter(cmd => cmd !== none)
+
+  switch (commands_.length) {
+    case 0: {
+      return none
+    }
+
+    case 1: {
+      return commands_[0]
+    }
+
+    default: {
+      return new Batch(commands_)
+    }
+  }
+}
+
+class Effect<T> implements Cmd<T> {
+  public constructor(private readonly effect: () => Promise<T>) {}
+
+  public map<R>(fn: (action: T) => R): Cmd<R> {
+    return new Mapper(fn, this)
+  }
+
+  public execute(register: (effect: Promise<T>) => void): void {
+    register(this.effect())
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const Cmd = {
+  none,
+  batch,
+  of<T>(effect: () => Promise<T>): Cmd<T> {
+    return new Effect(effect)
+  }
 }
 
 /**
@@ -157,11 +208,15 @@ export type Dispatch<A> = (action: A) => void
 export const createStoreWithEffects = <S, A extends Action, Ext, StateExt>(
   createStore: StoreCreator
 ) => (
-  [initialState, initialEffects]: [S, Effects<A>],
-  update: (action: A, state: S) => [S, Effects<A>],
+  [initialState, initialCmd]: [S, Cmd<A>],
+  update: (action: A, state: S) => [S, Cmd<A>],
   enhancer?: StoreEnhancer<Ext, StateExt>
 ): Store<S, A> => {
   let initialized = false
+
+  const executor = (effect: Promise<A>): void => {
+    effect.then(store.dispatch)
+  }
 
   const effectReducer = (state: S, action: A): S => {
     if (!initialized) {
@@ -170,9 +225,9 @@ export const createStoreWithEffects = <S, A extends Action, Ext, StateExt>(
       return state
     }
 
-    const [nextState, effects] = update(action, state)
+    const [nextState, cmd] = update(action, state)
 
-    executeEffects(effects)
+    cmd.execute(executor)
 
     return nextState
   }
@@ -183,16 +238,7 @@ export const createStoreWithEffects = <S, A extends Action, Ext, StateExt>(
     enhancer
   )
 
-  const executeEffects = (effects: Effects<A>): void => {
-    for (const effect of effects) {
-      // make sure dispatch is called just once
-      // in future Effect might be a function returns a Promise
-      // so it wouldn't to pass dispatch at all
-      effect(once(store.dispatch))
-    }
-  }
-
-  executeEffects(initialEffects)
+  initialCmd.execute(executor)
 
   return store
 }

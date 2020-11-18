@@ -3,7 +3,7 @@ import Maybe, { Nothing, Just } from 'frctl/Maybe'
 import Decode from 'frctl/Json/Decode'
 import Encode from 'frctl/Json/Encode'
 
-import { Effect, caseOf } from 'core'
+import { Cmd, caseOf } from 'core'
 
 /**
  * Adapts frctl/Http to use with redux
@@ -167,7 +167,7 @@ export type Request<T> = {
   expectString(): Request<string>
   expectJson<R>(decoder: Decode.Decoder<R>): Request<R>
 
-  send<A>(tagger: (result: Either<HttpError, T>) => A): Effect<A>
+  send<A>(tagger: (result: Either<HttpError, T>) => A): Cmd<A>
 }
 
 class RequestImpl<T> implements Request<T> {
@@ -279,82 +279,85 @@ class RequestImpl<T> implements Request<T> {
     return this.expect(expectJson(decoder))
   }
 
-  public send<A>(tagger: (result: Either<HttpError, T>) => A): Effect<A> {
-    return dispatch => {
-      const xhr = new XMLHttpRequest()
+  public send<A>(tagger: (result: Either<HttpError, T>) => A): Cmd<A> {
+    return Cmd.of(
+      () =>
+        new Promise(done => {
+          const xhr = new XMLHttpRequest()
 
-      xhr.addEventListener('error', () => {
-        dispatch(tagger(Either.Left(NetworkError)))
-      })
+          xhr.addEventListener('error', () => {
+            done(tagger(Either.Left(NetworkError)))
+          })
 
-      xhr.addEventListener('timeout', () => {
-        dispatch(tagger(Either.Left(Timeout)))
-      })
+          xhr.addEventListener('timeout', () => {
+            done(tagger(Either.Left(Timeout)))
+          })
 
-      xhr.addEventListener('load', () => {
-        const stringResponse: Response<string> = {
-          url: xhr.responseURL,
-          statusCode: xhr.status,
-          statusText: xhr.statusText,
-          headers: parseHeaders(xhr.getAllResponseHeaders()),
-          body: xhr.responseText
-        }
+          xhr.addEventListener('load', () => {
+            const stringResponse: Response<string> = {
+              url: xhr.responseURL,
+              statusCode: xhr.status,
+              statusText: xhr.statusText,
+              headers: parseHeaders(xhr.getAllResponseHeaders()),
+              body: xhr.responseText
+            }
 
-        if (xhr.status < 200 || xhr.status >= 300) {
-          dispatch(tagger(Either.Left(BadStatus(stringResponse))))
-        } else {
-          dispatch(
-            tagger(
-              this.expect_
-                .responseToResult({
-                  ...stringResponse,
-                  body: xhr.response || ''
-                })
-                .mapLeft(decodeError =>
-                  BadBody({
-                    decodeError,
-                    response: stringResponse
-                  })
+            if (xhr.status < 200 || xhr.status >= 300) {
+              done(tagger(Either.Left(BadStatus(stringResponse))))
+            } else {
+              done(
+                tagger(
+                  this.expect_
+                    .responseToResult({
+                      ...stringResponse,
+                      body: xhr.response || ''
+                    })
+                    .mapLeft(decodeError =>
+                      BadBody({
+                        decodeError,
+                        response: stringResponse
+                      })
+                    )
                 )
+              )
+            }
+          })
+
+          try {
+            xhr.open(
+              this.method,
+              buildUrlWithQuery(this.url, this.queryParams),
+              true
             )
-          )
-        }
-      })
+          } catch (e) {
+            done(tagger(Either.Left(BadUrl(this.url))))
 
-      try {
-        xhr.open(
-          this.method,
-          buildUrlWithQuery(this.url, this.queryParams),
-          true
-        )
-      } catch (e) {
-        dispatch(tagger(Either.Left(BadUrl(this.url))))
+            return
+          }
 
-        return
-      }
+          for (const requestHeader of this.headers) {
+            xhr.setRequestHeader(requestHeader.name, requestHeader.value)
+          }
 
-      for (const requestHeader of this.headers) {
-        xhr.setRequestHeader(requestHeader.name, requestHeader.value)
-      }
+          xhr.responseType = this.expect_.responseType
+          xhr.withCredentials = this.withCredentials_
 
-      xhr.responseType = this.expect_.responseType
-      xhr.withCredentials = this.withCredentials_
+          if (this.timeout > 0) {
+            xhr.timeout = this.timeout
+          }
 
-      if (this.timeout > 0) {
-        xhr.timeout = this.timeout
-      }
+          this.body.content.cata({
+            Nothing() {
+              xhr.send()
+            },
 
-      this.body.content.cata({
-        Nothing() {
-          xhr.send()
-        },
-
-        Just(content) {
-          xhr.setRequestHeader('Content-Type', content.type)
-          xhr.send(content.value)
-        }
-      })
-    }
+            Just(content) {
+              xhr.setRequestHeader('Content-Type', content.type)
+              xhr.send(content.value)
+            }
+          })
+        })
+    )
   }
 }
 

@@ -1,6 +1,6 @@
 import React from 'react'
 
-import { Dispatch, Effects, caseOf, match, mapEffects } from 'core'
+import { Dispatch, Cmd, caseOf, match } from 'core'
 import * as Login from 'Login'
 import * as RobotsList from 'RobotsList'
 
@@ -33,45 +33,39 @@ const RobotsListAction = caseOf<'RobotsListAction', RobotsList.Action>(
   'RobotsListAction'
 )
 
-export const update = (
-  action: Action,
-  state: State
-): [State, Effects<Action>] => {
+export const update = (action: Action, state: State): [State, Cmd<Action>] => {
   return match(action, {
     LoginAction: subAction =>
-      match<State, [State, Effects<Action>]>(state, {
+      match<State, [State, Cmd<Action>]>(state, {
         LoginScreen: login =>
           match(Login.update(subAction, login), {
-            Updated: nextLogin => [LoginScreen(nextLogin), []],
+            Updated: nextLogin => [LoginScreen(nextLogin), Cmd.none],
 
             Registered: username => {
-              const [robotsList, effects] = RobotsList.init
+              const [robotsList, cmd] = RobotsList.init
 
               return [
                 RobotsListScreen({ username, robotsList }),
-                mapEffects(RobotsListAction, effects)
+                cmd.map(RobotsListAction)
               ]
             }
           }),
 
-        _: () => [state, []]
+        _: () => [state, Cmd.none]
       }),
 
     RobotsListAction: subAction =>
-      match<State, [State, Effects<Action>]>(state, {
+      match<State, [State, Cmd<Action>]>(state, {
         RobotsListScreen: ({ username, robotsList }) => {
-          const [nextRobotsList, effects] = RobotsList.update(
-            subAction,
-            robotsList
-          )
+          const [nextRobotsList, cmd] = RobotsList.update(subAction, robotsList)
 
           return [
             RobotsListScreen({ username, robotsList: nextRobotsList }),
-            mapEffects(RobotsListAction, effects)
+            cmd.map(RobotsListAction)
           ]
         },
 
-        _: () => [state, []]
+        _: () => [state, Cmd.none]
       })
   })
 }
