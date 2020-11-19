@@ -19,7 +19,7 @@ export const init: [State, Cmd<Action>] = [
   {
     robots: RemoteData.Loading
   },
-  Cmd.of(done => {
+  Cmd.create(done => {
     req.agentList(new AgentListRequest(), new BrowserHeaders(), (err, data) => {
       if (err) {
         // eslint-disable-next-line no-console

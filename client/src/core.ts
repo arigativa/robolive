@@ -144,9 +144,9 @@ class Effect<T> implements Cmd<T> {
   }
 }
 
-function of<T>(executor: (done: (value: T) => void) => void): Cmd<T>
-function of<T>(effect: () => Promise<T>): Cmd<T>
-function of<T>(
+function create<T>(executor: (done: (value: T) => void) => void): Cmd<T>
+function create<T>(effect: () => Promise<T>): Cmd<T>
+function create<T>(
   effectOrExecutor: (() => Promise<T>) | ((done: (value: T) => void) => void)
 ): Cmd<T> {
   const effect = (): Promise<T> => {
@@ -163,7 +163,7 @@ function of<T>(
 }
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-export const Cmd = { none, batch, of }
+export const Cmd = { none, batch, create }
 
 /**
  * Dispatches action to be performed in order to update state.

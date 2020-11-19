@@ -280,7 +280,7 @@ class RequestImpl<T> implements Request<T> {
   }
 
   public send<A>(tagger: (result: Either<HttpError, T>) => A): Cmd<A> {
-    return Cmd.of(
+    return Cmd.create(
       () =>
         new Promise(done => {
           const xhr = new XMLHttpRequest()
