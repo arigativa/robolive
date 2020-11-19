@@ -70,7 +70,7 @@ export const match = <A extends Case<string, unknown>, R>(
 export interface Cmd<T> {
   map<R>(fn: (action: T) => R): Cmd<R>
 
-  execute(register: (promise: Promise<T>) => void): void
+  execute(register: (effect: () => Promise<T>) => void): void
 }
 
 const none: Cmd<never> = {
@@ -93,9 +93,9 @@ class Mapper<T, R> implements Cmd<R> {
     return new Mapper(fn, this)
   }
 
-  public execute(register: (effect: Promise<R>) => void): void {
-    this.cmd.execute((effect: Promise<T>): void => {
-      register(effect.then(this.fn))
+  public execute(register: (effect: () => Promise<R>) => void): void {
+    this.cmd.execute((effect: () => Promise<T>): void => {
+      register(() => effect().then(this.fn))
     })
   }
 }
@@ -107,7 +107,7 @@ class Batch<T> implements Cmd<T> {
     return new Mapper(fn, this)
   }
 
-  public execute(register: (effect: Promise<T>) => void): void {
+  public execute(register: (effect: () => Promise<T>) => void): void {
     for (const cmd of this.commands) {
       cmd.execute(register)
     }
@@ -139,19 +139,31 @@ class Effect<T> implements Cmd<T> {
     return new Mapper(fn, this)
   }
 
-  public execute(register: (effect: Promise<T>) => void): void {
-    register(this.effect())
+  public execute(register: (effect: () => Promise<T>) => void): void {
+    register(this.effect)
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-redeclare
-export const Cmd = {
-  none,
-  batch,
-  of<T>(effect: () => Promise<T>): Cmd<T> {
-    return new Effect(effect)
+function of<T>(executor: (done: (value: T) => void) => void): Cmd<T>
+function of<T>(effect: () => Promise<T>): Cmd<T>
+function of<T>(
+  effectOrExecutor: (() => Promise<T>) | ((done: (value: T) => void) => void)
+): Cmd<T> {
+  const effect = (): Promise<T> => {
+    return new Promise(done => {
+      const result = effectOrExecutor(done)
+
+      if (result) {
+        result.then(done)
+      }
+    })
   }
+
+  return new Effect(effect)
 }
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const Cmd = { none, batch, of }
 
 /**
  * Dispatches action to be performed in order to update state.
@@ -214,8 +226,8 @@ export const createStoreWithEffects = <S, A extends Action, Ext, StateExt>(
 ): Store<S, A> => {
   let initialized = false
 
-  const executor = (effect: Promise<A>): void => {
-    effect.then(store.dispatch)
+  const executor = (effect: () => Promise<A>): void => {
+    effect().then(store.dispatch)
   }
 
   const effectReducer = (state: S, action: A): S => {

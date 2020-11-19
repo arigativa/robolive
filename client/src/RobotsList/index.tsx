@@ -19,7 +19,7 @@ export const init: [State, Cmd<Action>] = [
   {
     robots: RemoteData.Loading
   },
-  Cmd.of(() => {
+  Cmd.of(done => {
     req.agentList(new AgentListRequest(), new BrowserHeaders(), (err, data) => {
       if (err) {
         // eslint-disable-next-line no-console
@@ -30,11 +30,9 @@ export const init: [State, Cmd<Action>] = [
       }
     })
 
-    return new Promise(done => {
-      setTimeout(() => {
-        done(LoadRobots(Either.Right([])))
-      }, 2000)
-    })
+    setTimeout(() => {
+      done(LoadRobots(Either.Right([])))
+    }, 2000)
   })
 ]
 
