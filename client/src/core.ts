@@ -56,6 +56,10 @@ export const match = <A extends Case<string, unknown>, R>(
   return (schema as { _(): R })._()
 }
 
+const noop = (): void => {
+  // do nothing
+}
+
 /**
  * Effect allows to call Action in async moment.
  * Seems like redux-thunk but it comes from reducer (update)
@@ -70,7 +74,10 @@ export const match = <A extends Case<string, unknown>, R>(
 export interface Cmd<T> {
   map<R>(fn: (action: T) => R): Cmd<R>
 
-  execute(register: (effect: () => Promise<T>) => void): void
+  execute(
+    register: (executor: Executor<T>) => void,
+    state: Map<string, () => void>
+  ): void
 }
 
 const none: Cmd<never> = {
@@ -83,33 +90,19 @@ const none: Cmd<never> = {
   }
 }
 
-class Mapper<T, R> implements Cmd<R> {
-  public constructor(
-    private readonly fn: (action: T) => R,
-    private readonly cmd: Cmd<T>
-  ) {}
-
-  public map<G>(fn: (action: R) => G): Cmd<G> {
-    return new Mapper(fn, this)
-  }
-
-  public execute(register: (effect: () => Promise<R>) => void): void {
-    this.cmd.execute((effect: () => Promise<T>): void => {
-      register(() => effect().then(this.fn))
-    })
-  }
-}
-
 class Batch<T> implements Cmd<T> {
   public constructor(private readonly commands: Array<Cmd<T>>) {}
 
   public map<R>(fn: (action: T) => R): Cmd<R> {
-    return new Mapper(fn, this)
+    return new Batch(this.commands.map(cmd => cmd.map(fn)))
   }
 
-  public execute(register: (effect: () => Promise<T>) => void): void {
+  public execute(
+    register: (executor: Executor<T>) => void,
+    state: Map<string, () => void>
+  ): void {
     for (const cmd of this.commands) {
-      cmd.execute(register)
+      cmd.execute(register, state)
     }
   }
 }
@@ -133,37 +126,49 @@ const batch = <T>(commands: Array<Cmd<T>>): Cmd<T> => {
 }
 
 class Effect<T> implements Cmd<T> {
-  public constructor(private readonly effect: () => Promise<T>) {}
+  public constructor(private readonly executor: Executor<T>) {}
 
   public map<R>(fn: (action: T) => R): Cmd<R> {
-    return new Mapper(fn, this)
-  }
-
-  public execute(register: (effect: () => Promise<T>) => void): void {
-    register(this.effect)
-  }
-}
-
-function create<T>(executor: (done: (value: T) => void) => void): Cmd<T>
-function create<T>(effect: () => Promise<T>): Cmd<T>
-function create<T>(
-  effectOrExecutor: (() => Promise<T>) | ((done: (value: T) => void) => void)
-): Cmd<T> {
-  const effect = (): Promise<T> => {
-    return new Promise(done => {
-      const result = effectOrExecutor(done)
-
-      if (result) {
-        result.then(done)
-      }
+    return new Effect((done, onCancel) => {
+      this.executor((value: T) => done(fn(value)), onCancel)
     })
   }
 
-  return new Effect(effect)
+  public execute(register: (executor: Executor<T>) => void): void {
+    register(this.executor)
+  }
 }
 
+type Executor<T> = (
+  done: (value: T) => void,
+  onCancel: (key: string, kill: () => void) => void
+) => void
+
+function create<T>(executor: Executor<T>): Cmd<T> {
+  return new Effect(executor)
+}
+
+class Cancel implements Cmd<never> {
+  public constructor(private readonly key: string) {}
+
+  public map(): Cmd<never> {
+    return this
+  }
+
+  public execute(
+    register: (executor: Executor<never>) => void,
+    state: Map<string, () => void>
+  ): void {
+    register(() => {
+      state.get(this.key)?.()
+    })
+  }
+}
+
+const cancel = (key: string): Cmd<never> => new Cancel(key)
+
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-export const Cmd = { none, batch, create }
+export const Cmd = { none, batch, create, cancel }
 
 /**
  * Dispatches action to be performed in order to update state.
@@ -225,9 +230,31 @@ export const createStoreWithEffects = <S, A extends Action, Ext, StateExt>(
   enhancer?: StoreEnhancer<Ext, StateExt>
 ): Store<S, A> => {
   let initialized = false
+  const commandsState = new Map<string, () => void>()
 
-  const executor = (effect: () => Promise<A>): void => {
-    effect().then(store.dispatch)
+  const executeCmd = (executor: Executor<A>): void => {
+    let clearCancel = (): void => {
+      onCancel = noop
+    }
+
+    let onCancel = (key: string, kill: () => void): void => {
+      clearCancel = () => commandsState.delete(key)
+
+      commandsState.set(key, () => {
+        clearCancel()
+        kill()
+      })
+    }
+
+    executor(
+      action => {
+        clearCancel()
+        store.dispatch(action)
+      },
+      (key, kill) => {
+        onCancel(key, kill)
+      }
+    )
   }
 
   const effectReducer = (state: S, action: A): S => {
@@ -239,7 +266,7 @@ export const createStoreWithEffects = <S, A extends Action, Ext, StateExt>(
 
     const [nextState, cmd] = update(action, state)
 
-    cmd.execute(executor)
+    cmd.execute(executeCmd, commandsState)
 
     return nextState
   }
@@ -250,7 +277,7 @@ export const createStoreWithEffects = <S, A extends Action, Ext, StateExt>(
     enhancer
   )
 
-  initialCmd.execute(executor)
+  initialCmd.execute(executeCmd, commandsState)
 
   return store
 }

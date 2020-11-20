@@ -38,7 +38,7 @@ const Updated = caseOf<'Updated', State>('Updated')
 const Registered = caseOf<'Registered', string>('Registered')
 
 export const update = (action: Action, state: State): Stage => {
-  return match<Action, Stage>(action, {
+  return match(action, {
     ChangeUsername: username => {
       return Updated({
         ...state,
