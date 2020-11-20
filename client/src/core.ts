@@ -464,9 +464,5 @@ export const createStoreWithEffects = <S, A extends Action, Ext, StateExt>(
 
   initialCmd.execute(executeCmd, commandsState)
 
-  store.subscribe(() => {
-    console.log(subscriptionsState)
-  })
-
   return store
 }

@@ -84,7 +84,7 @@ export const update = (action: Action, state: State): [State, Cmd<Action>] => {
     Tick: ts => [
       {
         ...state,
-        ts
+        ts: state.ts + 1
       },
       Cmd.none
     ]
@@ -98,7 +98,7 @@ export const subscription = (state: State): Sub<Action> => {
     return Sub.none
   }
 
-  return every(1000, Tick)
+  return every(100, Tick)
 }
 
 // V I E W
@@ -130,7 +130,7 @@ export const View: React.FC<{
         checked={state.tick}
         onChange={() => dispatch(Switch)}
       />
-      count: {new Date(state.ts).getSeconds()}
+      count: {state.ts}
     </div>
   )
 }
