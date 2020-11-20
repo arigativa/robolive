@@ -75,7 +75,7 @@ export interface Cmd<T> {
   map<R>(fn: (action: T) => R): Cmd<R>
 
   execute(
-    register: (executor: Executor<T>) => void,
+    register: (executor: CmdExecutor<T>) => void,
     state: Map<string, () => void>
   ): void
 }
@@ -94,11 +94,18 @@ class Batch<T> implements Cmd<T> {
   public constructor(private readonly commands: Array<Cmd<T>>) {}
 
   public map<R>(fn: (action: T) => R): Cmd<R> {
-    return new Batch(this.commands.map(cmd => cmd.map(fn)))
+    const N = this.commands.length
+    const tmp: Array<Cmd<R>> = new Array(N)
+
+    for (let index = 0; index < N; index++) {
+      tmp[index] = this.commands[index].map(fn)
+    }
+
+    return new Batch(tmp)
   }
 
   public execute(
-    register: (executor: Executor<T>) => void,
+    register: (executor: CmdExecutor<T>) => void,
     state: Map<string, () => void>
   ): void {
     for (const cmd of this.commands) {
@@ -126,7 +133,7 @@ const batch = <T>(commands: Array<Cmd<T>>): Cmd<T> => {
 }
 
 class Effect<T> implements Cmd<T> {
-  public constructor(private readonly executor: Executor<T>) {}
+  public constructor(private readonly executor: CmdExecutor<T>) {}
 
   public map<R>(fn: (action: T) => R): Cmd<R> {
     return new Effect((done, onCancel) => {
@@ -134,17 +141,17 @@ class Effect<T> implements Cmd<T> {
     })
   }
 
-  public execute(register: (executor: Executor<T>) => void): void {
+  public execute(register: (executor: CmdExecutor<T>) => void): void {
     register(this.executor)
   }
 }
 
-type Executor<T> = (
+type CmdExecutor<T> = (
   done: (value: T) => void,
   onCancel: (key: string, kill: () => void) => void
 ) => void
 
-function create<T>(executor: Executor<T>): Cmd<T> {
+function create<T>(executor: CmdExecutor<T>): Cmd<T> {
   return new Effect(executor)
 }
 
@@ -156,7 +163,7 @@ class Cancel implements Cmd<never> {
   }
 
   public execute(
-    register: (executor: Executor<never>) => void,
+    register: (executor: CmdExecutor<never>) => void,
     state: Map<string, () => void>
   ): void {
     register(() => {
@@ -169,6 +176,125 @@ const cancel = (key: string): Cmd<never> => new Cancel(key)
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 export const Cmd = { none, batch, create, cancel }
+
+type SubExecutor<A extends Array<unknown>> = (
+  tick: (...args: A) => void
+) => () => void
+
+export interface Sub<T> {
+  map<R>(fn: (action: T) => R): Sub<R>
+
+  execute(
+    register: (
+      key: string,
+      action: (...args: Array<unknown>) => T,
+      executor: SubExecutor<Array<unknown>>
+    ) => void
+  ): void
+}
+
+const subNone: Sub<never> = {
+  map(): Sub<never> {
+    return subNone
+  },
+
+  execute(): void {
+    // do nothing
+  }
+}
+
+class SubBatch<T> implements Sub<T> {
+  public constructor(private readonly commands: Array<Sub<T>>) {}
+
+  public map<R>(fn: (action: T) => R): Sub<R> {
+    const N = this.commands.length
+    const tmp: Array<Sub<R>> = new Array(N)
+
+    for (let index = 0; index < N; index++) {
+      tmp[index] = this.commands[index].map(fn)
+    }
+
+    return new SubBatch(tmp)
+  }
+
+  public execute<A extends Array<unknown>>(
+    register: (
+      key: string,
+      action: (...args: A) => T,
+      executor: SubExecutor<A>
+    ) => void
+  ): void {
+    for (const cmd of this.commands) {
+      cmd.execute(register)
+    }
+  }
+}
+
+const subBatch = <T>(commands: Array<Sub<T>>): Sub<T> => {
+  const tmp: Array<Sub<T>> = commands.filter(sub => sub !== subNone)
+
+  switch (tmp.length) {
+    case 0: {
+      return subNone
+    }
+
+    case 1: {
+      return tmp[0]
+    }
+
+    default: {
+      return new SubBatch(tmp)
+    }
+  }
+}
+class SubEffect<T, A extends Array<unknown>> implements Sub<T> {
+  public constructor(
+    private readonly key: string,
+    private readonly action: (...args: A) => T,
+    private readonly executor: SubExecutor<A>
+  ) {}
+
+  public map<R>(fn: (action: T) => R): Sub<R> {
+    return new SubEffect(
+      this.key,
+      (...args) => fn(this.action(...args)),
+      this.executor
+    )
+  }
+
+  public execute(
+    register: (
+      key: string,
+      action: (...args: A) => T,
+      executor: SubExecutor<A>
+    ) => void
+  ): void {
+    register(this.key, this.action, this.executor)
+  }
+}
+
+const createSub = <T, A extends Array<unknown> = []>(
+  key: string,
+  action: (...args: A) => T,
+  executor: SubExecutor<A>
+): Sub<T> => {
+  return new SubEffect(key, action, executor)
+}
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const Sub = {
+  none: subNone,
+  batch: subBatch,
+  create: createSub
+}
+
+type SubState<A> = Map<
+  string,
+  {
+    mailbox: Array<(...args: Array<unknown>) => A>
+    cancel(): void
+  }
+>
 
 /**
  * Dispatches action to be performed in order to update state.
@@ -227,12 +353,14 @@ export const createStoreWithEffects = <S, A extends Action, Ext, StateExt>(
 ) => (
   [initialState, initialCmd]: [S, Cmd<A>],
   update: (action: A, state: S) => [S, Cmd<A>],
+  subscriptions: (state: S) => Sub<A>,
   enhancer?: StoreEnhancer<Ext, StateExt>
 ): Store<S, A> => {
   let initialized = false
   const commandsState = new Map<string, () => void>()
+  let subscriptionsState: SubState<A> = new Map()
 
-  const executeCmd = (executor: Executor<A>): void => {
+  const executeCmd = (executor: CmdExecutor<A>): void => {
     let clearCancel = (): void => {
       onCancel = noop
     }
@@ -257,6 +385,60 @@ export const createStoreWithEffects = <S, A extends Action, Ext, StateExt>(
     )
   }
 
+  const executeSub = (state: S): void => {
+    const sub = subscriptions(state)
+    const nextSubState: SubState<A> = new Map()
+
+    sub.execute((key, action, listener) => {
+      const nextBag = nextSubState.get(key)
+
+      if (nextBag != null) {
+        nextBag.mailbox.push(action)
+
+        return
+      }
+
+      const prevBag = subscriptionsState.get(key)
+
+      if (prevBag != null) {
+        nextSubState.set(key, {
+          mailbox: [action],
+          cancel: prevBag.cancel
+        })
+
+        return
+      }
+
+      const kill = listener((...args) => {
+        const bag = subscriptionsState.get(key)
+
+        if (bag == null) {
+          return
+        }
+
+        for (const letter of bag.mailbox) {
+          store.dispatch(letter(...args))
+        }
+      })
+
+      nextSubState.set(key, {
+        mailbox: [action],
+        cancel: () => {
+          subscriptionsState.delete(key)
+          kill()
+        }
+      })
+    })
+
+    subscriptionsState.forEach((bag, key) => {
+      if (!nextSubState.has(key)) {
+        bag.cancel()
+      }
+    })
+
+    subscriptionsState = nextSubState
+  }
+
   const effectReducer = (state: S, action: A): S => {
     if (!initialized) {
       initialized = true
@@ -267,6 +449,7 @@ export const createStoreWithEffects = <S, A extends Action, Ext, StateExt>(
     const [nextState, cmd] = update(action, state)
 
     cmd.execute(executeCmd, commandsState)
+    executeSub(nextState)
 
     return nextState
   }
@@ -277,7 +460,13 @@ export const createStoreWithEffects = <S, A extends Action, Ext, StateExt>(
     enhancer
   )
 
+  executeSub(store.getState())
+
   initialCmd.execute(executeCmd, commandsState)
+
+  store.subscribe(() => {
+    console.log(subscriptionsState)
+  })
 
   return store
 }

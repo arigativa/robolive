@@ -1,3 +1,5 @@
+import { Sub } from 'core'
+
 /**
  * Tricky helper to handle tricky Cata default '_' case.
  * In Cata we assume that default case is always present
@@ -54,3 +56,14 @@ export const round = (float: number, precision?: number): number => {
 export const hasWhitespaces = (input: string): boolean => {
   return /.*\s+.*/.test(input)
 }
+
+export const every = <T>(ms: number, action: (ts: number) => T): Sub<T> =>
+  Sub.create(`int-${ms}`, action, tick => {
+    const intId = setInterval(() => {
+      tick(Date.now())
+    }, ms)
+
+    return () => {
+      clearInterval(intId)
+    }
+  })

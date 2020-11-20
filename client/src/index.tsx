@@ -15,7 +15,8 @@ const init: [Main.State, Cmd<Main.Action>] = [Main.initial, Cmd.none]
 const Root: React.FC = () => {
   const [state, dispatch] = useStore({
     init,
-    update: Main.update
+    update: Main.update,
+    subscriptions: Main.subscription
   })
 
   return (

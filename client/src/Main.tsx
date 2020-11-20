@@ -1,6 +1,6 @@
 import React from 'react'
 
-import { Dispatch, Cmd, caseOf, match } from 'core'
+import { Dispatch, Cmd, Sub, caseOf, match } from 'core'
 import * as Login from 'Login'
 import * as RobotsList from 'RobotsList'
 
@@ -67,6 +67,18 @@ export const update = (action: Action, state: State): [State, Cmd<Action>] => {
 
         _: () => [state, Cmd.none]
       })
+  })
+}
+
+// S U B S C R I P T I O N
+
+export const subscription = (state: State): Sub<Action> => {
+  return match<State, Sub<Action>>(state, {
+    RobotsListScreen: ({ robotsList }) => {
+      return RobotsList.subscription(robotsList).map(RobotsListAction)
+    },
+
+    _: () => Sub.none
   })
 }
 
