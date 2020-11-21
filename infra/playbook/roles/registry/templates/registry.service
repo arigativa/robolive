@@ -1,0 +1,18 @@
+[Unit]
+Description=Robolive Registry
+After=syslog.target network.target
+
+# Attempt to start for 10 times during a 60 seconds interval.
+StartLimitBurst=10
+StartLimitIntervalSec=60
+
+[Service]
+User={{ registry_user }}
+Group={{ registry_group }}
+ExecStart={{ registry_package_dir }}/bin/registry
+Restart=on-failure
+InaccessiblePaths=/home
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

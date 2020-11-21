@@ -1,0 +1,6 @@
+- name: Start Registry
+  systemd:
+    name: robolive-registry
+    state: restarted
+    daemon_reload: yes
+    enabled: yes

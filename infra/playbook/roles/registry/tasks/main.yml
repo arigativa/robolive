@@ -1,0 +1,56 @@
+- name: Create registry group
+  group: name={{ registry_group }}
+  tags:
+    - deploy
+
+- name: Create registry user
+  user: name={{ registry_user }} group={{ registry_group }}
+  tags:
+    - deploy
+
+- name: Copy registry package
+  copy:
+    src: "{{ registry_package }}"
+    dest: "{{ registry_package_local }}"
+    owner: root
+    group: root
+  tags:
+    - registry
+  register: registry_package
+
+- name: Ensure package directory
+  file:
+    path: "{{ registry_package_dir }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  tags:
+    - signalling
+    - registry
+
+- name: Extract registry
+  unarchive:
+    src: "{{ registry_package_local }}"
+    dest: "{{ registry_package_dir }}"
+    remote_src: yes
+    owner: root
+    group: root
+  when: registry_package.changed
+  notify:
+    - Start Registry
+  tags:
+    - registry
+
+# Service definition
+
+- name: Copy systemd service file to server
+  template:
+    src: registry.service
+    dest: /etc/systemd/system
+    owner: root
+    group: root
+  notify:
+    - Start Registry
+  tags:
+    - registry

@@ -1,0 +1,6 @@
+registry_user: rl_registry
+registry_group: rl_registry
+registry_package_dir: /opt/robolive/registry
+registry_package: registry.zip
+registry_package_local: /opt/robolive/registry.zip
+
