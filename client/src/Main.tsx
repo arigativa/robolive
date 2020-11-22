@@ -140,14 +140,14 @@ const ViewRobotsList: React.FC<{
   robotsList: RobotsList.State
   dispatch: Dispatch<Action>
   mapAction(action: RobotsList.Action): Action
-}> = ({ robotsList, dispatch, mapAction }) => {
+}> = React.memo(({ robotsList, dispatch, mapAction }) => {
   const robotsListDispatch = React.useCallback(
     (action: RobotsList.Action) => dispatch(mapAction(action)),
     [dispatch, mapAction]
   )
 
   return <RobotsList.View state={robotsList} dispatch={robotsListDispatch} />
-}
+})
 
 export const View: React.FC<{
   state: State

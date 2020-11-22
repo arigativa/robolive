@@ -40,6 +40,7 @@ export const init: [State, Cmd<Action>] = [
     }, 2000)
 
     onCancel('foo', () => {
+      console.log(timeoutId)
       clearTimeout(timeoutId)
     })
   })
@@ -106,7 +107,7 @@ export const subscription = (state: State): Sub<Action> => {
 export const View: React.FC<{
   state: State
   dispatch: Dispatch<Action>
-}> = ({ state, dispatch }) => {
+}> = React.memo(({ state, dispatch }) => {
   return (
     <div>
       {state.robots.cata({
@@ -133,4 +134,4 @@ export const View: React.FC<{
       count: {state.ts}
     </div>
   )
-}
+})

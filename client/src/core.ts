@@ -76,7 +76,7 @@ export interface Cmd<T> {
 
   execute(
     register: (executor: CmdExecutor<T>) => void,
-    state: Map<string, () => void>
+    state: Map<string, Array<() => void>>
   ): void
 }
 
@@ -106,7 +106,7 @@ class Batch<T> implements Cmd<T> {
 
   public execute(
     register: (executor: CmdExecutor<T>) => void,
-    state: Map<string, () => void>
+    state: Map<string, Array<() => void>>
   ): void {
     for (const cmd of this.commands) {
       cmd.execute(register, state)
@@ -164,10 +164,18 @@ class Cancel implements Cmd<never> {
 
   public execute(
     register: (executor: CmdExecutor<never>) => void,
-    state: Map<string, () => void>
+    state: Map<string, Array<() => void>>
   ): void {
     register(() => {
-      state.get(this.key)?.()
+      const bag = state.get(this.key)
+
+      if (bag == null) {
+        return
+      }
+
+      for (const kill of bag) {
+        kill()
+      }
     })
   }
 }
@@ -357,7 +365,7 @@ export const createStoreWithEffects = <S, A extends Action, Ext, StateExt>(
   enhancer?: StoreEnhancer<Ext, StateExt>
 ): Store<S, A> => {
   let initialized = false
-  const commandsState = new Map<string, () => void>()
+  const commandsState = new Map<string, Array<() => void>>()
   let subscriptionsState: SubState<A> = new Map()
 
   const executeCmd = (executor: CmdExecutor<A>): void => {
@@ -368,10 +376,14 @@ export const createStoreWithEffects = <S, A extends Action, Ext, StateExt>(
     let onCancel = (key: string, kill: () => void): void => {
       clearCancel = () => commandsState.delete(key)
 
-      commandsState.set(key, () => {
+      const bag = commandsState.get(key) ?? []
+
+      bag.push(() => {
         clearCancel()
         kill()
       })
+
+      commandsState.set(key, bag)
     }
 
     executor(
