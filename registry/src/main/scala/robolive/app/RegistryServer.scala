@@ -36,13 +36,11 @@ object RegistryServer extends App {
 
   val enableUserVideo: Boolean = sys.env.contains("ENABLE_USER_VIDEO")
 
-  val robotName: String = getEnv("ROBOT_NAME", "robomachine")
   val servoControllerType: String = getEnv("SERVO_CONTROLLER", default = "PYTHON_SHELL")
   val turnUri: String = getEnv("TURN_URI", "turn:rl.arigativa.ru:8080?transport=tcp")
 
   val configMap = Map(
     "videoSrcFn" -> videoSrcFn,
-    "sipName" -> robotName,
     "signallingUri" -> signallingUri,
     "stunUri" -> stunUri,
     "enableUserVideo" -> enableUserVideo.toString,

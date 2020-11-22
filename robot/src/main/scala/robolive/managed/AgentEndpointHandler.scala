@@ -27,6 +27,15 @@ private final class AgentEndpointHandler(
 
   private val timer = new Timer("SipSession rescheduler")
 
+  private val puppetConfigurationKeys = Seq(
+    "videoSrcFn",
+    "signallingUri",
+    "stunUri",
+    "enableUserVideo",
+    "servoControllerType",
+    "turnUri"
+  )
+
   def rescheduleTask: TimerTask = new TimerTask {
     override def run(): Unit = {
       currentState.get() match {
@@ -62,26 +71,13 @@ private final class AgentEndpointHandler(
           case AgentState.Registered =>
             logger.info("request settings from storage")
             (for {
-              storageResponse <- {
-                storageEndpointClient
-                  .get(
-                    ReadRequest(
-                      Seq(
-                        "videoSrcFn",
-                        "signallingUri",
-                        "stunUri",
-                        "enableUserVideo",
-                        "servoControllerType",
-                        "turnUri"
-                      )
-                    )
-                  )
-              }
+              storageResponse <- storageEndpointClient.get(ReadRequest(puppetConfigurationKeys))
               sipChannelAllocationResponse <- sipChannelEndpointClient.allocate(AllocateRequest())
             } yield {
               logger.info(s"got settings from storage: `$storageResponse`")
               def settings(key: String): Option[String] =
-                clientConnectionRequest.settings.get(key)
+                clientConnectionRequest.settings
+                  .get(key)
                   .orElse(storageResponse.values.get(key))
 
               val sipAgentName = sipChannelAllocationResponse.agentName
