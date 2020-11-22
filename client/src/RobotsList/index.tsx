@@ -42,6 +42,8 @@ export const init: [State, Cmd<Action>] = [
     onCancel('foo', () => {
       console.log(timeoutId)
       clearTimeout(timeoutId)
+
+      return Aborted
     })
   })
 ]
@@ -51,11 +53,13 @@ export const init: [State, Cmd<Action>] = [
 export type Action =
   | ReturnType<typeof LoadRobots>
   | typeof Abort
+  | typeof Aborted
   | typeof Switch
   | ReturnType<typeof Tick>
 
 const LoadRobots = caseOf<'LoadRobots', Either<number, string>>('LoadRobots')
 const Abort = caseOf('Abort')()
+const Aborted = caseOf('Aborted')()
 const Switch = caseOf('Switch')()
 const Tick = caseOf<'Tick', number>('Tick')
 
@@ -69,9 +73,11 @@ export const update = (action: Action, state: State): [State, Cmd<Action>] => {
       Cmd.none
     ],
 
-    Abort: () => [
+    Abort: () => [state, Cmd.cancel('foo')],
+
+    Aborted: () => [
       { ...state, robots: RemoteData.Succeed('Aborted') },
-      Cmd.cancel('foo')
+      Cmd.none
     ],
 
     Switch: () => [
