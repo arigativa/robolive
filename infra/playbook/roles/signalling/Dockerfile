@@ -3,6 +3,7 @@
 
 FROM debian:10 as builder
 
+RUN sed -i "s#deb http://security.debian.org/debian-security stretch/updates main#deb http://deb.debian.org/debian-security stretch/updates main#g" /etc/apt/sources.list
 RUN apt update
 RUN echo "Installing build tools" && apt install -y git bison gcc g++ flex make autoconf
 RUN echo "Installing kamailio build dependencies [1/2]" && apt install -y libssl-dev libcurl4-openssl-dev libxml2-dev
@@ -25,10 +26,12 @@ RUN tar -czf /kamailio-distr.tar.gz -C /kamailio-distr/ .
 
 FROM debian:10
 
+RUN sed -i "s#deb http://security.debian.org/debian-security stretch/updates main#deb http://deb.debian.org/debian-security stretch/updates main#g" /etc/apt/sources.list
 RUN apt update
 RUN echo "Installing kamailio runtime dependencies [1/2]" && apt install -y libssl1.1 openssl libcurl4 libxml2
 RUN echo "Installing kamailio runtime dependencies [2/2]" && apt install -y libpcre16-3 libpcre32-3 libpcrecpp0v5 lua5.1 luarocks
 RUN luarocks install lua-cjson
+RUN luarocks install base64
 RUN luarocks install net-url
 
 RUN mkdir /opt/kamailio
