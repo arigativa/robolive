@@ -76,7 +76,7 @@ export interface Cmd<T> {
 
   execute(
     register: (executor: CmdExecutor<T>) => void,
-    state: Map<string, Array<() => T>>
+    state: Map<string, () => void>
   ): void
 }
 
@@ -106,7 +106,7 @@ class Batch<T> implements Cmd<T> {
 
   public execute(
     register: (executor: CmdExecutor<T>) => void,
-    state: Map<string, Array<() => T>>
+    state: Map<string, () => void>
   ): void {
     for (const cmd of this.commands) {
       cmd.execute(register, state)
@@ -137,10 +137,7 @@ class Effect<T> implements Cmd<T> {
 
   public map<R>(fn: (action: T) => R): Cmd<R> {
     return new Effect((done, onCancel) => {
-      this.executor(
-        (value: T) => done(fn(value)),
-        (key, kill) => onCancel(key, () => fn(kill()))
-      )
+      this.executor((value: T) => done(fn(value)), onCancel)
     })
   }
 
@@ -151,7 +148,7 @@ class Effect<T> implements Cmd<T> {
 
 type CmdExecutor<T> = (
   done: (value: T) => void,
-  onCancel: (key: string, kill: () => T) => void
+  onCancel: (key: string, kill: () => void) => void
 ) => void
 
 function create<T>(executor: CmdExecutor<T>): Cmd<T> {
@@ -167,18 +164,10 @@ class Cancel implements Cmd<never> {
 
   public execute(
     register: (executor: CmdExecutor<never>) => void,
-    state: Map<string, Array<() => never>>
+    state: Map<string, () => void>
   ): void {
-    register(done => {
-      const bag = state.get(this.key)
-
-      if (bag == null) {
-        return
-      }
-
-      for (const kill of bag) {
-        done(kill())
-      }
+    register(() => {
+      state.get(this.key)?.()
     })
   }
 }
@@ -368,42 +357,37 @@ export const createStoreWithEffects = <S, A extends Action, Ext, StateExt>(
   enhancer?: StoreEnhancer<Ext, StateExt>
 ): Store<S, A> => {
   let initialized = false
-  const commandsState = new Map<string, Array<() => A>>()
+  const commandsState = new Map<string, () => void>()
   let subscriptionsState: SubState<A> = new Map()
 
   const executeCmd = (executor: CmdExecutor<A>): void => {
     let done = (action: A): void => {
       clearCancel()
-
-      setTimeout(() => store.dispatch(action))
+      store.dispatch(action)
     }
 
     let clearCancel = (): void => {
       onCancel = noop
     }
 
-    let onCancel = (key: string, kill: () => A): void => {
-      done = noop
-
+    let onCancel = (key: string, kill: () => void): void => {
       clearCancel = () => commandsState.delete(key)
 
-      const bag = commandsState.get(key) ?? []
+      commandsState.get(key)?.()
 
-      bag.push(
-        (): A => {
-          clearCancel()
-
-          return kill()
-        }
-      )
-
-      commandsState.set(key, bag)
+      commandsState.set(key, () => {
+        done = noop
+        clearCancel()
+        kill()
+      })
     }
 
-    executor(
-      action => done(action),
-      (key, kill) => onCancel(key, kill)
-    )
+    setTimeout(() => {
+      executor(
+        action => done(action),
+        (key, kill) => onCancel(key, kill)
+      )
+    })
   }
 
   const executeSub = (state: S): void => {
