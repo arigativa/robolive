@@ -301,6 +301,46 @@ type SubState<A> = Map<
  */
 export type Dispatch<A> = (action: A) => void
 
+type InnerAction<A extends Action> =
+  | { type: 'Single'; payload: A }
+  | { type: 'Batch'; payload: Array<A> }
+
+const BatchAction = <A extends Action>(payload: Array<A>): InnerAction<A> => {
+  return payload.length === 1
+    ? SingleAction(payload[0])
+    : { type: 'Batch', payload }
+}
+
+const SingleAction = <A extends Action>(payload: A): InnerAction<A> => ({
+  type: 'Single',
+  payload
+})
+
+const innerUpdate = <S, A extends Action>(
+  innerAction: InnerAction<A>,
+  state: S,
+  update: (action: A, state_: S) => [S, Cmd<A>]
+): [S, Cmd<A>] => {
+  if (innerAction.type === 'Single') {
+    const [nextState, cmd] = update(innerAction.payload, state)
+
+    return [nextState, cmd]
+  }
+
+  let currentState = state
+  const N = innerAction.payload.length
+  const commands: Array<Cmd<A>> = new Array(N)
+
+  for (let index = 0; index < N; index++) {
+    const [nextState, cmd] = update(innerAction.payload[index], currentState)
+
+    currentState = nextState
+    commands[index] = cmd
+  }
+
+  return [currentState, Cmd.batch(commands)]
+}
+
 /**
  * Creates redux store fabric.
  * Returns a fabric to create redux store with initial state, initial effects
@@ -363,7 +403,7 @@ export const createStoreWithEffects = <S, A extends Action, Ext, StateExt>(
   const executeCmd = (executor: CmdExecutor<A>): void => {
     let done = (action: A): void => {
       clearCancel()
-      store.dispatch(action)
+      store.dispatch(SingleAction(action))
     }
 
     let clearCancel = (): void => {
@@ -421,9 +461,7 @@ export const createStoreWithEffects = <S, A extends Action, Ext, StateExt>(
           return
         }
 
-        for (const letter of bag.mailbox) {
-          store.dispatch(letter(...args))
-        }
+        store.dispatch(BatchAction(bag.mailbox.map(letter => letter(...args))))
       })
 
       nextSubState.set(key, {
@@ -444,14 +482,14 @@ export const createStoreWithEffects = <S, A extends Action, Ext, StateExt>(
     subscriptionsState = nextSubState
   }
 
-  const effectReducer = (state: S, action: A): S => {
+  const effectReducer = (state: S, action: InnerAction<A>): S => {
     if (!initialized) {
       initialized = true
 
       return state
     }
 
-    const [nextState, cmd] = update(action, state)
+    const [nextState, cmd] = innerUpdate(action, state, update)
 
     cmd.execute(executeCmd, commandsState)
     executeSub(nextState)
@@ -459,7 +497,7 @@ export const createStoreWithEffects = <S, A extends Action, Ext, StateExt>(
     return nextState
   }
 
-  const store = createStore(
+  const store: Store<S, InnerAction<A>> = createStore(
     effectReducer,
     initialState as PreloadedState<S>,
     enhancer
@@ -469,5 +507,13 @@ export const createStoreWithEffects = <S, A extends Action, Ext, StateExt>(
 
   initialCmd.execute(executeCmd, commandsState)
 
-  return store
+  return {
+    ...store,
+    dispatch: action => {
+      store.dispatch(SingleAction(action))
+
+      return action
+    },
+    replaceReducer: noop
+  }
 }
