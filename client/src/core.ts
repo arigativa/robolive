@@ -396,7 +396,6 @@ export const createStoreWithEffects = <S, A extends Action, Ext, StateExt>(
   subscriptions: (state: S) => Sub<A>,
   enhancer?: StoreEnhancer<Ext, StateExt>
 ): Store<S, A> => {
-  let initialized = false
   const commandsState = new Map<string, () => void>()
   let subscriptionsState: SubState<A> = new Map()
 
@@ -483,9 +482,7 @@ export const createStoreWithEffects = <S, A extends Action, Ext, StateExt>(
   }
 
   const effectReducer = (state: S, action: InnerAction<A>): S => {
-    if (!initialized) {
-      initialized = true
-
+    if (typeof action.payload === 'undefined') {
       return state
     }
 
