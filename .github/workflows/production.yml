@@ -83,7 +83,6 @@ jobs:
           fi
 
       - uses: dsaltares/fetch-gh-release-asset@aa37ae5c44d3c9820bc12fe675e8670ecd93bd1c
-        if: github.event_name == 'release'
         with:
           repo: arigativa/robolive
           file: engine.tar.gz
@@ -91,11 +90,10 @@ jobs:
           token: ${{ secrets.RELEASES_GITHUB_TOKEN }}
 
       - uses: dsaltares/fetch-gh-release-asset@aa37ae5c44d3c9820bc12fe675e8670ecd93bd1c
-        if: github.event_name == 'release'
         with:
           repo: arigativa/robolive
           file: registry.zip
-          version: ${{ github.event.release.id }}
+          version: ${{ steps.determine_release_id.outputs.result }}
           token: ${{ secrets.RELEASES_GITHUB_TOKEN }}
 
       - uses: "finnp/create-file-action@master"
