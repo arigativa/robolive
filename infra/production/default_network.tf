@@ -164,7 +164,7 @@ resource "azurerm_network_security_group" "web" {
     direction                  = "Inbound"
     name                       = "REGISTRY_3476"
     description                = ""
-    priority                   = 299
+    priority                   = 3476
     protocol                   = "TCP"
   }
 
@@ -177,7 +177,7 @@ resource "azurerm_network_security_group" "web" {
     direction                  = "Inbound"
     name                       = "REGISTRY_3477"
     description                = ""
-    priority                   = 299
+    priority                   = 3477
     protocol                   = "TCP"
   }
 
@@ -190,7 +190,7 @@ resource "azurerm_network_security_group" "web" {
     direction                  = "Inbound"
     name                       = "REGISTRY_3478"
     description                = ""
-    priority                   = 299
+    priority                   = 3478
     protocol                   = "TCP"
   }
 
@@ -203,7 +203,7 @@ resource "azurerm_network_security_group" "web" {
     direction                  = "Inbound"
     name                       = "REGISTRY_3479"
     description                = ""
-    priority                   = 299
+    priority                   = 3479
     protocol                   = "TCP"
   }
 
@@ -216,7 +216,7 @@ resource "azurerm_network_security_group" "web" {
     direction                  = "Inbound"
     name                       = "REGISTRY_3480"
     description                = ""
-    priority                   = 299
+    priority                   = 3480
     protocol                   = "TCP"
   }
 }
