@@ -18,7 +18,7 @@ import sttp.client.asynchttpclient.future.AsyncHttpClientFutureBackend
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 object RegistryServer extends App {
   val logger = LoggerFactory.getLogger(getClass)
@@ -55,7 +55,7 @@ object RegistryServer extends App {
     )
 
     runServer(
-      ssd = AgentEndpoint.bindService(agentEndpointHandler, global),
+      ssd = AgentEndpoint.bindService(agentEndpointHandler, implicitly[ExecutionContext]),
       port = AgentPort
     )
   }
@@ -63,7 +63,7 @@ object RegistryServer extends App {
   val infoEndpoint = {
     val infoEndpointHandler = new InfoEndpointHandler(robotsState)
     runServer(
-      ssd = InfoEndpoint.bindService(infoEndpointHandler, global),
+      ssd = InfoEndpoint.bindService(infoEndpointHandler, implicitly[ExecutionContext]),
       port = InfoPort
     )
   }
@@ -71,7 +71,7 @@ object RegistryServer extends App {
   val clientEndpoint = {
     val clientEndpointHandler = new ClientEndpointHandler(robotsState)
     runServer(
-      ssd = ClientEndpoint.bindService(clientEndpointHandler, global),
+      ssd = ClientEndpoint.bindService(clientEndpointHandler, implicitly[ExecutionContext]),
       port = ClientPort
     )
   }
@@ -79,7 +79,7 @@ object RegistryServer extends App {
   val storageEndpoint = {
     val storageEndpointHandler = new StorageEndpointHandler(configMap)
     runServer(
-      ssd = StorageEndpoint.bindService(storageEndpointHandler, global),
+      ssd = StorageEndpoint.bindService(storageEndpointHandler, implicitly[ExecutionContext]),
       port = StoragePort
     )
   }
@@ -93,7 +93,7 @@ object RegistryServer extends App {
       sessionStorage = sipSessionsState,
     )
     runServer(
-      ssd = SipChannelEndpoint.bindService(sipChannelEndpointHandler, global),
+      ssd = SipChannelEndpoint.bindService(sipChannelEndpointHandler, implicitly[ExecutionContext]),
       port = SipChannelPort
     )
   }
