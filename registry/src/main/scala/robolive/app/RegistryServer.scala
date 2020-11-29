@@ -8,14 +8,10 @@ import Info.InfoEndpointGrpc.InfoEndpoint
 import SipChannel.SipChannelEndpointGrpc.SipChannelEndpoint
 import Storage.StorageEndpointGrpc.StorageEndpoint
 import io.grpc.{ServerBuilder, ServerServiceDefinition}
+import org.slf4j.LoggerFactory
+import robolive.meta.BuildInfo
 import robolive.server
-import robolive.server.{
-  AgentEndpointHandler,
-  ClientEndpointHandler,
-  InfoEndpointHandler,
-  SipChannelEndpointHandler,
-  StorageEndpointHandler
-}
+import robolive.server.{AgentEndpointHandler, ClientEndpointHandler, InfoEndpointHandler, SipChannelEndpointHandler, StorageEndpointHandler}
 import sttp.client.SttpBackend
 import sttp.client.asynchttpclient.WebSocketHandler
 import sttp.client.asynchttpclient.future.AsyncHttpClientFutureBackend
@@ -25,6 +21,10 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 
 object RegistryServer extends App {
+  val logger = LoggerFactory.getLogger(getClass)
+
+  logger.info(s"Starting ${BuildInfo.name} v${BuildInfo.version}")
+
   val AgentPort = getEnv("REGISTRY_PORT_FOR_AGENT", "3476").toInt
   val InfoPort = getEnv("REGISTRY_PORT_FOR_INFO", "3477").toInt
   val ClientPort = getEnv("REGISTRY_PORT_FOR_CLIENT", "3478").toInt
@@ -106,12 +106,17 @@ object RegistryServer extends App {
 
   def runServer(ssd: ServerServiceDefinition, port: Int): Future[Unit] =
     Future {
+      logger.info(s"Staring ${ssd.getServiceDescriptor.getName} service at port ${port}")
+
       val serverBuilder = ServerBuilder.forPort(port).addService(ssd).asInstanceOf[ServerBuilder[_]]
       val server = serverBuilder.build.start
 
       // make sure our server is stopped when jvm is shut down
       Runtime.getRuntime.addShutdownHook(new Thread() {
-        override def run(): Unit = server.shutdown()
+        override def run(): Unit = {
+          logger.info(s"Stopping ${ssd.getServiceDescriptor.getName} service")
+          server.shutdown()
+        }
       })
 
       server.awaitTermination()
