@@ -88,11 +88,10 @@ jobs:
           version: ${{ github.event.release.id }}
           token: ${{ secrets.RELEASES_GITHUB_TOKEN }}
 
-      - uses: schdck/create-env-json@v1
-        with:
-          file-name: 'ansible-variables.json'
-          signalling_kamailio_engine_package: ${{ github.workspace }}/engine.tar.gz
-          registry_package: "${{ github.workspace }}/registry.zip"
+      - uses: "finnp/create-file-action@master"
+        env:
+          FILE_NAME: "ansible-variables.json"
+          FILE_DATA: "{\"signalling_kamailio_engine_package\":\"${{ github.workspace }}/engine.tar.gz\",\"registry_package\":\"${{ github.workspace }}/registry.zip\"}"
 
       - name: Check Ansible playbook
         if: github.ref != 'refs/heads/master' || github.event_name != 'push'
