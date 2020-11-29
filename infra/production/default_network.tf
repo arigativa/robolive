@@ -154,4 +154,69 @@ resource "azurerm_network_security_group" "web" {
     priority                   = 350
     protocol                   = "TCP"
   }
+
+  security_rule {
+    access                     = "Allow"
+    source_address_prefix      = "*"
+    source_port_range          = "*"
+    destination_address_prefix = "*"
+    destination_port_range     = "3476"
+    direction                  = "Inbound"
+    name                       = "REGISTRY_3476"
+    description                = ""
+    priority                   = 299
+    protocol                   = "TCP"
+  }
+
+  security_rule {
+    access                     = "Allow"
+    source_address_prefix      = "*"
+    source_port_range          = "*"
+    destination_address_prefix = "*"
+    destination_port_range     = "3477"
+    direction                  = "Inbound"
+    name                       = "REGISTRY_3477"
+    description                = ""
+    priority                   = 299
+    protocol                   = "TCP"
+  }
+
+  security_rule {
+    access                     = "Allow"
+    source_address_prefix      = "*"
+    source_port_range          = "*"
+    destination_address_prefix = "*"
+    destination_port_range     = "3478"
+    direction                  = "Inbound"
+    name                       = "REGISTRY_3478"
+    description                = ""
+    priority                   = 299
+    protocol                   = "TCP"
+  }
+
+  security_rule {
+    access                     = "Allow"
+    source_address_prefix      = "*"
+    source_port_range          = "*"
+    destination_address_prefix = "*"
+    destination_port_range     = "3479"
+    direction                  = "Inbound"
+    name                       = "REGISTRY_3479"
+    description                = ""
+    priority                   = 299
+    protocol                   = "TCP"
+  }
+
+  security_rule {
+    access                     = "Allow"
+    source_address_prefix      = "*"
+    source_port_range          = "*"
+    destination_address_prefix = "*"
+    destination_port_range     = "3480"
+    direction                  = "Inbound"
+    name                       = "REGISTRY_3480"
+    description                = ""
+    priority                   = 299
+    protocol                   = "TCP"
+  }
 }
