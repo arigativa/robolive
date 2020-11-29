@@ -90,13 +90,13 @@ jobs:
 
       - uses: "finnp/create-file-action@master"
         env:
-          FILE_NAME: "ansible-variables.json"
+          FILE_NAME: "${{ github.workspace }}/ansible-variables.json"
           FILE_DATA: "{\"signalling_kamailio_engine_package\":\"${{ github.workspace }}/engine.tar.gz\",\"registry_package\":\"${{ github.workspace }}/registry.zip\"}"
 
       - name: Check Ansible playbook
         if: github.ref != 'refs/heads/master' || github.event_name != 'push'
-        run: ansible-playbook -i inventory/production -e '@ansible-variables.json' playbook.yml -C -vv
+        run: ansible-playbook -i inventory/production -e '@${{ github.workspace }}/ansible-variables.json' playbook.yml -C -vv
 
       - name: Run Ansible playbook
         if: github.ref == 'refs/heads/master' && github.event_name == 'push'
-        run: ansible-playbook -i inventory/production -e '@ansible-variables.json' playbook.yml -vv
+        run: ansible-playbook -i inventory/production -e '@${{ github.workspace }}/ansible-variables.json' playbook.yml -vv
