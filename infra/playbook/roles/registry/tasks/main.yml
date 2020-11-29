@@ -8,15 +8,15 @@
   tags:
     - deploy
 
-- name: Copy registry package
-  copy:
-    src: "{{ registry_package }}"
-    dest: "{{ registry_package_local }}"
+- name: Ensure package directory
+  file:
+    path: "{{ robolive_dir }}"
+    state: directory
+    mode: '0755'
     owner: root
     group: root
   tags:
     - registry
-  register: registry_package
 
 - name: Ensure package directory
   file:
@@ -26,8 +26,17 @@
     owner: root
     group: root
   tags:
-    - signalling
     - registry
+
+- name: Copy registry package
+  copy:
+    src: "{{ registry_package }}"
+    dest: "{{ registry_package_local }}"
+    owner: root
+    group: root
+  tags:
+    - registry
+  register: package_copy_result
 
 - name: Extract registry
   unarchive:
@@ -36,7 +45,7 @@
     remote_src: yes
     owner: root
     group: root
-  when: registry_package.changed
+  when: package_copy_result.changed
   notify:
     - Start Registry
   tags:
@@ -46,7 +55,7 @@
 
 - name: Copy systemd service file to server
   template:
-    src: registry.service
+    src: robolive-registry.service
     dest: /etc/systemd/system
     owner: root
     group: root
