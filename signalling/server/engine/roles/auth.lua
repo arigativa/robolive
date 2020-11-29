@@ -1,4 +1,5 @@
 local json = require "cjson.safe"
+local dialog = require "roles.dialog"
 
 
 --[[
@@ -43,6 +44,30 @@ local function create(data)
 
 end
 
+local function destroy(data) 
+    
+    local users = json.decode(data)
+    if not users then
+        return false,{suggestedCode = 417,suggestedReason = "No users found" }
+    end
+    if #users == 0 then
+        return false,{suggestedCode = 417,suggestedReason = "Users list is empry" }
+    end
+
+    for i=1,#users do
+        local user = KSR.pv.get("$sht(users=>username:"..users[i].username..")")
+        if not user then
+            KSR.warn("User "..users[i].username.." wasn't found. Nothing to destroy\n")
+        else
+            KSR.pv.seti("$shtex(users=>username:"..users[i].username..")",1)
+            dialog.destroy(users[i].username)
+        end
+    end
+
+    return true
+
+end
+
 local function handle(username,source) 
     
     local user = KSR.pv.get("$sht(users=>username:"..username..")")
@@ -59,6 +84,7 @@ local function handle(username,source)
         end
         KSR.pv.seti("$shtex(users=>username:"..username..")",expires)
     end
+
     KSR.log("info","Auth successfull for "..username.." from "..source.."\n")
     return true
 
@@ -66,5 +92,6 @@ end
 
 return {
     handle = handle,
-    create = create
+    create = create,
+    destroy = destroy
 }

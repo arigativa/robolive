@@ -75,6 +75,21 @@ local function http()
         KSR.x.exit()
     end
 
+    if url == "/users/destroy" then
+        local body = KSR.pv.get("$rb")
+        local res,err = auth.destroy(body)
+        if not res then
+            KSR.err("Can't destroy users\n")
+            if err then
+                KSR.xhttp.xhttp_reply(err.suggestedCode, err.suggestedReason,"","")
+            end
+        else
+            KSR.info("Succesfully destoy\n")
+            KSR.xhttp.xhttp_reply("201", "Done", "", "")
+        end
+        KSR.x.exit()
+    end
+
     if isWS() then
         -- if will add API then need to handle return states 
         handleWS() 

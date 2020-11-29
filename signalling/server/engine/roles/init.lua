@@ -6,5 +6,6 @@ return {
     registrar   = require "roles.registrar",
     auth        = require "roles.auth",
     locate      = require "roles.locate",
-    http_server = require "roles.http_server"
+    http_server = require "roles.http_server",
+    dialog      = require "roles.dialog"
 }

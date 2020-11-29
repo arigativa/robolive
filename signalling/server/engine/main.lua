@@ -81,6 +81,7 @@ function ksr_request_route()
         KSR.x.exit()
     end
 
+    KSR.dialog.dlg_manage()
     roles.relay()
 
 end
@@ -88,6 +89,10 @@ end
 function ksr_reply_route()
     roles.nathandle.sip() 
     roles.nathandle.sdp()
+    if KSR.is_INVITE() and KSR.pv.get("$rs") == 200 then
+        KSR.info("Createing dialog for "..KSR.kx.get_fuser()..": "..KSR.kx.get_tuser().."\n")
+        roles.dialog.create(KSR.kx.get_fuser(), KSR.kx.get_tuser(), KSR.kx.get_callid(), KSR.pv.get("$tt"), KSR.pv.get("$ft")) 
+    end
 end
 
 -- function branch_route_wrapper()
