@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - 'signalling/Dockerfile'
+      - '.github/workflows/kamailio-build.yml'
     branches: [ master ]
   pull_request:
     paths:
       - 'signalling/Dockerfile'
+      - '.github/workflows/kamailio-build.yml'
 
 jobs:
   build-kamailio-package:

@@ -4,11 +4,13 @@ on:
   push:
     paths:
       - 'infra/**'
+      - '.github/workflows/production.yml'
     branches:
       - master
   pull_request:
     paths:
       - 'infra/**'
+      - '.github/workflows/production.yml'
   release:
     types:
       - released

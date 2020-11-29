@@ -9,7 +9,7 @@ on:
       - 'mjsip/**'
       - 'protocols/**'
       - 'registry/**'
-      - '.github/workflows/**'
+      - '.github/workflows/registry.yml'
     branches:
       - master
   pull_request:
@@ -20,7 +20,7 @@ on:
       - 'mjsip/**'
       - 'protocols/**'
       - 'registry/**'
-      - '.github/workflows/**'
+      - '.github/workflows/registry.yml'
   release:
     types:
       - created
