@@ -73,16 +73,30 @@ jobs:
         run: pip install -r requirements.txt && ansible-galaxy role install -r requirements.yml
 
       - uses: dsaltares/fetch-gh-release-asset@aa37ae5c44d3c9820bc12fe675e8670ecd93bd1c
+        if: github.event_name == 'release'
         with:
           repo: arigativa/robolive
-          file: "engine.tar.gz"
+          file: engine.tar.gz
           version: ${{ github.event.release.id }}
           token: ${{ secrets.RELEASES_GITHUB_TOKEN }}
 
+      - uses: dsaltares/fetch-gh-release-asset@aa37ae5c44d3c9820bc12fe675e8670ecd93bd1c
+        if: github.event_name == 'release'
+        with:
+          repo: arigativa/robolive
+          file: registry.zip
+          version: ${{ github.event.release.id }}
+          token: ${{ secrets.RELEASES_GITHUB_TOKEN }}
+
+      - uses: "finnp/create-file-action@master"
+        env:
+          FILE_NAME: "ansible-variables.json"
+          FILE_DATA: "{\"signalling_kamailio_engine_package\":\"${{ github.workspace }}/engine.tar.gz\",\"registry_package\":\"${{ github.workspace }}/registry.zip\"}"
+
       - name: Check Ansible playbook
         if: github.ref != 'refs/heads/master' || github.event_name != 'push'
-        run: ansible-playbook -i inventory/production -e signalling_kamailio_engine_package="${GITHUB_WORKSPACE}/engine.tar.gz" playbook.yml -C -vv
+        run: ansible-playbook -i inventory/production -e '@ansible-variables.json' playbook.yml -C -vv
 
       - name: Run Ansible playbook
         if: github.ref == 'refs/heads/master' && github.event_name == 'push'
-        run: ansible-playbook -i inventory/production -e signalling_kamailio_engine_package="${GITHUB_WORKSPACE}/engine.tar.gz" playbook.yml -vv
+        run: ansible-playbook -i inventory/production -e '@ansible-variables.json' playbook.yml -vv

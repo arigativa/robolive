@@ -4,6 +4,12 @@
   become_user: root
   roles:
     #- { role: geerlingguy.nginx, tags: nginx }
-    - { role: relay, tags: relay }
-    - { role: signalling, tags: signalling }
-    - { role: robolive_team, tags: robolive_team }
+    - role: geerlingguy.java
+      vars:
+        java_packages:
+          - openjdk-11-jdk
+      tags: [ java ]
+    - { role: relay, tags: [ relay ] }
+    - { role: signalling, tags: [ signalling ] }
+    - { role: registry, tags: [ registry ] }
+    - { role: robolive_team, tags: [ robolive_team ] }
