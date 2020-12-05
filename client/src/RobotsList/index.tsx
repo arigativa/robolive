@@ -25,23 +25,23 @@ export const init: [State, Cmd<Action>] = [
     robots: RemoteData.Loading
   },
   Cmd.create((done, onCancel) => {
-    // req.agentList(new AgentListRequest(), new BrowserHeaders(), (err, data) => {
-    //   if (err) {
-    //     // eslint-disable-next-line no-console
-    //     console.error(err)
-    //   } else {
-    //     // eslint-disable-next-line no-console
-    //     console.log(data)
-    //   }
-    // })
-
-    const timeoutId = setTimeout(() => {
-      done(LoadRobots(Either.Right('empty')))
-    }, 2000)
-
-    onCancel('foo', () => {
-      clearTimeout(timeoutId)
+    req.agentList(new AgentListRequest(), new BrowserHeaders(), (err, data) => {
+      if (err) {
+        // eslint-disable-next-line no-console
+        console.error(err)
+      } else {
+        // eslint-disable-next-line no-console
+        console.log(data)
+      }
     })
+
+    // const timeoutId = setTimeout(() => {
+    //   done(LoadRobots(Either.Right('empty')))
+    // }, 2000)
+
+    // onCancel('foo', () => {
+    //   clearTimeout(timeoutId)
+    // })
   })
 ]
 
