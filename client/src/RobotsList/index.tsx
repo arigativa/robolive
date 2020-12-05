@@ -2,61 +2,29 @@ import React from 'react'
 import Either from 'frctl/Either'
 import RemoteData from 'frctl/RemoteData'
 
-import { Cmd, Sub, Dispatch, caseOf, match } from 'core'
-import { every } from 'utils'
-import { AgentListRequest } from '../generated/Info_pb'
-import { InfoEndpointClient } from '../generated/Info_pb_service'
-import { BrowserHeaders } from 'browser-headers'
-
-const req = new InfoEndpointClient('https://localhost:3477')
+import { Cmd, Dispatch, caseOf, match } from 'core'
+import { Agent, getAgentList } from 'api'
 
 // S T A T E
 
 export type State = {
-  ts: number
-  tick: boolean
-  robots: RemoteData<number, string>
+  robots: RemoteData<string, Array<Agent>>
 }
 
 export const init: [State, Cmd<Action>] = [
   {
-    ts: 0,
-    tick: true,
     robots: RemoteData.Loading
   },
-  Cmd.create((done, onCancel) => {
-    req.agentList(new AgentListRequest(), new BrowserHeaders(), (err, data) => {
-      if (err) {
-        // eslint-disable-next-line no-console
-        console.error(err)
-      } else {
-        // eslint-disable-next-line no-console
-        console.log(data)
-      }
-    })
-
-    // const timeoutId = setTimeout(() => {
-    //   done(LoadRobots(Either.Right('empty')))
-    // }, 2000)
-
-    // onCancel('foo', () => {
-    //   clearTimeout(timeoutId)
-    // })
-  })
+  getAgentList(result => LoadRobots(result.mapLeft(error => error.message)))
 ]
 
 // U P D A T E
 
-export type Action =
-  | ReturnType<typeof LoadRobots>
-  | typeof Abort
-  | typeof Switch
-  | ReturnType<typeof Tick>
+export type Action = ReturnType<typeof LoadRobots>
 
-const LoadRobots = caseOf<'LoadRobots', Either<number, string>>('LoadRobots')
-const Abort = caseOf('Abort')()
-const Switch = caseOf('Switch')()
-const Tick = caseOf<'Tick', number>('Tick')
+const LoadRobots = caseOf<'LoadRobots', Either<string, Array<Agent>>>(
+  'LoadRobots'
+)
 
 export const update = (action: Action, state: State): [State, Cmd<Action>] => {
   return match(action, {
@@ -66,71 +34,40 @@ export const update = (action: Action, state: State): [State, Cmd<Action>] => {
         robots: RemoteData.fromEither(result)
       },
       Cmd.none
-    ],
-
-    Abort: () => [
-      { ...state, robots: RemoteData.Succeed('Aborted') },
-      Cmd.cancel('foo')
-    ],
-
-    Switch: () => [
-      {
-        ...state,
-        tick: !state.tick
-      },
-      Cmd.none
-    ],
-
-    Tick: ts => [
-      {
-        ...state,
-        ts: state.ts + 1
-      },
-      Cmd.none
     ]
   })
 }
 
-// S U B S C R I P T I O N S
-
-export const subscriptions = (state: State): Sub<Action> => {
-  if (!state.tick) {
-    return Sub.none
-  }
-
-  return every(100, Tick)
-}
-
 // V I E W
+
+const ViewEmptyAgentList = React.memo(() => (
+  <div>No agents found. Please try later.</div>
+))
+
+const ViewAgentList: React.FC<{
+  agentList: Array<Agent>
+}> = React.memo(({ agentList }) => (
+  <ul>
+    {agentList.map(agent => (
+      <li key={agent.id}>{agent.name}</li>
+    ))}
+  </ul>
+))
 
 export const View: React.FC<{
   state: State
   dispatch: Dispatch<Action>
 }> = React.memo(({ state, dispatch }) => {
-  return (
-    <div>
-      {state.robots.cata({
-        Loading: () => (
-          <div>
-            Loading
-            <br />
-            <button type="button" onClick={() => dispatch(Abort)}>
-              Abort
-            </button>
-          </div>
-        ),
+  return state.robots.cata({
+    Loading: () => <div>Loading</div>,
 
-        Failure: error => <div>Error {error}</div>,
+    Failure: message => <div>Error: {message}</div>,
 
-        Succeed: value => <div>{value}</div>
-      })}
-      <br />
-      <input
-        type="checkbox"
-        checked={state.tick}
-        onChange={() => dispatch(Switch)}
-      />
-      count: {state.ts}
-    </div>
-  )
+    Succeed: agentList =>
+      agentList.length === 0 ? (
+        <ViewEmptyAgentList />
+      ) : (
+        <ViewAgentList agentList={agentList} />
+      )
+  })
 })

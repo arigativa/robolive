@@ -17,7 +17,6 @@ const RobotsListScreen = caseOf<
   'RobotsListScreen',
   ScreenWithUsername<{
     robotsList: RobotsList.State
-    robotsList2: RobotsList.State
   }>
 >('RobotsListScreen')
 
@@ -28,14 +27,10 @@ export const initial: State = LoginScreen(Login.initial)
 export type Action =
   | ReturnType<typeof LoginAction>
   | ReturnType<typeof RobotsListAction>
-  | ReturnType<typeof RobotsListAction2>
 
 const LoginAction = caseOf<'LoginAction', Login.Action>('LoginAction')
 const RobotsListAction = caseOf<'RobotsListAction', RobotsList.Action>(
   'RobotsListAction'
-)
-const RobotsListAction2 = caseOf<'RobotsListAction2', RobotsList.Action>(
-  'RobotsListAction2'
 )
 
 export const update = (action: Action, state: State): [State, Cmd<Action>] => {
@@ -50,15 +45,8 @@ export const update = (action: Action, state: State): [State, Cmd<Action>] => {
               const [robotsList, cmd] = RobotsList.init
 
               return [
-                RobotsListScreen({
-                  username,
-                  robotsList,
-                  robotsList2: robotsList
-                }),
-                Cmd.batch<Action>([
-                  cmd.map(RobotsListAction),
-                  cmd.map(RobotsListAction2)
-                ])
+                RobotsListScreen({ username, robotsList }),
+                cmd.map(RobotsListAction)
               ]
             }
           }),
@@ -68,37 +56,15 @@ export const update = (action: Action, state: State): [State, Cmd<Action>] => {
 
     RobotsListAction: subAction =>
       match<State, [State, Cmd<Action>]>(state, {
-        RobotsListScreen: ({ username, robotsList, robotsList2 }) => {
+        RobotsListScreen: ({ username, robotsList }) => {
           const [nextRobotsList, cmd] = RobotsList.update(subAction, robotsList)
 
           return [
             RobotsListScreen({
               username,
-              robotsList2,
               robotsList: nextRobotsList
             }),
             cmd.map(RobotsListAction)
-          ]
-        },
-
-        _: () => [state, Cmd.none]
-      }),
-
-    RobotsListAction2: subAction =>
-      match<State, [State, Cmd<Action>]>(state, {
-        RobotsListScreen: ({ username, robotsList2, robotsList }) => {
-          const [nextRobotsList, cmd] = RobotsList.update(
-            subAction,
-            robotsList2
-          )
-
-          return [
-            RobotsListScreen({
-              username,
-              robotsList2: nextRobotsList,
-              robotsList
-            }),
-            cmd.map(RobotsListAction2)
           ]
         },
 
@@ -109,17 +75,8 @@ export const update = (action: Action, state: State): [State, Cmd<Action>] => {
 
 // S U B S C R I P T I O N S
 
-export const subscriptions = (state: State): Sub<Action> => {
-  return match<State, Sub<Action>>(state, {
-    RobotsListScreen: ({ robotsList, robotsList2 }) => {
-      return Sub.batch<Action>([
-        RobotsList.subscriptions(robotsList).map(RobotsListAction),
-        RobotsList.subscriptions(robotsList2).map(RobotsListAction2)
-      ])
-    },
-
-    _: () => Sub.none
-  })
+export const subscriptions = (_state: State): Sub<Action> => {
+  return Sub.none
 }
 
 // V I E W
@@ -156,19 +113,12 @@ export const View: React.FC<{
   return match(state, {
     LoginScreen: login => <ViewLogin login={login} dispatch={dispatch} />,
 
-    RobotsListScreen: ({ robotsList, robotsList2 }) => (
-      <div>
-        <ViewRobotsList
-          robotsList={robotsList}
-          mapAction={RobotsListAction}
-          dispatch={dispatch}
-        />
-        <ViewRobotsList
-          robotsList={robotsList2}
-          mapAction={RobotsListAction2}
-          dispatch={dispatch}
-        />
-      </div>
+    RobotsListScreen: ({ robotsList }) => (
+      <ViewRobotsList
+        robotsList={robotsList}
+        mapAction={RobotsListAction}
+        dispatch={dispatch}
+      />
     )
   })
 }
