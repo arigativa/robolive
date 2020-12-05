@@ -31,13 +31,14 @@ services:
     environment:
       GST_DEBUG: '*:3'
       OPENSSL_CONF: ''
-      REGISTRY_HOST: registry
+      REGISTRY_HOST: envoy
       ROBOT_NAME: 'Robot in Docker'
-      REGISTRY_PORT_FOR_AGENT: 3476
-      REGISTRY_PORT_FOR_STORAGE: 3479
-      REGISTRY_PORT_FOR_SIP_CHANNEL: 3480
+      REGISTRY_PORT_FOR_AGENT: 10476
+      REGISTRY_PORT_FOR_STORAGE: 10479
+      REGISTRY_PORT_FOR_SIP_CHANNEL: 10480
     depends_on:
       - registry
+      - envoy
 
   turn: 
     image: robolive-relay
@@ -79,12 +80,6 @@ services:
     networks:
       testing_net:
         ipv4_address: 169.28.1.20
-    ports:
-      - 3476:3476
-      - 3477:3477
-      - 3478:3478
-      - 3479:3479
-      - 3480:3480
 
   envoy:
     image: envoyproxy/envoy-alpine:v1.16-latest

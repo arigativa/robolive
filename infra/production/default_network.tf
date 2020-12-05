@@ -160,63 +160,11 @@ resource "azurerm_network_security_group" "web" {
     source_address_prefix      = "*"
     source_port_range          = "*"
     destination_address_prefix = "*"
-    destination_port_range     = "3476"
+    destination_port_range     = "10476"
     direction                  = "Inbound"
-    name                       = "REGISTRY_3476"
+    name                       = "ENVOY_REGISTRY_10476"
     description                = ""
     priority                   = 3476
-    protocol                   = "TCP"
-  }
-
-  security_rule {
-    access                     = "Allow"
-    source_address_prefix      = "*"
-    source_port_range          = "*"
-    destination_address_prefix = "*"
-    destination_port_range     = "3477"
-    direction                  = "Inbound"
-    name                       = "REGISTRY_3477"
-    description                = ""
-    priority                   = 3477
-    protocol                   = "TCP"
-  }
-
-  security_rule {
-    access                     = "Allow"
-    source_address_prefix      = "*"
-    source_port_range          = "*"
-    destination_address_prefix = "*"
-    destination_port_range     = "3478"
-    direction                  = "Inbound"
-    name                       = "REGISTRY_3478"
-    description                = ""
-    priority                   = 3478
-    protocol                   = "TCP"
-  }
-
-  security_rule {
-    access                     = "Allow"
-    source_address_prefix      = "*"
-    source_port_range          = "*"
-    destination_address_prefix = "*"
-    destination_port_range     = "3479"
-    direction                  = "Inbound"
-    name                       = "REGISTRY_3479"
-    description                = ""
-    priority                   = 3479
-    protocol                   = "TCP"
-  }
-
-  security_rule {
-    access                     = "Allow"
-    source_address_prefix      = "*"
-    source_port_range          = "*"
-    destination_address_prefix = "*"
-    destination_port_range     = "3480"
-    direction                  = "Inbound"
-    name                       = "REGISTRY_3480"
-    description                = ""
-    priority                   = 3480
     protocol                   = "TCP"
   }
 
@@ -229,7 +177,46 @@ resource "azurerm_network_security_group" "web" {
     direction                  = "Inbound"
     name                       = "ENVOY_REGISTRY_10477"
     description                = ""
-    priority                   = 3577
+    priority                   = 3477
+    protocol                   = "TCP"
+  }
+
+  security_rule {
+    access                     = "Allow"
+    source_address_prefix      = "*"
+    source_port_range          = "*"
+    destination_address_prefix = "*"
+    destination_port_range     = "10478"
+    direction                  = "Inbound"
+    name                       = "ENVOY_REGISTRY_10478"
+    description                = ""
+    priority                   = 3478
+    protocol                   = "TCP"
+  }
+
+  security_rule {
+    access                     = "Allow"
+    source_address_prefix      = "*"
+    source_port_range          = "*"
+    destination_address_prefix = "*"
+    destination_port_range     = "10479"
+    direction                  = "Inbound"
+    name                       = "ENVOY_REGISTRY_10479"
+    description                = ""
+    priority                   = 3479
+    protocol                   = "TCP"
+  }
+
+  security_rule {
+    access                     = "Allow"
+    source_address_prefix      = "*"
+    source_port_range          = "*"
+    destination_address_prefix = "*"
+    destination_port_range     = "10480"
+    direction                  = "Inbound"
+    name                       = "ENVOY_REGISTRY_10480"
+    description                = ""
+    priority                   = 3480
     protocol                   = "TCP"
   }
 }
