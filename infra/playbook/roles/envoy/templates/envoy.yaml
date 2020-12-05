@@ -177,7 +177,7 @@ static_resources:
               - endpoint:
                   address:
                     socket_address:
-                      address: registry
+                      address: localhost
                       port_value: 3476
 
     - name: registry_info_cluster
@@ -192,7 +192,7 @@ static_resources:
               - endpoint:
                   address:
                     socket_address:
-                      address: registry
+                      address: localhost
                       port_value: 3477
 
     - name: registry_client_cluster
@@ -207,7 +207,7 @@ static_resources:
               - endpoint:
                   address:
                     socket_address:
-                      address: registry
+                      address: localhost
                       port_value: 3478
 
     - name: registry_storage_cluster
@@ -222,7 +222,7 @@ static_resources:
               - endpoint:
                   address:
                     socket_address:
-                      address: registry
+                      address: localhost
                       port_value: 3479
 
     - name: registry_sip_channel_cluster
@@ -237,5 +237,5 @@ static_resources:
               - endpoint:
                   address:
                     socket_address:
-                      address: registry
+                      address: localhost
                       port_value: 3480
