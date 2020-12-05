@@ -107,14 +107,14 @@ export const update = (action: Action, state: State): [State, Cmd<Action>] => {
   })
 }
 
-// S U B S C R I P T I O N
+// S U B S C R I P T I O N S
 
-export const subscription = (state: State): Sub<Action> => {
+export const subscriptions = (state: State): Sub<Action> => {
   return match<State, Sub<Action>>(state, {
     RobotsListScreen: ({ robotsList, robotsList2 }) => {
       return Sub.batch<Action>([
-        RobotsList.subscription(robotsList).map(RobotsListAction),
-        RobotsList.subscription(robotsList2).map(RobotsListAction2)
+        RobotsList.subscriptions(robotsList).map(RobotsListAction),
+        RobotsList.subscriptions(robotsList2).map(RobotsListAction2)
       ])
     },
 

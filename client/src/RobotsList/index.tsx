@@ -91,9 +91,9 @@ export const update = (action: Action, state: State): [State, Cmd<Action>] => {
   })
 }
 
-// S U B S C R I P T I O N
+// S U B S C R I P T I O N S
 
-export const subscription = (state: State): Sub<Action> => {
+export const subscriptions = (state: State): Sub<Action> => {
   if (!state.tick) {
     return Sub.none
   }

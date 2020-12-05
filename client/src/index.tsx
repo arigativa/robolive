@@ -16,7 +16,7 @@ const Root: React.FC = () => {
   const [state, dispatch] = useStore({
     init,
     update: Main.update,
-    subscriptions: Main.subscription
+    subscriptions: Main.subscriptions
   })
 
   return (
