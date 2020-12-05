@@ -15,7 +15,11 @@ export const init: [State, Cmd<Action>] = [
   {
     robots: RemoteData.Loading
   },
-  getAgentList(result => LoadRobots(result.mapLeft(error => error.message)))
+  Cmd.create(done =>
+    getAgentList().then(result =>
+      done(LoadRobots(result.mapLeft(error => error.message)))
+    )
+  )
 ]
 
 // U P D A T E

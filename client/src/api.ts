@@ -1,6 +1,5 @@
 import Either from 'frctl/Either'
 
-import { Cmd } from 'core'
 import { AgentListRequest, AgentView } from './generated/Info_pb'
 import { InfoEndpointClient, ServiceError } from './generated/Info_pb_service'
 import { BrowserHeaders } from 'browser-headers'
@@ -27,16 +26,14 @@ const agentViewToAgent = (agentView: AgentView.AsObject): null | Agent => {
   }
 }
 
-export const getAgentList = <A>(
-  tagger: (result: Either<ServiceError, Array<Agent>>) => A
-): Cmd<A> => {
-  return Cmd.create(done => {
+export const getAgentList = (): Promise<Either<ServiceError, Array<Agent>>> => {
+  return new Promise(done => {
     infoReq.agentList(
       new AgentListRequest(),
       new BrowserHeaders(),
       (error, response) => {
         if (error) {
-          done(tagger(Either.Left(error)))
+          done(Either.Left(error))
         }
 
         if (response) {
@@ -45,7 +42,7 @@ export const getAgentList = <A>(
             .map(agent => agentViewToAgent(agent.toObject()))
             .filter((agent): agent is Agent => agent != null)
 
-          done(tagger(Either.Right(agentList)))
+          done(Either.Right(agentList))
         }
       }
     )
