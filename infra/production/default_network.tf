@@ -219,4 +219,17 @@ resource "azurerm_network_security_group" "web" {
     priority                   = 3480
     protocol                   = "TCP"
   }
+
+  security_rule {
+    access                     = "Allow"
+    source_address_prefix      = "*"
+    source_port_range          = "*"
+    destination_address_prefix = "*"
+    destination_port_range     = "10477"
+    direction                  = "Inbound"
+    name                       = "ENVOY_REGISTRY_10477"
+    description                = ""
+    priority                   = 3577
+    protocol                   = "TCP"
+  }
 }

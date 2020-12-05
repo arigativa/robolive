@@ -1,0 +1,28 @@
+- name: Install Envoy Proxy
+  include_role:
+    name: fabiocruzcoelho.envoyproxy
+  tags:
+    - envoy
+
+- name: Ensure configuration directory
+  file:
+    path: "/etc/envoy"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  tags:
+    - envoy
+
+- name: Configure Envoy
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+  with_items:
+    - { src: envoy.yaml, dest: "/etc/envoy/envoy.yaml" }
+  notify:
+    - restart envoy
+  tags:
+    - envoy

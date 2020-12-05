@@ -3,3 +3,4 @@ roles:
     version: 2.7.0
   - name: geerlingguy.java
     version: 1.10.0
+  - name: fabiocruzcoelho.envoyproxy

@@ -13,3 +13,4 @@
     - { role: signalling, tags: [ signalling ] }
     - { role: registry, tags: [ registry ] }
     - { role: robolive_team, tags: [ robolive_team ] }
+    - { role: envoy, tags: [ envoy ]}
