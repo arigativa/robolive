@@ -61,6 +61,7 @@ jobs:
         uses: hashicorp/setup-terraform@v1
         with:
           cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+          terraform_version: 0.13.4
           terraform_wrapper: false
 
       - run: terraform init # terraform needed to create ansible inventory, see: `signalling_and_relay.py`
