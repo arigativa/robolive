@@ -26,9 +26,9 @@ jobs:
 
     - uses: actions/setup-node@v1
 
-    - run: yarn install
+    - run: yarn
 
-    - run: npm run build
+    - run: yarn build
 
     - name: Package the build
       run: tar -czf /tmp/client-distr.tar.gz -C ./build/ .
