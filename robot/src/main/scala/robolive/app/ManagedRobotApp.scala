@@ -4,6 +4,7 @@ import Agent.AgentEndpointGrpc
 import SipChannel.SipChannelEndpointGrpc
 import Storage.StorageEndpointGrpc
 import io.grpc.ManagedChannelBuilder
+import org.slf4j.LoggerFactory
 import robolive.gstreamer.{SimpleFunctionCalculator, VideoSources}
 import robolive.managed.RunningPuppet
 
@@ -13,11 +14,15 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 object ManagedRobotApp extends App {
 
+  val log = LoggerFactory.getLogger(getClass)
+
+  log.info(s"Managed robot ($getClass) started")
+
   object RegistryConnection {
     val Host: String = getEnv("REGISTRY_HOST", "localhost")
-    val StoragePort: Int = getEnv("REGISTRY_PORT_FOR_STORAGE", "3479").toInt
-    val AgentPort: Int = getEnv("REGISTRY_PORT_FOR_AGENT", "3476").toInt
-    val SipChannelPort = getEnv("REGISTRY_PORT_FOR_SIP_CHANNEL", "3480").toInt
+    val StoragePort: Int = getEnv("REGISTRY_PORT_FOR_STORAGE", "10479").toInt
+    val AgentPort: Int = getEnv("REGISTRY_PORT_FOR_AGENT", "10476").toInt
+    val SipChannelPort = getEnv("REGISTRY_PORT_FOR_SIP_CHANNEL", "10480").toInt
 
     val usePlaintext: Boolean = getEnv("INVENTORY_USE_PLAINTEXT", "true").toBoolean
   }

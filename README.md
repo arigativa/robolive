@@ -113,6 +113,13 @@ export AUDIO_SRC='audiotestsrc wave=silence ! audioconvert'
 export VIDEO_SRC='nvarguscamerasrc sensor_mode=3 ! video/x-raw(memory:NVMM),width=1280, height=720, framerate=60/1, format=NV12 ! nvvidconv flip-method=0 ! videoconvert'
 ```
 
+
+### Run robot connected to Production using docker
+
+```shell script
+docker-compose run --no-deps -e REGISTRY_HOST=rl.arigativa.ru -e ROBOT_NAME='FromDevMachine' robot
+```
+
 #### sensor_mode values
 
 | # | Resolution  | FPS | Exposure, us |  

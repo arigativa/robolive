@@ -72,9 +72,12 @@ private final class AgentEndpointHandler(
             logger.info("request settings from storage")
             (for {
               storageResponse <- storageEndpointClient.get(ReadRequest(puppetConfigurationKeys))
+              _ = logger.info(s"got settings from storage: `$storageResponse`")
+              _ = logger.info("allocating sip channel")
               sipChannelAllocationResponse <- sipChannelEndpointClient.allocate(AllocateRequest())
+              _ = logger.info(s"sip channel allocated: $sipChannelAllocationResponse ")
             } yield {
-              logger.info(s"got settings from storage: `$storageResponse`")
+
               def settings(key: String): Option[String] =
                 clientConnectionRequest.settings
                   .get(key)

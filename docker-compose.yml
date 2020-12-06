@@ -84,8 +84,11 @@ services:
   envoy:
     image: envoyproxy/envoy-alpine:v1.16-latest
     ports:
-      - 10477:10477
-      - 10478:10478
+      - 10476:10476 # registry agent
+      - 10477:10477 # registry info
+      - 10478:10478 # registry client
+      - 10479:10479 # registry storage
+      - 10480:10480 # registry sip channel
       - 9901:9901
     volumes:
       - ./envoy.yaml:/etc/envoy/envoy.yaml
