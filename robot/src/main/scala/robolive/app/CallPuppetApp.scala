@@ -39,6 +39,7 @@ object CallPuppetApp extends App {
     enableUserVideo = enableUserVideo,
     servoControllerType = servoControllerType,
     robotName = robotName,
+    eventListener = () => ()
   )
 
   val kill = new CountDownLatch(1)

@@ -11,7 +11,13 @@ import io.grpc.{ServerBuilder, ServerServiceDefinition}
 import org.slf4j.LoggerFactory
 import robolive.meta.BuildInfo
 import robolive.server
-import robolive.server.{AgentEndpointHandler, ClientEndpointHandler, InfoEndpointHandler, SipChannelEndpointHandler, StorageEndpointHandler}
+import robolive.server.{
+  AgentEndpointHandler,
+  ClientEndpointHandler,
+  InfoEndpointHandler,
+  SipChannelEndpointHandler,
+  StorageEndpointHandler
+}
 import sttp.client.SttpBackend
 import sttp.client.asynchttpclient.WebSocketHandler
 import sttp.client.asynchttpclient.future.AsyncHttpClientFutureBackend
@@ -31,7 +37,7 @@ object RegistryServer extends App {
   val StoragePort = getEnv("REGISTRY_PORT_FOR_STORAGE", "3479").toInt
   val SipChannelPort = getEnv("REGISTRY_PORT_FOR_SIP_CHANNEL", "3480").toInt
   val videoSrcFn: String = getEnv("VIDEO_SRC_FN", "circles")
-  val signallingUri: String = getEnv("SIGNALLING_URI", "rl.arigativa.ru:9031")
+  val signallingUri: String = getEnv("SIGNALLING_URI", "localhost:9031")
   val stunUri: String = getEnv("STUN_URI", "stun://rl.arigativa.ru:8080")
 
   val enableUserVideo: Boolean = sys.env.contains("ENABLE_USER_VIDEO")
@@ -39,20 +45,10 @@ object RegistryServer extends App {
   val servoControllerType: String = getEnv("SERVO_CONTROLLER", default = "PYTHON_SHELL")
   val turnUri: String = getEnv("TURN_URI", "turn:rl.arigativa.ru:8080?transport=tcp")
 
-  val configMap = Map(
-    "videoSrcFn" -> videoSrcFn,
-    "signallingUri" -> signallingUri,
-    "stunUri" -> stunUri,
-    "enableUserVideo" -> enableUserVideo.toString,
-    "servoControllerType" -> servoControllerType,
-    "turnUri" -> turnUri,
-  )
-
   val robotsState = new ConcurrentHashMap[String, server.AgentState]()
+
   val agentEndpoint = {
-    val agentEndpointHandler = new AgentEndpointHandler(
-      agentTable = robotsState,
-    )
+    val agentEndpointHandler = new AgentEndpointHandler(robotsState)
 
     runServer(
       ssd = AgentEndpoint.bindService(agentEndpointHandler, implicitly[ExecutionContext]),
@@ -77,6 +73,15 @@ object RegistryServer extends App {
   }
 
   val storageEndpoint = {
+    val configMap = Map(
+      "videoSrcFn" -> videoSrcFn,
+      "signallingUri" -> signallingUri,
+      "stunUri" -> stunUri,
+      "enableUserVideo" -> enableUserVideo.toString,
+      "servoControllerType" -> servoControllerType,
+      "turnUri" -> turnUri,
+    )
+
     val storageEndpointHandler = new StorageEndpointHandler(configMap)
     runServer(
       ssd = StorageEndpoint.bindService(storageEndpointHandler, implicitly[ExecutionContext]),

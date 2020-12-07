@@ -15,6 +15,7 @@ final class WebRTCController(
   stunServerUrl: String,
   servoController: ServoController,
   enableUserVideo: Boolean,
+  eventListener: WebRTCController.ControllerEventListener
 )(implicit gst: GstManaged.GSTInit.type) {
   import WebRTCController._
 
@@ -70,6 +71,7 @@ final class WebRTCController(
     pipeline.dispose()
     webRTCBin = null
     pipeline = null
+    eventListener.stop()
     logger.debug("State transition to 'WAIT'")
     state = WebRTCControllerPlayState.Wait
   }
@@ -143,7 +145,8 @@ final class WebRTCController(
   }
 
   private def fixSdpForChrome(sdp: String) = {
-    sdp + System.lineSeparator() // probably should be just "\n", because it shouldn't depend on the system where robot is run
+    sdp + System
+      .lineSeparator() // probably should be just "\n", because it shouldn't depend on the system where robot is run
   }
 
   def makeCall(call: ExtendedCall, remoteSdp: SdpMessage)(
@@ -311,5 +314,9 @@ object WebRTCController {
     s"""webrtcbin name=sendrecv bundle-policy=max-bundle stun-server=$stunServerUrl
        | $videoSrc ! queue ! vp8enc deadline=1 ! rtpvp8pay pt=$rtcType !
        | queue ! application/x-rtp,media=video,encoding-name=VP8,payload=$rtcType ! sendrecv.""".stripMargin
+  }
+
+  trait ControllerEventListener {
+    def stop(): Unit
   }
 }

@@ -7,7 +7,6 @@ import org.mjsip.sip.call._
 import org.mjsip.sip.message.SipMessage
 import org.mjsip.sip.provider.{SipProvider, SipProviderListener}
 import org.slf4j.LoggerFactory
-import robolive.gstreamer.GstManaged
 import sdp.SdpMessage
 
 import scala.concurrent.ExecutionContext

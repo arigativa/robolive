@@ -1,12 +1,10 @@
 package robolive.puppet
 
-import java.util.UUID
-
 import org.freedesktop.gstreamer.Version
 import org.slf4j.LoggerFactory
 import robolive.gstreamer.GstManaged
 
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.ExecutionContext
 
 // SOFTWARE CONTROLLER
 final class Puppet(
@@ -17,6 +15,7 @@ final class Puppet(
   stunUri: String,
   enableUserVideo: Boolean,
   servoControllerType: String,
+  eventListener: Puppet.PuppetEventListener,
 )(implicit ec: ExecutionContext) {
   private val logger = LoggerFactory.getLogger(getClass.getName)
 
@@ -33,6 +32,7 @@ final class Puppet(
       stunServerUrl = stunUri,
       servoController = servoController,
       enableUserVideo = enableUserVideo,
+      eventListener = () => eventListener.stop(),
     )
   }
 
@@ -55,5 +55,11 @@ final class Puppet(
 
   def stop(): Unit = { // TODO: stop SIPClient
     controller.dispose()
+  }
+}
+
+object Puppet {
+  trait PuppetEventListener {
+    def stop(): Unit
   }
 }
