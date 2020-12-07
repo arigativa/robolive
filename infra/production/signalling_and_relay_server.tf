@@ -65,7 +65,7 @@ resource "azurerm_virtual_machine" "signalling_and_relay" {
   network_interface_ids = [
     azurerm_network_interface.signalling_and_relay.id
   ]
-  vm_size = "Standard_B1s"
+  vm_size = "Standard_B1ms"
   tags    = {}
   zones   = []
 
