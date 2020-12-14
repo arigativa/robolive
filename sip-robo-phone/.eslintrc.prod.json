@@ -1,0 +1,10 @@
+{
+  "extends": [
+    "./.eslintrc.json"
+  ],
+
+  "rules": {
+    "no-warning-comments": "error",
+    "no-unused-vars": "error"
+  }
+}
