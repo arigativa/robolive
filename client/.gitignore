@@ -1,16 +1,23 @@
-/.cache
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# production
 /build
-*.log
+/storybook-static
 
-# OS generated files
+# misc
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# ENV
-
 .env*.local
+.cache
+.eslintcache
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
