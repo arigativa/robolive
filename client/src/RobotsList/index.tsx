@@ -1,5 +1,15 @@
 import React, { ReactNode } from 'react'
-import { Heading, Text, Box, VStack, Button } from '@chakra-ui/react'
+import {
+  Heading,
+  Text,
+  Box,
+  VStack,
+  Button,
+  Alert,
+  AlertIcon,
+  AlertTitle,
+  AlertDescription
+} from '@chakra-ui/react'
 import Either from 'frctl/Either'
 import RemoteData from 'frctl/RemoteData'
 
@@ -77,6 +87,14 @@ const EmptyAgentList = React.memo(() => (
   <div>No agents found. Please try later.</div>
 ))
 
+const FailedRequestAlert = React.memo(({ children }) => (
+  <Alert status="error">
+    <AlertIcon />
+    <AlertTitle>Request Error!</AlertTitle>
+    <AlertDescription>{children}</AlertDescription>
+  </Alert>
+))
+
 const AgentItem: React.FC<{
   agent: Agent
 }> = React.memo(({ agent }) => (
@@ -104,7 +122,7 @@ export const View: React.FC<{
     {state.robots.cata({
       Loading: () => <SkeletonAgentList />,
 
-      Failure: message => <div>Error: {message}</div>,
+      Failure: message => <FailedRequestAlert>{message}</FailedRequestAlert>,
 
       Succeed: agentList =>
         agentList.length === 0 ? (
