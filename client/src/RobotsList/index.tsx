@@ -1,10 +1,12 @@
-import React from 'react'
+import React, { ReactNode } from 'react'
 import { Heading, Text, Box, VStack, Button } from '@chakra-ui/react'
 import Either from 'frctl/Either'
 import RemoteData from 'frctl/RemoteData'
 
 import { Cmd, Dispatch, caseOf, match } from 'core'
 import { Agent, getAgentList } from 'api'
+import { SkeletonText, SkeletonRect } from 'Skeleton'
+import { repeat } from 'utils'
 
 // S T A T E
 
@@ -45,58 +47,85 @@ export const update = (action: Action, state: State): [State, Cmd<Action>] => {
 
 // V I E W
 
-const ViewEmptyAgentList = React.memo(() => (
-  <div>No agents found. Please try later.</div>
-))
-
 const ViewAgentItem: React.FC<{
-  agent: Agent
-}> = React.memo(({ agent }) => (
+  name: ReactNode
+  status: ReactNode
+}> = ({ name, status, children }) => (
   <Box
     p="5"
+    width="100%"
     shadow="md"
     borderWidth="1"
     borderRadius="md"
     wordBreak="break-all"
   >
-    <Heading fontSize="xl">{agent.name}</Heading>
+    <Heading fontSize="xl">{name}</Heading>
 
     <Text mt="2" size="sm">
-      {agent.status}
+      {status}
     </Text>
 
-    <Button mt="3" size="sm" bg="blue.100">
+    <Box mt="3">{children}</Box>
+  </Box>
+)
+
+const ViewAgentList: React.FC = ({ children }) => (
+  <VStack align="start">{children}</VStack>
+)
+
+const EmptyAgentList = React.memo(() => (
+  <div>No agents found. Please try later.</div>
+))
+
+const AgentItem: React.FC<{
+  agent: Agent
+}> = React.memo(({ agent }) => (
+  <ViewAgentItem name={agent.name} status={agent.status}>
+    <Button size="sm" bg="blue.100">
       Select
     </Button>
-  </Box>
+  </ViewAgentItem>
 ))
 
-const ViewAgentList: React.FC<{
+const AgentList: React.FC<{
   agentList: Array<Agent>
 }> = React.memo(({ agentList }) => (
-  <VStack align="start">
+  <ViewAgentList>
     {agentList.map(agent => (
-      <ViewAgentItem key={agent.id} agent={agent} />
+      <AgentItem key={agent.id} agent={agent} />
     ))}
-  </VStack>
+  </ViewAgentList>
 ))
-
 export const View: React.FC<{
   state: State
   dispatch: Dispatch<Action>
 }> = React.memo(({ state, dispatch }) => (
   <Box p="4">
     {state.robots.cata({
-      Loading: () => <div>Loading</div>,
+      Loading: () => <SkeletonAgentList />,
 
       Failure: message => <div>Error: {message}</div>,
 
       Succeed: agentList =>
         agentList.length === 0 ? (
-          <ViewEmptyAgentList />
+          <EmptyAgentList />
         ) : (
-          <ViewAgentList agentList={agentList} />
+          <AgentList agentList={agentList} />
         )
     })}
   </Box>
+))
+
+// S K E L E T O N
+
+const SkeletonAgentItem: React.FC = React.memo(() => (
+  <ViewAgentItem name={<SkeletonText />} status={<SkeletonText />}>
+    <SkeletonRect width="66px" height="32px" rounded="6px" />
+  </ViewAgentItem>
+))
+
+const SkeletonAgentList: React.FC<{
+  count?: number
+}> = React.memo(({ count = 3 }) => (
+  <ViewAgentList>{repeat(count, <SkeletonAgentItem />)}</ViewAgentList>
 ))

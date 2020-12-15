@@ -71,12 +71,17 @@ export const SkeletonText: React.FC<{
 type CssBlockProps = {
   inline?: boolean
   circle?: boolean
+  rounded?: number | string
 }
 
-const cssBlock = ({ inline, circle }: CssBlockProps): string => css`
+const cssBlock = ({
+  inline,
+  circle,
+  rounded = 3
+}: CssBlockProps): string => css`
   display: ${inline ? 'inline-block' : 'block'};
   font-size: 0;
-  border-radius: ${circle ? '50%' : '3px'};
+  border-radius: ${circle ? '50%' : pxOrLen(rounded)};
   line-height: 1;
   vertical-align: top;
   user-select: none;
@@ -95,9 +100,10 @@ export const SkeletonRect: React.FC<{
   inline?: boolean
   width: number | string
   height: number | string
-}> = ({ className, inline, width, height }) => (
+  rounded?: number | string
+}> = ({ className, inline, width, height, rounded }) => (
   <div
-    className={cx(background, cssBlock({ inline }), className)}
+    className={cx(background, cssBlock({ inline, rounded }), className)}
     style={{
       width: pxOrLen(width),
       height: pxOrLen(height)
