@@ -1,4 +1,5 @@
 import React from 'react'
+import { Heading, Text, Box, VStack, Button } from '@chakra-ui/react'
 import Either from 'frctl/Either'
 import RemoteData from 'frctl/RemoteData'
 
@@ -48,30 +49,54 @@ const ViewEmptyAgentList = React.memo(() => (
   <div>No agents found. Please try later.</div>
 ))
 
+const ViewAgentItem: React.FC<{
+  agent: Agent
+}> = React.memo(({ agent }) => (
+  <Box
+    p="5"
+    shadow="md"
+    borderWidth="1"
+    borderRadius="md"
+    wordBreak="break-all"
+  >
+    <Heading fontSize="xl">{agent.name}</Heading>
+
+    <Text mt="2" size="sm">
+      {agent.status}
+    </Text>
+
+    <Button mt="3" size="sm" bg="blue.100">
+      Select
+    </Button>
+  </Box>
+))
+
 const ViewAgentList: React.FC<{
   agentList: Array<Agent>
 }> = React.memo(({ agentList }) => (
-  <ul>
+  <VStack align="start">
     {agentList.map(agent => (
-      <li key={agent.id}>{agent.name}</li>
+      <ViewAgentItem key={agent.id} agent={agent} />
     ))}
-  </ul>
+  </VStack>
 ))
 
 export const View: React.FC<{
   state: State
   dispatch: Dispatch<Action>
-}> = React.memo(({ state, dispatch }) => {
-  return state.robots.cata({
-    Loading: () => <div>Loading</div>,
+}> = React.memo(({ state, dispatch }) => (
+  <Box p="4">
+    {state.robots.cata({
+      Loading: () => <div>Loading</div>,
 
-    Failure: message => <div>Error: {message}</div>,
+      Failure: message => <div>Error: {message}</div>,
 
-    Succeed: agentList =>
-      agentList.length === 0 ? (
-        <ViewEmptyAgentList />
-      ) : (
-        <ViewAgentList agentList={agentList} />
-      )
-  })
-})
+      Succeed: agentList =>
+        agentList.length === 0 ? (
+          <ViewEmptyAgentList />
+        ) : (
+          <ViewAgentList agentList={agentList} />
+        )
+    })}
+  </Box>
+))
