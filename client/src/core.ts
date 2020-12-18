@@ -1,10 +1,51 @@
 import {
-  Action,
+  Action as ReduxAction,
   PreloadedState,
   StoreEnhancer,
   StoreCreator,
   Store
 } from 'redux'
+
+export interface ActionOf<A extends Array<unknown>, R> {
+  update(...args: A): R
+}
+
+class ActionWithPayload<T, A extends Array<unknown>, R>
+  implements ActionOf<A, R> {
+  public constructor(
+    private readonly payload: T,
+    private readonly handler: (value: T, ...args: A) => R
+  ) {}
+
+  public update(...args: A): R {
+    return this.handler(this.payload, ...args)
+  }
+}
+
+export function ActionOf<T, A extends ActionOf<Array<unknown>, unknown>>(
+  handler: (
+    payload: T,
+    ...args: Parameters<A['update']>
+  ) => ReturnType<A['update']>
+): (payload: T) => A
+export function ActionOf<A extends ActionOf<Array<unknown>, unknown>>(
+  handler: A['update']
+): () => A
+export function ActionOf<A extends Array<unknown>, R>(
+  handler: (...args: A) => R
+): () => ActionOf<A, R>
+export function ActionOf<T, A extends Array<unknown>, R>(
+  handler: (payload: T, ...args: A) => R
+): (payload: T) => ActionOf<A, R>
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export function ActionOf<T, A extends Array<unknown>, R>(
+  handler: (payload: T, ...args: A) => R
+) {
+  return (payload?: T) =>
+    typeof payload === 'undefined'
+      ? { update: handler }
+      : new ActionWithPayload(payload, handler)
+}
 
 export type Case<T extends string = string, P = never> = {
   type: T
@@ -301,22 +342,22 @@ type SubState<A> = Map<
  */
 export type Dispatch<A> = (action: A) => void
 
-type InnerAction<A extends Action> =
+type InnerAction<A> =
   | { type: 'Single'; payload: A }
   | { type: 'Batch'; payload: Array<A> }
 
-const BatchAction = <A extends Action>(payload: Array<A>): InnerAction<A> => {
+const BatchAction = <A>(payload: Array<A>): InnerAction<A> => {
   return payload.length === 1
     ? SingleAction(payload[0])
     : { type: 'Batch', payload }
 }
 
-const SingleAction = <A extends Action>(payload: A): InnerAction<A> => ({
+const SingleAction = <A>(payload: A): InnerAction<A> => ({
   type: 'Single',
   payload
 })
 
-const innerUpdate = <S, A extends Action>(
+const innerUpdate = <S, A>(
   innerAction: InnerAction<A>,
   state: S,
   update: (action: A, state_: S) => [S, Cmd<A>]
@@ -388,7 +429,7 @@ const innerUpdate = <S, A extends Action>(
  *   }
  * })
  */
-export const createStoreWithEffects = <S, A extends Action, Ext, StateExt>(
+export const createStoreWithEffects = <S, A extends ReduxAction, Ext, StateExt>(
   createStore: StoreCreator
 ) => (
   [initialState, initialCmd]: [S, Cmd<A>],

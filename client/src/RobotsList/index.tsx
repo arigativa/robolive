@@ -13,10 +13,10 @@ import {
 import Either from 'frctl/Either'
 import RemoteData from 'frctl/RemoteData'
 
-import { Cmd, Dispatch, caseOf, match } from 'core'
+import { ActionOf, Cmd, Dispatch } from 'core'
 import { Agent, getAgentList } from 'api'
 import { SkeletonText, SkeletonRect } from 'Skeleton'
-import { repeat } from 'utils'
+import { range } from 'utils'
 
 // S T A T E
 
@@ -37,23 +37,17 @@ export const init: [State, Cmd<Action>] = [
 
 // U P D A T E
 
-export type Action = ReturnType<typeof LoadRobots>
+export type Action = ActionOf<[State], [State, Cmd<Action>]>
 
-const LoadRobots = caseOf<'LoadRobots', Either<string, Array<Agent>>>(
-  'LoadRobots'
+const LoadRobots = ActionOf<Either<string, Array<Agent>>, Action>(
+  (result, state) => [
+    {
+      ...state,
+      robots: RemoteData.fromEither(result)
+    },
+    Cmd.none
+  ]
 )
-
-export const update = (action: Action, state: State): [State, Cmd<Action>] => {
-  return match(action, {
-    LoadRobots: result => [
-      {
-        ...state,
-        robots: RemoteData.fromEither(result)
-      },
-      Cmd.none
-    ]
-  })
-}
 
 // V I E W
 
@@ -114,6 +108,7 @@ const AgentList: React.FC<{
     ))}
   </ViewAgentList>
 ))
+
 export const View: React.FC<{
   state: State
   dispatch: Dispatch<Action>
@@ -145,5 +140,9 @@ const SkeletonAgentItem: React.FC = React.memo(() => (
 const SkeletonAgentList: React.FC<{
   count?: number
 }> = React.memo(({ count = 3 }) => (
-  <ViewAgentList>{repeat(count, <SkeletonAgentItem />)}</ViewAgentList>
+  <ViewAgentList>
+    {range(count).map(index => (
+      <SkeletonAgentItem key={index} />
+    ))}
+  </ViewAgentList>
 ))

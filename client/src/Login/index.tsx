@@ -10,7 +10,7 @@ import {
   Button
 } from '@chakra-ui/react'
 
-import { Dispatch, caseOf, match } from 'core'
+import { ActionOf, Dispatch, caseOf } from 'core'
 import { hasWhitespaces } from 'utils'
 
 // S T A T E
@@ -27,44 +27,37 @@ export const initial: State = {
 
 // U P D A T E
 
-export type Action = ReturnType<typeof ChangeUsername> | typeof SignIn
+export type Action = ActionOf<[State], Stage>
 
-const SignIn = caseOf('SignIn')()
-const ChangeUsername = caseOf<'ChangeUsername', string>('ChangeUsername')
+const SignIn = ActionOf<Action>(state => {
+  if (hasWhitespaces(state.username)) {
+    return Updated({
+      ...state,
+      error: Maybe.Just('Username must have no white spaces')
+    })
+  }
+
+  if (state.username.length === 0) {
+    return Updated({
+      ...state,
+      error: Maybe.Just('Username must be not empty')
+    })
+  }
+
+  return Registered(state.username)
+})()
+
+const ChangeUsername = ActionOf<string, Action>((username, state) =>
+  Updated({
+    ...state,
+    username
+  })
+)
 
 export type Stage = ReturnType<typeof Updated> | ReturnType<typeof Registered>
 
 const Updated = caseOf<'Updated', State>('Updated')
 const Registered = caseOf<'Registered', string>('Registered')
-
-export const update = (action: Action, state: State): Stage => {
-  return match(action, {
-    ChangeUsername: username => {
-      return Updated({
-        ...state,
-        username
-      })
-    },
-
-    SignIn: () => {
-      if (hasWhitespaces(state.username)) {
-        return Updated({
-          ...state,
-          error: Maybe.Just('Username must have no white spaces')
-        })
-      }
-
-      if (state.username.length === 0) {
-        return Updated({
-          ...state,
-          error: Maybe.Just('Username must be not empty')
-        })
-      }
-
-      return Registered(state.username)
-    }
-  })
-}
 
 // V I E W
 

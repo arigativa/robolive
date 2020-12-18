@@ -1,6 +1,6 @@
 import React from 'react'
 
-import { Dispatch, Cmd, Sub, caseOf, match } from 'core'
+import { ActionOf, Dispatch, Cmd, Sub, caseOf, match } from 'core'
 import * as Login from 'Login'
 import * as RobotsList from 'RobotsList'
 
@@ -24,54 +24,45 @@ export const initial: State = LoginScreen(Login.initial)
 
 // U P D A T E
 
-export type Action =
-  | ReturnType<typeof LoginAction>
-  | ReturnType<typeof RobotsListAction>
+export type Action = ActionOf<[State], [State, Cmd<Action>]>
 
-const LoginAction = caseOf<'LoginAction', Login.Action>('LoginAction')
-const RobotsListAction = caseOf<'RobotsListAction', RobotsList.Action>(
-  'RobotsListAction'
-)
+const LoginAction = ActionOf<Login.Action, Action>((action, state) =>
+  match<State, [State, Cmd<Action>]>(state, {
+    LoginScreen: login =>
+      match(action.update(login), {
+        Updated: nextLogin => [LoginScreen(nextLogin), Cmd.none],
 
-export const update = (action: Action, state: State): [State, Cmd<Action>] => {
-  return match(action, {
-    LoginAction: subAction =>
-      match<State, [State, Cmd<Action>]>(state, {
-        LoginScreen: login =>
-          match(Login.update(subAction, login), {
-            Updated: nextLogin => [LoginScreen(nextLogin), Cmd.none],
-
-            Registered: username => {
-              const [robotsList, cmd] = RobotsList.init
-
-              return [
-                RobotsListScreen({ username, robotsList }),
-                cmd.map(RobotsListAction)
-              ]
-            }
-          }),
-
-        _: () => [state, Cmd.none]
-      }),
-
-    RobotsListAction: subAction =>
-      match<State, [State, Cmd<Action>]>(state, {
-        RobotsListScreen: ({ username, robotsList }) => {
-          const [nextRobotsList, cmd] = RobotsList.update(subAction, robotsList)
+        Registered: username => {
+          const [robotsList, cmd] = RobotsList.init
 
           return [
-            RobotsListScreen({
-              username,
-              robotsList: nextRobotsList
-            }),
+            RobotsListScreen({ username, robotsList }),
             cmd.map(RobotsListAction)
           ]
-        },
+        }
+      }),
 
-        _: () => [state, Cmd.none]
-      })
+    _: () => [state, Cmd.none]
   })
-}
+)
+
+const RobotsListAction = ActionOf<RobotsList.Action, Action>((action, state) =>
+  match<State, [State, Cmd<Action>]>(state, {
+    RobotsListScreen: ({ username, robotsList }): [State, Cmd<Action>] => {
+      const [nextRobotsList, cmd] = action.update(robotsList)
+
+      return [
+        RobotsListScreen({
+          username,
+          robotsList: nextRobotsList
+        }),
+        cmd.map(RobotsListAction)
+      ]
+    },
+
+    _: () => [state, Cmd.none]
+  })
+)
 
 // S U B S C R I P T I O N S
 
