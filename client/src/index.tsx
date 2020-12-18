@@ -11,11 +11,11 @@ import { Cmd, Sub } from 'core'
 import * as Main from 'Main'
 
 interface Action {
-  type: 'root'
-  payload: Main.Action
+  type: '_'
+  _: Main.Action
 }
 
-const root = (payload: Main.Action): Action => ({ type: 'root', payload })
+const root = (_: Main.Action): Action => ({ type: '_', _ })
 
 const init: [Main.State, Cmd<Action>] = [Main.initial, Cmd.none]
 
@@ -23,7 +23,7 @@ const update = (
   action: Action,
   state: Main.State
 ): [Main.State, Cmd<Action>] => {
-  const [nextState, cmd] = action.payload.update(state)
+  const [nextState, cmd] = action._.update(state)
 
   return [nextState, cmd.map(root)]
 }

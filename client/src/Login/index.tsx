@@ -10,8 +10,8 @@ import {
   Button
 } from '@chakra-ui/react'
 
-import { ActionOf, Dispatch, caseOf } from 'core'
-import { hasWhitespaces } from 'utils'
+import { Dispatch } from 'core'
+import { ActionOf, caseOf, hasWhitespaces } from 'utils'
 
 // S T A T E
 

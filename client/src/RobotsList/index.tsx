@@ -13,10 +13,10 @@ import {
 import Either from 'frctl/Either'
 import RemoteData from 'frctl/RemoteData'
 
-import { ActionOf, Cmd, Dispatch } from 'core'
+import { Cmd, Dispatch } from 'core'
 import { Agent, getAgentList } from 'api'
 import { SkeletonText, SkeletonRect } from 'Skeleton'
-import { range } from 'utils'
+import { ActionOf, range } from 'utils'
 
 // S T A T E
 

@@ -1,6 +1,7 @@
 import React from 'react'
 
-import { ActionOf, Dispatch, Cmd, Sub, caseOf, match } from 'core'
+import { Dispatch, Cmd, Sub } from 'core'
+import { ActionOf, caseOf, match } from 'utils'
 import * as Login from 'Login'
 import * as RobotsList from 'RobotsList'
 

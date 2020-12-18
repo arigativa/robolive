@@ -3,7 +3,8 @@ import Maybe, { Nothing, Just } from 'frctl/Maybe'
 import Decode from 'frctl/Json/Decode'
 import Encode from 'frctl/Json/Encode'
 
-import { Cmd, caseOf } from 'core'
+import { Cmd } from 'core'
+import { caseOf } from 'utils'
 
 /**
  * Adapts frctl/Http to use with redux
