@@ -27,7 +27,13 @@ type Join =
 
 const NotJoin = caseOf('NotJoin')()
 const Joining = caseOf<'Joining', string>('Joining')
-const JoinFail = caseOf<'JoinFail', string>('JoinFail')
+const JoinFail = caseOf<
+  'JoinFail',
+  {
+    robotId: string
+    message: string
+  }
+>('JoinFail')
 
 export type State = {
   robots: RemoteData<string, Array<Agent>>
@@ -65,20 +71,26 @@ const SelectRobot = ActionOf<string, Action>((robotId, username, state) => [
   },
   Cmd.create(done => {
     joinRoom({ username, robotId }).then(result =>
-      done(SelectRobotDone(result))
+      done(SelectRobotDone(result.mapLeft(message => ({ robotId, message }))))
     )
   })
 ])
 
 const SelectRobotDone = ActionOf<
-  Either<string, Array<[string, string]>>,
+  Either<
+    {
+      robotId: string
+      message: string
+    },
+    Array<[string, string]>
+  >,
   Action
 >((result, _, state) => {
   return [
     result.fold(
-      message => ({
+      error => ({
         ...state,
-        join: JoinFail(message)
+        join: JoinFail(error)
       }),
       () => state
     ),
@@ -131,23 +143,35 @@ const AgentItem: React.FC<{
   agent: Agent
   dispatch: Dispatch<Action>
 }> = React.memo(({ join, agent, dispatch }) => {
-  const [joining, error]: [boolean, null | string] = match(join, {
-    NotJoin: () => [false, null],
-    Joining: () => [true, null],
-    JoinFail: message => [false, message]
-  })
+  const [disabled, loading, error]: [boolean, boolean, null | string] = match(
+    join,
+    {
+      NotJoin: () => [false, false, null],
+      Joining: robotId => [true, agent.id === robotId, null],
+      JoinFail: ({ robotId, message }) => [
+        false,
+        false,
+        agent.id === robotId ? message : null
+      ]
+    }
+  )
 
   return (
     <ViewAgentItem name={agent.name} status={agent.status}>
-      {error && <ErrorAlert title="Joining fail">{error}</ErrorAlert>}
+      {error && (
+        <Box mb="2">
+          <ErrorAlert title="Joining Failure">{error}</ErrorAlert>
+        </Box>
+      )}
 
       <Button
         size="sm"
         bg="blue.100"
-        disabled={joining}
+        isDisabled={disabled}
+        isLoading={loading}
         onClick={() => dispatch(SelectRobot(agent.id))}
       >
-        Select
+        {error ? 'Try again' : 'Select'}
       </Button>
     </ViewAgentItem>
   )

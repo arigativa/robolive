@@ -1,9 +1,10 @@
 import React from 'react'
 import { action } from '@storybook/addon-actions'
-import { text, number } from '@storybook/addon-knobs'
+import { text, number, radios } from '@storybook/addon-knobs'
 import RemoteData from 'frctl/RemoteData'
 
 import { Agent } from 'api'
+import { range } from 'utils'
 import * as RobotsList from '.'
 
 export default {
@@ -42,9 +43,12 @@ export const EmptyAgentList: React.FC = () => (
   />
 )
 
+const createAgentId = (index: number): string => `id_${index}`
+const createAgentName = (index: number): string => `Agent #${index}`
+
 const createAgent = (index: number): Agent => ({
-  id: `id_${index}`,
-  name: `Agent #${index}`,
+  id: createAgentId(index),
+  name: createAgentName(index),
   status: `Status of Agent #${index}`
 })
 
@@ -60,11 +64,58 @@ export const AgentList: React.FC = () => {
     <RobotsList.View
       state={{
         ...initialState,
-        robots: RemoteData.Succeed(
-          Array(N)
-            .fill(0)
-            .map((_, index) => createAgent(index))
-        )
+        robots: RemoteData.Succeed(range(N).map(index => createAgent(index)))
+      }}
+      dispatch={action('dispatch')}
+    />
+  )
+}
+
+const agentsRadios = (title: string, N: number, initial: number): string => {
+  return radios(
+    title,
+    range(N).reduce(
+      (acc, index) => ({
+        ...acc,
+        [createAgentName(index)]: createAgentId(index)
+      }),
+      {}
+    ),
+    createAgentId(initial)
+  )
+}
+
+export const Joining: React.FC = () => {
+  const robotId = agentsRadios('Id of joining Robot', 3, 1)
+
+  return (
+    <RobotsList.View
+      state={{
+        ...initialState,
+        join: { type: 'Joining', payload: robotId },
+        robots: RemoteData.Succeed(range(3).map(index => createAgent(index)))
+      }}
+      dispatch={action('dispatch')}
+    />
+  )
+}
+
+export const JoinFail: React.FC = () => {
+  const robotId = agentsRadios('Id of joining Robot', 3, 1)
+  const message = text(
+    'Failure message',
+    'Method not found: ClientEndpoint/Join'
+  )
+
+  return (
+    <RobotsList.View
+      state={{
+        ...initialState,
+        join: {
+          type: 'JoinFail',
+          payload: { robotId, message }
+        },
+        robots: RemoteData.Succeed(range(3).map(index => createAgent(index)))
       }}
       dispatch={action('dispatch')}
     />
