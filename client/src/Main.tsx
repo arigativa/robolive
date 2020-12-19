@@ -50,7 +50,7 @@ const LoginAction = ActionOf<Login.Action, Action>((action, state) =>
 const RobotsListAction = ActionOf<RobotsList.Action, Action>((action, state) =>
   match<State, [State, Cmd<Action>]>(state, {
     RobotsListScreen: ({ username, robotsList }): [State, Cmd<Action>] => {
-      const [nextRobotsList, cmd] = action.update(robotsList)
+      const [nextRobotsList, cmd] = action.update(username, robotsList)
 
       return [
         RobotsListScreen({

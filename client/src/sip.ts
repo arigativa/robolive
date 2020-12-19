@@ -35,13 +35,14 @@ export type RegisterOptions = {
   protocol: WebSocketProtocol
   server: string
   port?: number
-  register: boolean
+  register?: boolean
   username: string
   password?: string
-  onRegistration(result: Either<string, UA>): void
 }
 
-export const register = (options: RegisterOptions): void => {
+export const register = (
+  options: RegisterOptions
+): Promise<Either<string, UA>> => {
   const webSocketUrl = buildWebSocketUrl(
     options.protocol,
     options.server,
@@ -60,17 +61,19 @@ export const register = (options: RegisterOptions): void => {
     uaConfig.password = options.password
   }
 
-  const ua = new UA(uaConfig)
+  return new Promise(done => {
+    const ua = new UA(uaConfig)
 
-  ua.on('registrationFailed', ({ response }) => {
-    options.onRegistration(Either.Left(response.reason_phrase))
+    ua.on('registrationFailed', ({ response }) => {
+      done(Either.Left(response.reason_phrase))
 
-    ua.stop()
+      ua.stop()
+    })
+
+    ua.on('registered', () => {
+      done(Either.Right(ua))
+    })
+
+    ua.start()
   })
-
-  ua.on('registered', () => {
-    options.onRegistration(Either.Right(ua))
-  })
-
-  ua.start()
 }
