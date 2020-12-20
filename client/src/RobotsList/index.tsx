@@ -6,6 +6,7 @@ import {
   VStack,
   Button,
   Alert,
+  AlertStatus,
   AlertIcon,
   AlertTitle,
   AlertDescription
@@ -127,13 +128,17 @@ const ViewAgentList: React.FC = ({ children }) => (
 )
 
 const EmptyAgentList = React.memo(() => (
-  <div>No agents found. Please try later.</div>
+  <AlertPanel status="info">No agents found. Please try later.</AlertPanel>
 ))
 
-const ErrorAlert: React.FC<{ title: string }> = ({ title, children }) => (
-  <Alert status="error">
+const AlertPanel: React.FC<{ status: AlertStatus; title?: string }> = ({
+  status,
+  title,
+  children
+}) => (
+  <Alert status={status}>
     <AlertIcon />
-    <AlertTitle>{title}</AlertTitle>
+    {title && <AlertTitle>{title}</AlertTitle>}
     <AlertDescription>{children}</AlertDescription>
   </Alert>
 )
@@ -160,7 +165,9 @@ const AgentItem: React.FC<{
     <ViewAgentItem name={agent.name} status={agent.status}>
       {error && (
         <Box mb="2">
-          <ErrorAlert title="Joining Failure">{error}</ErrorAlert>
+          <AlertPanel status="error" title="Joining Failure">
+            {error}
+          </AlertPanel>
         </Box>
       )}
 
@@ -198,7 +205,9 @@ export const View: React.FC<{
       Loading: () => <SkeletonAgentList />,
 
       Failure: message => (
-        <ErrorAlert title="Request Error!">{message}</ErrorAlert>
+        <AlertPanel status="error" title="Request Error!">
+          {message}
+        </AlertPanel>
       ),
 
       Succeed: agentList =>
