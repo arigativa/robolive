@@ -4,7 +4,6 @@ import { InfoEndpointClient } from './generated/Info_pb_service'
 import { AgentListRequest, AgentView } from './generated/Info_pb'
 import { ClientEndpointClient } from './generated/Client_pb_service'
 import { JoinRequest } from './generated/Client_pb'
-import { BrowserHeaders } from 'browser-headers'
 
 const ENDPOINT = 'https://rl.arigativa.ru:10477'
 
@@ -30,28 +29,24 @@ const agentViewToAgent = (agentView: AgentView.AsObject): null | Agent => {
 
 export const getAgentList = (): Promise<Either<string, Array<Agent>>> => {
   return new Promise(done => {
-    infoClient.agentList(
-      new AgentListRequest(),
-      new BrowserHeaders(),
-      (error, response) => {
-        if (error) {
-          done(Either.Left(error.message))
-        }
-
-        if (response) {
-          const agentList = response
-            .getAgentlistList()
-            .map(agent => agentViewToAgent(agent.toObject()))
-            .filter((agent): agent is Agent => agent != null)
-
-          done(Either.Right(agentList))
-        }
+    infoClient.agentList(new AgentListRequest(), (error, response) => {
+      if (error) {
+        done(Either.Left(error.message))
       }
-    )
+
+      if (response) {
+        const agentList = response
+          .getAgentlistList()
+          .map(agent => agentViewToAgent(agent.toObject()))
+          .filter((agent): agent is Agent => agent != null)
+
+        done(Either.Right(agentList))
+      }
+    })
   })
 }
 
-const clientClient = new ClientEndpointClient(ENDPOINT)
+const clientClient = new ClientEndpointClient('http://rl.arigativa.ru:10478')
 
 export const joinRoom = (options: {
   username: string
@@ -63,7 +58,7 @@ export const joinRoom = (options: {
     req.setName(options.username)
     req.setTargetid(options.robotId)
 
-    clientClient.join(req, new BrowserHeaders(), (error, response) => {
+    clientClient.join(req, (error, response) => {
       if (error) {
         done(Either.Left(error.message))
       }
