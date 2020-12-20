@@ -1,0 +1,65 @@
+- name: Create frontend group
+  group: name={{ frontend_group }}
+  tags:
+    - frontend
+
+- name: Create frontend user
+  user: name={{ frontend_user }} group={{ frontend_group }}
+  tags:
+    - frontend
+
+- name: Ensure package directory
+  file:
+    path: "{{ robolive_dir }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  tags:
+    - frontend
+
+- name: Ensure package directory
+  file:
+    path: "{{ frontend_package_dir }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  tags:
+    - frontend
+
+- name: Copy frontend package
+  copy:
+    src: "{{ frontend_package }}"
+    dest: "{{ frontend_package_local }}"
+    owner: root
+    group: root
+  tags:
+    - frontend
+  register: package_copy_result
+
+- name: Extract frontend
+  unarchive:
+    src: "{{ frontend_package_local }}"
+    dest: "{{ frontend_package_dir }}"
+    remote_src: yes
+    owner: root
+    group: root
+  when: package_copy_result.changed
+  notify:
+    - Start Frontend
+  tags:
+    - frontend
+#
+## Service definition
+#
+#- name: Copy systemd service file to server
+#  template:
+#    src: robolive-registry.service
+#    dest: /etc/systemd/system
+#    owner: root
+#    group: root
+#  notify:
+#    - Start Registry
+#  tags:
+#    - registry

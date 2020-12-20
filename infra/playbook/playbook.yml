@@ -12,5 +12,6 @@
     - { role: relay, tags: [ relay ] }
     - { role: signalling, tags: [ signalling ] }
     - { role: registry, tags: [ registry ] }
+    - { role: frontend, tags: [ frontend ] }
     - { role: robolive_team, tags: [ robolive_team ] }
     - { role: envoy, tags: [ envoy ]}
