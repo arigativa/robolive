@@ -103,7 +103,12 @@ jobs:
       - uses: "finnp/create-file-action@master"
         env:
           FILE_NAME: "${{ github.workspace }}/ansible-variables.json"
-          FILE_DATA: "{\"signalling_kamailio_engine_package\":\"${{ github.workspace }}/engine.tar.gz\",\"registry_package\":\"${{ github.workspace }}/registry.zip\"}"
+          FILE_DATA: >-
+            {
+              "signalling_kamailio_engine_package": "${{ github.workspace }}/engine.tar.gz",
+              "registry_package": "${{ github.workspace }}/registry.zip",
+              "frontend_package": "${{ github.workspace }}/webclient.tar.gz"
+            }
 
       - name: Check Ansible playbook
         run: ansible-playbook -i inventory/production -e '@${{ github.workspace }}/ansible-variables.json' playbook.yml -C -vv
