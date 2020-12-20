@@ -121,9 +121,9 @@ jobs:
         run: "ls -lah ${{ github.workspace }}"
 
       - name: Check Ansible playbook
-        run: ansible-playbook -i inventory/production -e '@${{ github.workspace }}/ansible-variables.json' playbook.yml -C -vv
+        run: ansible-playbook -i inventory/production -e '@${{ github.workspace }}/ansible-variables.json' playbook.yml -C -vvv
 
       - name: Run Ansible playbook
         if: github.ref == 'refs/heads/master' || github.event_name == 'release'
-        run: ansible-playbook -i inventory/production -e '@${{ github.workspace }}/ansible-variables.json' playbook.yml -vv
+        run: ansible-playbook -i inventory/production -e '@${{ github.workspace }}/ansible-variables.json' playbook.yml -vvv
 
