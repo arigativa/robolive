@@ -1,7 +1,7 @@
 frontend_user: rl_registry
 frontend_group: rl_registry
 robolive_dir: /opt/robolive
-frontend_package_dir: /opt/robolive/registry
+frontend_package_dir: /opt/robolive/frontend
 frontend_package: webclient.tar.gz
 frontend_package_local: /opt/robolive/webclient.tar.gz
 

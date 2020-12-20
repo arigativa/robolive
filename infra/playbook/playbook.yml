@@ -3,7 +3,7 @@
   become: yes
   become_user: root
   roles:
-    #- { role: geerlingguy.nginx, tags: nginx }
+    - { role: geerlingguy.nginx, tags: [ nginx ] }
     - role: geerlingguy.java
       vars:
         java_packages:
@@ -15,3 +15,17 @@
     - { role: frontend, tags: [ frontend ] }
     - { role: robolive_team, tags: [ robolive_team ] }
     - { role: envoy, tags: [ envoy ]}
+  vars:
+    nginx_vhosts:
+      - listen: "443 ssl http2"
+        server_name: "rl.arigativa.ru"
+        root: "/opt/robolive/frontend"
+        index: "index.html"
+        state: "present"
+        extra_parameters: |
+          location /sip/ {
+              root /opt/robolive/frontend-sip;
+          }
+          ssl_certificate     "/etc/letsencrypt/live/rl.arigativa.ru/cert.pem";
+          ssl_certificate_key "/etc/letsencrypt/live/rl.arigativa.ru/privkey.pem";
+          ssl_protocols       TLSv1.1 TLSv1.2;

@@ -1,13 +1,3 @@
-- name: Create frontend group
-  group: name={{ frontend_group }}
-  tags:
-    - frontend
-
-- name: Create frontend user
-  user: name={{ frontend_user }} group={{ frontend_group }}
-  tags:
-    - frontend
-
 - name: Ensure package directory
   file:
     path: "{{ robolive_dir }}"
@@ -46,20 +36,5 @@
     owner: root
     group: root
   when: package_copy_result.changed
-  notify:
-    - Start Frontend
   tags:
     - frontend
-#
-## Service definition
-#
-#- name: Copy systemd service file to server
-#  template:
-#    src: robolive-registry.service
-#    dest: /etc/systemd/system
-#    owner: root
-#    group: root
-#  notify:
-#    - Start Registry
-#  tags:
-#    - registry

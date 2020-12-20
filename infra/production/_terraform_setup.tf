@@ -7,17 +7,31 @@ terraform {
       name = "production"
     }
   }
+
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 2.13"
+    }
+
+    github = {
+      source  = "hashicorp/github"
+      version = "~> 2.8"
+    }
+
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 3.0.0"
+    }
+  }
 }
 
 provider "azurerm" {
-  version                     = "~> 2.13"
   skip_provider_registration  = true
   skip_credentials_validation = true
-  features {}
 }
 
 provider "github" {
-  version      = "~> 2.8"
   organization = "arigativa"
 }
 
