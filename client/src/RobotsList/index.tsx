@@ -55,6 +55,8 @@ export const init: [State, Cmd<Action>] = [
 
 export type Action = ActionOf<[string, State], [State, Cmd<Action>]>
 
+const ReInit = ActionOf<Action>((_, __) => init)()
+
 const LoadRobots = ActionOf<Either<string, Array<Agent>>, Action>(
   (result, _, state) => [
     {
@@ -127,8 +129,20 @@ const ViewAgentList: React.FC = ({ children }) => (
   <VStack align="start">{children}</VStack>
 )
 
-const EmptyAgentList = React.memo(() => (
-  <AlertPanel status="info">No agents found. Please try later.</AlertPanel>
+const EmptyAgentList: React.FC<{
+  dispatch: Dispatch<Action>
+}> = React.memo(({ dispatch }) => (
+  <AlertPanel status="info">
+    No agents found. Please try later or{' '}
+    <Button
+      verticalAlign="baseline"
+      variant="link"
+      colorScheme="teal"
+      onClick={() => dispatch(ReInit)}
+    >
+      retry now
+    </Button>
+  </AlertPanel>
 ))
 
 const AlertPanel: React.FC<{ status: AlertStatus; title?: string }> = ({
@@ -173,7 +187,7 @@ const AgentItem: React.FC<{
 
       <Button
         size="sm"
-        bg="blue.100"
+        colorScheme="teal"
         isDisabled={disabled}
         isLoading={loading}
         onClick={() => dispatch(SelectRobot(agent.id))}
@@ -212,7 +226,7 @@ export const View: React.FC<{
 
       Succeed: agentList =>
         agentList.length === 0 ? (
-          <EmptyAgentList />
+          <EmptyAgentList dispatch={dispatch} />
         ) : (
           <AgentList
             join={state.join}
