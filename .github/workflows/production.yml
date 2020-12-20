@@ -100,6 +100,16 @@ jobs:
           version: ${{ steps.determine_release_id.outputs.result }}
           token: ${{ secrets.RELEASES_GITHUB_TOKEN }}
 
+      - uses: dsaltares/fetch-gh-release-asset@aa37ae5c44d3c9820bc12fe675e8670ecd93bd1c
+        with:
+          repo: arigativa/robolive
+          file: webclient.tar.gz
+          version: ${{ steps.determine_release_id.outputs.result }}
+          token: ${{ secrets.RELEASES_GITHUB_TOKEN }}
+
+      - name: Look what we've got
+        run: ls -lah
+
       - uses: "finnp/create-file-action@master"
         env:
           FILE_NAME: "${{ github.workspace }}/ansible-variables.json"
