@@ -30,8 +30,8 @@
     ]
   },
   "dependencies": {
-    "@chakra-ui/react": "^1.0.2",
-    "@emotion/react": "^11.1.1",
+    "@chakra-ui/react": "^1.0.4",
+    "@emotion/react": "^11.1.2",
     "@emotion/styled": "^11.0.0",
     "@improbable-eng/grpc-web": "^0.13.0",
     "@types/react": "^17.0.0",
@@ -49,14 +49,14 @@
   "devDependencies": {
     "@bahmutov/add-typescript-to-cypress": "^2.1.2",
     "@emotion/css": "^11.0.0",
-    "@storybook/addon-actions": "^6.1.10",
-    "@storybook/addon-knobs": "^6.1.10",
-    "@storybook/addon-links": "^6.1.10",
-    "@storybook/addons": "^6.1.10",
+    "@storybook/addon-actions": "^6.1.11",
+    "@storybook/addon-knobs": "^6.1.11",
+    "@storybook/addon-links": "^6.1.11",
+    "@storybook/addons": "^6.1.11",
     "@storybook/preset-create-react-app": "^3.1.5",
-    "@storybook/react": "^6.1.10",
-    "@types/jest": "^26.0.16",
-    "@types/node": "^14.14.10",
+    "@storybook/react": "^6.1.11",
+    "@types/jest": "^26.0.19",
+    "@types/node": "^14.14.14",
     "@typescript-eslint/eslint-plugin": "^4.9.0",
     "@typescript-eslint/parser": "^4.9.0",
     "cypress": "^6.0.1",
@@ -65,12 +65,12 @@
     "eslint-config-react-app": "^6.0.0",
     "eslint-plugin-prettier": "^3.2.0",
     "eslint-plugin-react": "^7.21.5",
-    "husky": "^4.3.4",
+    "husky": "^4.3.6",
     "lint-staged": "^10.5.3",
     "prettier": "^2.2.1",
     "react-scripts": "^4.0.1",
     "serve": "^11.3.2",
     "source-map-explorer": "^2.5.1",
-    "typescript": "^4.1.2"
+    "typescript": "^4.1.3"
   }
 }
