@@ -107,9 +107,6 @@ jobs:
           version: ${{ steps.determine_release_id.outputs.result }}
           token: ${{ secrets.RELEASES_GITHUB_TOKEN }}
 
-      - name: Look what we've got
-        run: ls -lah
-
       - uses: "finnp/create-file-action@master"
         env:
           FILE_NAME: "${{ github.workspace }}/ansible-variables.json"
@@ -119,6 +116,9 @@ jobs:
               "registry_package": "${{ github.workspace }}/registry.zip",
               "frontend_package": "${{ github.workspace }}/webclient.tar.gz"
             }
+
+      - name: Look what we've got
+        run: "ls -lah ${{ github.workspace }}"
 
       - name: Check Ansible playbook
         run: ansible-playbook -i inventory/production -e '@${{ github.workspace }}/ansible-variables.json' playbook.yml -C -vv
