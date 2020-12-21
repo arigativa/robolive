@@ -101,27 +101,12 @@ object RunningPuppet {
       AgentState
     ]
 
-    private def decline(requestId: String, reason: String) = {
-      AgentMessage(
-        AgentMessage.Message.Join(
-          AgentMessage.JoinDecision(
-            AgentMessage.JoinDecision.Message
-              .Declined(
-                AgentMessage.JoinDecision
-                  .Declined(reason, requestId)
-              )
-          )
-        )
-      )
-    }
-
     def onError(
       error: Throwable,
       oldState: AgentStateAlias,
     ): AgentStateAlias = {
-      val errorMessage = s"Can not start-up the puppet: ${error.getMessage}"
+      val errorMessage = s"Fallback on previous state. Uncaught error: `${error.getMessage}`"
       deps.logger.error(errorMessage, error)
-      deps.sendMessage(decline("requestId", errorMessage)) // fixme: how should this work?
       oldState
     }
   }

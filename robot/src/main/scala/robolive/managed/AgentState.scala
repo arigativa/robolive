@@ -73,7 +73,7 @@ object AgentState {
           deps.logger.info(s"`${clientConnectionRequest.name}` is trying to connect")
 
           deps.logger.info("request settings from storage")
-          for {
+          (for {
             storageResponse <- deps.storageEndpointClient.get(
               ReadRequest(puppetConfigurationKeys)
             )
@@ -183,12 +183,17 @@ object AgentState {
                 )
 
               case Failure(exception) =>
-                throw new RuntimeException(
-                  "declining incoming connection: failed to start puppet",
-                  exception
-                )
-
+                val errorMessage = s"Can not start-up the puppet: ${exception.getMessage}"
+                deps.logger.error(errorMessage, exception)
+                decline(clientConnectionRequest.requestId, errorMessage)
+                this
             }
+          }).recover {
+            case error =>
+              val errorMessage = s"Registry communication error: ${error.getMessage}"
+              deps.logger.error(errorMessage, error)
+              decline(clientConnectionRequest.requestId, errorMessage)
+              this
           }
 
         case other =>
@@ -204,6 +209,20 @@ object AgentState {
             AgentMessage.JoinDecision.Message
               .Accepted(
                 AgentMessage.JoinDecision.Accepted(settings, requestId)
+              )
+          )
+        )
+      )
+    }
+
+    private def decline(requestId: String, reason: String) = {
+      AgentMessage(
+        AgentMessage.Message.Join(
+          AgentMessage.JoinDecision(
+            AgentMessage.JoinDecision.Message
+              .Declined(
+                AgentMessage.JoinDecision
+                  .Declined(reason, requestId)
               )
           )
         )
