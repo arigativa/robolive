@@ -2,11 +2,12 @@ package robolive.server
 
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
-
 import Agent.AgentEndpointGrpc.AgentEndpoint
 import Agent._
 import io.grpc.stub.StreamObserver
 import org.slf4j.LoggerFactory
+
+import scala.concurrent.Promise
 
 final class AgentEndpointHandler(
   agentTable: ConcurrentHashMap[String, AgentState],
@@ -35,12 +36,33 @@ final class AgentEndpointHandler(
           case AgentMessage.Message.Register(value) =>
             logger.info(s"register `${value.name}`")
 
-            registerHandler(responseObserver, agentId, value)
+            if (agentTable.get(agentId) == null) {
+              val agentState = new AgentState(
+                name = value.name,
+                callback = responseObserver.onNext,
+                requests = new ConcurrentHashMap[String, Promise[Map[String, String]]]()
+              )
+              agentTable.put(agentId, agentState)
+
+              responseObserver.onNext(registerResponse)
+            } else {
+              val errorMessage = s"agent $agentId | ${value.name}: already registered"
+              logger.error(errorMessage)
+              responseObserver.onError(new RuntimeException(errorMessage))
+            }
 
           case AgentMessage.Message.Join(value) =>
             logger.info(agentLog(s"join decision `$value`"))
 
-            joinHandler(responseObserver, agentId, value)
+            import Agent.AgentMessage.JoinDecision.{Message => JoinMessage, _}
+
+            value.message match {
+              case JoinMessage.Accepted(Accepted(settings, requestId, _)) =>
+                agentTable.get(agentId).success(requestId, settings)
+              case JoinMessage.Declined(Declined(reason, requestId, _)) =>
+                agentTable.get(agentId).fail(requestId, reason)
+              case JoinMessage.Empty =>
+            }
         }
       }
 
@@ -55,50 +77,6 @@ final class AgentEndpointHandler(
         agentTable.remove(agentId)
         responseObserver.onCompleted()
       }
-    }
-  }
-
-  // fixme: remove side effect?
-  private def joinHandler(
-    responseObserver: StreamObserver[RegistryMessage],
-    agentId: Reason,
-    value: AgentMessage.JoinDecision
-  ) = {
-    import Agent.AgentMessage.JoinDecision.{Message => JoinMessage, _}
-
-    agentTable.get(agentId) match {
-      case state: AgentState.Trying =>
-        value.message match {
-          case JoinMessage.Accepted(Accepted(settings, requestId, _)) =>
-            state.result.success(settings)
-          case JoinMessage.Declined(Declined(reason, requestId, _)) =>
-            state.result.failure(new RuntimeException(reason))
-          case JoinMessage.Empty =>
-        }
-
-      case wrongState @ (null | _) =>
-        responseObserver.onError(
-          new RuntimeException(
-            s"agent ${agentId}: incorrect state `$wrongState`, should be `Trying`"
-          )
-        )
-    }
-  }
-
-  // fixme: remove side effect?
-  private def registerHandler(
-    responseObserver: StreamObserver[RegistryMessage],
-    agentId: Reason,
-    value: AgentMessage.RegisterRequest
-  ): Unit = {
-    if (agentTable.get(agentId) == null) {
-      agentTable.put(agentId, AgentState.Registered(value.name, responseObserver.onNext))
-
-      responseObserver.onNext(registerResponse)
-    } else {
-      val errorMessage = s"agent $agentId | ${value.name}: already registered"
-      logger.error(errorMessage)
-      responseObserver.onError(new RuntimeException(errorMessage))
     }
   }
 }

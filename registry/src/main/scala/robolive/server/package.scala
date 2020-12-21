@@ -2,19 +2,56 @@ package robolive
 
 import Agent.RegistryMessage
 
-import scala.concurrent.Promise
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
+import scala.concurrent.{ExecutionContext, Future, Promise}
 
 package object server {
   type AgentChannel = RegistryMessage => Unit
   type Reason = String
 
-  sealed trait AgentState
+  final class AgentState(
+    name: String,
+    callback: AgentChannel,
+    requests: ConcurrentHashMap[String, Promise[Map[String, String]]],
+  ) {
+    def send(name: String, settings: Map[String, String])(
+      implicit ec: ExecutionContext
+    ): Future[Map[String, String]] = {
+      val requestId = UUID.randomUUID().toString
+      val p = Promise[Map[String, String]]
+      requests.put(requestId, p)
+      callback(clientJoinMessage(name, settings, requestId))
+      val f = p.future
+      f.foreach(_ => requests.remove(requestId))
+      f.recover(_ => requests.remove(requestId))
+      f
+    }
 
-  object AgentState {
-    final case class Registered(name: String, callback: AgentChannel) extends AgentState
-    final case class Trying(
-      name: String,
-      result: Promise[Map[String, String]],
-    ) extends AgentState
+    def success(requestId: String, settings: Map[String, String]): Boolean = {
+      val promise = requests.get(requestId)
+      if (promise != null) {
+        promise.trySuccess(settings)
+      } else {
+        false
+      }
+    }
+
+    def fail(requestId: String, reason: String): Boolean = {
+      val promise = requests.get(requestId)
+      if (promise != null) {
+        promise.tryFailure(new RuntimeException(reason))
+      } else {
+        false
+      }
+    }
+  }
+
+  private def clientJoinMessage(name: String, settings: Map[String, String], requestId: String) = {
+    RegistryMessage(
+      RegistryMessage.Message.Connected(
+        RegistryMessage.Connected(name, settings, requestId)
+      )
+    )
   }
 }
