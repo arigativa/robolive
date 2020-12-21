@@ -101,14 +101,14 @@ object RunningPuppet {
       AgentState
     ]
 
-    private def decline(reason: String) = {
+    private def decline(requestId: String, reason: String) = {
       AgentMessage(
         AgentMessage.Message.Join(
           AgentMessage.JoinDecision(
             AgentMessage.JoinDecision.Message
               .Declined(
                 AgentMessage.JoinDecision
-                  .Declined(reason)
+                  .Declined(reason, requestId)
               )
           )
         )
@@ -117,11 +117,11 @@ object RunningPuppet {
 
     def onError(
       error: Throwable,
-      oldState: AgentStateAlias
+      oldState: AgentStateAlias,
     ): AgentStateAlias = {
       val errorMessage = s"Can not start-up the puppet: ${error.getMessage}"
       deps.logger.error(errorMessage, error)
-      deps.sendMessage(decline(errorMessage))
+      deps.sendMessage(decline("requestId", errorMessage)) // fixme: how should this work?
       oldState
     }
   }

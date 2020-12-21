@@ -1,9 +1,9 @@
 package robolive.server
 import java.util.concurrent.ConcurrentHashMap
-
 import Agent.RegistryMessage
 import Client.{JoinRequest, JoinResponse}
 
+import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
 final class ClientEndpointHandler(robotTable: ConcurrentHashMap[String, AgentState])(
@@ -24,7 +24,8 @@ final class ClientEndpointHandler(robotTable: ConcurrentHashMap[String, AgentSta
         // fixme: name should be unique
         // more general problem - how the user should be identified
         // also, what is a call identification?
-        callback(clientJoinMessage(request.name, request.settings))
+        val requestId = UUID.randomUUID().toString
+        callback(clientJoinMessage(request.name, request.settings, requestId))
 
       // fixme: typing for states?
       case null | _ =>
@@ -44,10 +45,10 @@ final class ClientEndpointHandler(robotTable: ConcurrentHashMap[String, AgentSta
   }
 
   // fixme: shouldn't it be a method on `actor`?
-  private def clientJoinMessage(name: String, settings: Map[String, String]) = {
+  private def clientJoinMessage(name: String, settings: Map[String, String], requestId: String) = {
     RegistryMessage(
       RegistryMessage.Message.Connected(
-        RegistryMessage.Connected(name, settings)
+        RegistryMessage.Connected(name, settings, requestId)
       )
     )
   }

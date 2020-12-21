@@ -164,6 +164,7 @@ object AgentState {
 
                 deps.sendMessage {
                   accept(
+                    clientConnectionRequest.requestId,
                     Map(
                       "sipAgentName" -> sipAgentName,
                       "sipClientName" -> sipClientName,
@@ -196,13 +197,13 @@ object AgentState {
       }
     }
 
-    private def accept(settings: Map[String, String]) = {
+    private def accept(requestId: String, settings: Map[String, String]) = {
       AgentMessage(
         AgentMessage.Message.Join(
           AgentMessage.JoinDecision(
             AgentMessage.JoinDecision.Message
               .Accepted(
-                AgentMessage.JoinDecision.Accepted(settings)
+                AgentMessage.JoinDecision.Accepted(settings, requestId)
               )
           )
         )

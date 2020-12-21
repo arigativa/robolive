@@ -69,9 +69,9 @@ final class AgentEndpointHandler(
     agentTable.get(agentId) match {
       case state: AgentState.Trying =>
         value.message match {
-          case JoinMessage.Accepted(Accepted(settings, _)) =>
+          case JoinMessage.Accepted(Accepted(settings, requestId, _)) =>
             state.result.success(settings)
-          case JoinMessage.Declined(Declined(reason, _)) =>
+          case JoinMessage.Declined(Declined(reason, requestId, _)) =>
             state.result.failure(new RuntimeException(reason))
           case JoinMessage.Empty =>
         }
