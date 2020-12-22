@@ -103,7 +103,7 @@ terraform apply
 ### Run locally
 ```shell script
 export VIDEO_SRC='videotestsrc is-live=true pattern=ball ! videoconvert'
-export SIGNALLING_URI='localhost:9031'
+export SIGNALLING_SIP_URI='localhost:9031'
 ``` 
 ### Run on Jetson Nano
 
