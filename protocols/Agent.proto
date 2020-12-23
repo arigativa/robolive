@@ -8,9 +8,11 @@ message AgentMessage {
   message JoinDecision {
     message Accepted {
       map<string, string> settings = 1;
+      required string requestId = 2;
     }
     message Declined {
       required string reason = 1;
+      required string requestId = 2;
     }
     oneof message {
       Accepted accepted = 1;
@@ -30,6 +32,7 @@ message RegistryMessage {
   message Connected {
     required string name = 1;
     map<string, string> settings = 2;
+    required string requestId = 3;
   }
 
   oneof message {

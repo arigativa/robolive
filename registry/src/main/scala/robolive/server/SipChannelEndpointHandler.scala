@@ -36,7 +36,7 @@ final class SipChannelEndpointHandler(
     val duration: Long = request.durationSeconds.filter(_ < 600).getOrElse(600)
 
     quickRequest
-      .post(uri"http://$sipUri/users/create")
+      .post(uri"$sipUri/users/create")
       .body(s"""
                |[
                |        { 

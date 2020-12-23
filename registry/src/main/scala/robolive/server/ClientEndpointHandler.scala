@@ -1,41 +1,41 @@
 package robolive.server
 import java.util.concurrent.ConcurrentHashMap
-
 import Agent.RegistryMessage
 import Client.{JoinRequest, JoinResponse}
 
+import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
 final class ClientEndpointHandler(robotTable: ConcurrentHashMap[String, AgentState])(
   implicit ec: ExecutionContext
 ) extends Client.ClientEndpointGrpc.ClientEndpoint {
+
   override def join(
     request: JoinRequest
   ): Future[JoinResponse] = {
-
-    val resultPromise = Promise[Map[String, String]]()
     val state = robotTable.get(request.targetId)
-    state match {
-      case AgentState.Registered(name, callback) =>
-        val tryingState = AgentState.Trying(name, resultPromise)
-        robotTable.put(request.targetId, tryingState)
-        callback(
-          RegistryMessage(
-            RegistryMessage.Message.Connected(
-              RegistryMessage.Connected(request.name, request.settings)
-            )
-          )
-        )
-      case null | _ =>
-        resultPromise.failure(new RuntimeException(s"agent with ${request.targetId} not found"))
-    }
+    val result = state.send(request.name, request.settings)
 
-    resultPromise.future.map { settings =>
-      robotTable.put(request.targetId, state)
-      JoinResponse(
-        Client.JoinResponse.Message
-          .Success(Client.JoinResponse.Success(settings))
-      )
+    result.map { settings =>
+      clientSuccessResponse(settings)
+    }.recover {
+      case error => clientErrorResponse(error)
     }
+  }
+
+  private def clientErrorResponse(error: Throwable) = {
+    JoinResponse(
+      Client.JoinResponse.Message
+        .Failure(Client.JoinResponse.Failure(error.getMessage))
+    )
+  }
+
+  private def clientSuccessResponse(
+    settings: Map[String, String]
+  ) = {
+    JoinResponse(
+      Client.JoinResponse.Message
+        .Success(Client.JoinResponse.Success(settings))
+    )
   }
 }

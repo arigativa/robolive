@@ -79,7 +79,7 @@ jobs:
       - name: Define release_id
         id: determine_release_id
         run: |
-          if ['${{ github.event_name }}' == 'release']
+          if [ '${{ github.event_name }}' = 'release' ]
           then
               echo "::set-output name=result::${{ github.event.release.id }}"
           else
@@ -121,9 +121,9 @@ jobs:
         run: "ls -lah ${{ github.workspace }}"
 
       - name: Check Ansible playbook
-        run: ansible-playbook -i inventory/production -e '@${{ github.workspace }}/ansible-variables.json' playbook.yml -C -vvv
+        run: ansible-playbook -i inventory/production -e '@${{ github.workspace }}/ansible-variables.json' playbook.yml -C -v
 
       - name: Run Ansible playbook
         if: github.ref == 'refs/heads/master' || github.event_name == 'release'
-        run: ansible-playbook -i inventory/production -e '@${{ github.workspace }}/ansible-variables.json' playbook.yml -vvv
+        run: ansible-playbook -i inventory/production -e '@${{ github.workspace }}/ansible-variables.json' playbook.yml -v
 

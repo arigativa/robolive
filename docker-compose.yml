@@ -74,7 +74,8 @@ services:
       REGISTRY_PORT_FOR_SIP_CHANNEL: 3480
       VIDEO_SRC_FN: 'circles'
       SERVO_CONTROLLER: 'FAKE'
-      SIGNALLING_URI: '169.28.1.1:9031' # '192.168.1.72:9031'
+      SIGNALLING_SIP_URI: '169.28.1.1:9031' # '192.168.1.72:9031'
+      SIGNALLING_HTTP_URI: 'http://169.28.1.1:9031' # '192.168.1.72:9031'
       STUN_URI: 'stun://169.28.1.4:8080' # 'stun://192.168.1.72:8080'
       TURN_URI: 'turn:rl.arigativa.ru:8080?transport=tcp' # 'turn:169.28.1.4:8080?transport=tcp'
     networks:

@@ -27,6 +27,7 @@
   tags:
     - frontend
   register: package_copy_result
+  check_mode: no
 
 - name: Extract frontend
   unarchive:
