@@ -37,6 +37,7 @@
   tags:
     - registry
   register: package_copy_result
+  check_mode: no
 
 - name: Extract registry
   unarchive:
