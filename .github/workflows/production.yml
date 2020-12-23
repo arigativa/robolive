@@ -79,7 +79,7 @@ jobs:
       - name: Define release_id
         id: determine_release_id
         run: |
-          if ['${{ github.event_name }}' == 'release']
+          if [ '${{ github.event_name }}' = 'release' ]
           then
               echo "::set-output name=result::${{ github.event.release.id }}"
           else
