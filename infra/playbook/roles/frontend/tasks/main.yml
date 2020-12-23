@@ -27,7 +27,6 @@
   tags:
     - frontend
   register: package_copy_result
-  check_mode: no
 
 - name: Extract frontend
   unarchive:
@@ -36,6 +35,6 @@
     remote_src: yes
     owner: root
     group: root
-  when: package_copy_result.changed
+  when: package_copy_result.changed and (not ansible_check_mode)
   tags:
     - frontend
