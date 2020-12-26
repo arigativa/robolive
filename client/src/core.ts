@@ -1,25 +1,8 @@
-import {
-  Action as ReduxAction,
-  PreloadedState,
-  StoreEnhancer,
-  StoreCreator,
-  Store
-} from 'redux'
+import { PreloadedState, StoreEnhancer, StoreCreator } from 'redux'
 
 const noop = (): void => {
   // do nothing
 }
-
-/**
- * Effect allows to call Action in async moment.
- * Seems like redux-thunk but it comes from reducer (update)
- * but not from action.
- * This small difference makes possible to get rid of properties
- * and handlers drilling and keep all state global at the same time
- * when the app becomes bigger and bigger.
- *
- * This is an extremely simplified [redux-loop](https://github.com/redux-loop/redux-loop)
- */
 
 export interface Cmd<T> {
   map<R>(fn: (action: T) => R): Cmd<R>
@@ -291,54 +274,14 @@ const innerUpdate = <S, A>(
   return [currentState, Cmd.batch(commands)]
 }
 
-/**
- * Creates redux store fabric.
- * Returns a fabric to create redux store with initial state, initial effects
- * and update function to produce new state and new side effects.
- *
- * @param createStore original redux.createStore fabric
- *
- * @example
- * type State = {
- *   count: number
- * }
- *
- * type Action =
- *   | { type: 'DelayedIncrement'; delay: number }
- *   | { type: 'Increment' }
- *
- * const store = createStoreWithEffects(redux.createStore)(
- * [
- *   { count: 0 },
- *   [
- *     dispatch => {
- *       setTimeout(() => {
- *         dispatch({ type: 'Increment' })
- *       }, 500)
- *     }
- *   ]
- * ],
- *
- * function update(action: Action, state: State): [State, Effects<Action>] {
- *   switch (action.type) {
- *     case 'DelayedIncrement':
- *       return [
- *         state,
- *         [
- *           dispatch => {
- *             setTimeout(() => {
- *               dispatch({ type: 'Increment' })
- *             }, action.delay)
- *           }
- *         ]
- *       ]
- *
- *     case 'Increment':
- *       return [{ ...state, count: state.count + 1 }, []]
- *   }
- * })
- */
-export const createStoreWithEffects = <S, A extends ReduxAction, Ext, StateExt>(
+export type Unsubscribe = () => void
+export interface Store<S, A> {
+  dispatch: Dispatch<A>
+  getState(): S
+  subscribe(listener: () => void): Unsubscribe
+}
+
+export const createStoreWithEffects = <S, A, Ext, StateExt>(
   createStore: StoreCreator
 ) => (
   [initialState, initialCmd]: [S, Cmd<A>],
@@ -455,12 +398,11 @@ export const createStoreWithEffects = <S, A extends ReduxAction, Ext, StateExt>(
   initialCmd.execute(executeCmd, commandsState)
 
   return {
-    ...store,
     dispatch: action => {
       store.dispatch(SingleAction(action))
-
-      return action
     },
-    replaceReducer: noop
+
+    getState: store.getState,
+    subscribe: store.subscribe
   }
 }

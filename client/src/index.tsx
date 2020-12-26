@@ -6,45 +6,30 @@ import { CSSReset, ThemeProvider, theme } from '@chakra-ui/react'
 
 import * as serviceWorker from 'serviceWorker'
 import { useStore } from 'store'
-import { Cmd, Sub } from 'core'
+import { Cmd } from 'core'
 
 import * as Main from 'Main'
 
-interface Action {
-  type: '_'
-  _: Main.Action
-}
-
-const root = (_: Main.Action): Action => ({ type: '_', _ })
-
-const init: [Main.State, Cmd<Action>] = [Main.initial, Cmd.none]
+const init: [Main.State, Cmd<Main.Action>] = [Main.initial, Cmd.none]
 
 const update = (
-  action: Action,
+  action: Main.Action,
   state: Main.State
-): [Main.State, Cmd<Action>] => {
-  const [nextState, cmd] = action._.update(state)
-
-  return [nextState, cmd.map(root)]
-}
-
-const subscriptions = (state: Main.State): Sub<Action> => {
-  return Main.subscriptions(state).map(root)
-}
+): [Main.State, Cmd<Main.Action>] => action.update(state)
 
 const Root: React.FC = () => {
-  const [state, dispatch] = useStore({ init, update, subscriptions })
-  const rootDispatch = React.useCallback(
-    (action: Main.Action) => dispatch(root(action)),
-    [dispatch]
-  )
+  const [state, dispatch] = useStore({
+    init,
+    update,
+    subscriptions: Main.subscriptions
+  })
 
   return (
     <React.StrictMode>
       <ThemeProvider theme={theme}>
         <CSSReset />
 
-        <Main.View state={state} dispatch={rootDispatch} />
+        <Main.View state={state} dispatch={dispatch} />
       </ThemeProvider>
     </React.StrictMode>
   )

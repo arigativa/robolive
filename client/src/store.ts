@@ -1,10 +1,10 @@
 import React from 'react'
-import { Action, createStore } from 'redux'
+import { createStore } from 'redux'
 import { composeWithDevTools } from 'redux-devtools-extension'
 
 import { Dispatch, Cmd, Sub, createStoreWithEffects } from 'core'
 
-export const useStore = <S, A extends Action>({
+export const useStore = <S, A>({
   init,
   update,
   subscriptions
