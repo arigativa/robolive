@@ -11,7 +11,7 @@ package object server {
   type Reason = String
 
   final class AgentState(
-    name: String,
+    val name: String,
     callback: AgentChannel,
     requests: ConcurrentHashMap[String, Promise[Map[String, String]]],
   ) {
