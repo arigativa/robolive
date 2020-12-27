@@ -35,7 +35,16 @@ static_resources:
                 http_filters:
                   - name: envoy.filters.http.cors
                   - name: envoy.filters.http.router
-
+          transport_socket:
+            name: envoy.transport_sockets.tls
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+              common_tls_context:
+                tls_certificates:
+                  - certificate_chain:
+                      filename: "{{ registry_tls_cert_path }}"
+                    private_key:
+                      filename: "{{ registry_tls_private_key_path }}"
 
     - name: registry_info_listener
       address:
@@ -68,6 +77,17 @@ static_resources:
                   - name: envoy.filters.http.grpc_web
                   - name: envoy.filters.http.cors
                   - name: envoy.filters.http.router
+          transport_socket:
+            name: envoy.transport_sockets.tls
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+              common_tls_context:
+                tls_certificates:
+                  - certificate_chain:
+                      filename: "{{ registry_tls_cert_path }}"
+                    private_key:
+                      filename: "{{ registry_tls_private_key_path }}"
+
 
     - name: registry_client_listener
       address:
@@ -100,6 +120,17 @@ static_resources:
                   - name: envoy.filters.http.grpc_web
                   - name: envoy.filters.http.cors
                   - name: envoy.filters.http.router
+          transport_socket:
+            name: envoy.transport_sockets.tls
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+              common_tls_context:
+                tls_certificates:
+                  - certificate_chain:
+                      filename: "{{ registry_tls_cert_path }}"
+                    private_key:
+                      filename: "{{ registry_tls_private_key_path }}"
+
 
     - name: registry_storage_listener
       address:
@@ -131,6 +162,16 @@ static_resources:
                 http_filters:
                   - name: envoy.filters.http.cors
                   - name: envoy.filters.http.router
+          transport_socket:
+            name: envoy.transport_sockets.tls
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+              common_tls_context:
+                tls_certificates:
+                  - certificate_chain:
+                      filename: "{{ registry_tls_cert_path }}"
+                    private_key:
+                      filename: "{{ registry_tls_private_key_path }}"
 
 
     - name: registry_sip_channel_listener
@@ -163,6 +204,17 @@ static_resources:
                 http_filters:
                   - name: envoy.filters.http.cors
                   - name: envoy.filters.http.router
+          transport_socket:
+            name: envoy.transport_sockets.tls
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+              common_tls_context:
+                tls_certificates:
+                  - certificate_chain:
+                      filename: "{{ registry_tls_cert_path }}"
+                    private_key:
+                      filename: "{{ registry_tls_private_key_path }}"
+
 
   clusters:
     - name: registry_agent_cluster

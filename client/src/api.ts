@@ -6,7 +6,7 @@ import { BrowserHeaders } from 'browser-headers'
 
 export type { ServiceError } from './generated/Info_pb_service'
 
-const infoReq = new InfoEndpointClient('http://rl.arigativa.ru:10477')
+const infoReq = new InfoEndpointClient('https://rl.arigativa.ru:10477')
 
 export interface Agent {
   id: string
