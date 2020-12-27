@@ -61,27 +61,24 @@ type Office<A> = Map<
 >
 
 interface Bag<A> {
-  run: RunManager<A>
+  initManager: InitManager<A>
   cmds: Array<Functor<A>>
   subs: Array<Functor<A>>
 }
 
 const getBagSafe = <A>(
   managerId: number,
-  run: RunManager<A>,
+  initManager: InitManager<A>,
   bags: Map<number, Bag<A>>
 ): Bag<A> => {
-  const bag = bags.get(managerId)
+  let bag = bags.get(managerId)
 
-  if (bag != null) {
-    return bag
+  if (bag == null) {
+    bag = { initManager, cmds: [], subs: [] }
+    bags.set(managerId, bag)
   }
 
-  const newBag: Bag<A> = { run, cmds: [], subs: [] }
-
-  bags.set(managerId, newBag)
-
-  return newBag
+  return bag
 }
 
 const executeEffects = <A>(
@@ -92,24 +89,31 @@ const executeEffects = <A>(
 ): void => {
   const bags: Map<number, Bag<A>> = new Map()
 
-  cmd.gather((managerId, run: RunManager<A>, myCmd) => {
-    getBagSafe(managerId, run, bags).cmds.push(myCmd)
+  cmd.gather((managerId, initManager: InitManager<A>, myCmd) => {
+    getBagSafe(managerId, initManager, bags).cmds.push(myCmd)
   })
 
-  sub.gather((managerId, run: RunManager<A>, mySub) => {
-    getBagSafe(managerId, run, bags).subs.push(mySub)
+  sub.gather((managerId, initManager: InitManager<A>, mySub) => {
+    getBagSafe(managerId, initManager, bags).subs.push(mySub)
   })
 
   // run previous managers with empty effects
   office.forEach((manager, managerId) => {
     if (!bags.has(managerId)) {
-      manager.execute(sendToApp, [], [])
+      manager.execute([], [])
     }
   })
 
   // run effects
-  bags.forEach(({ run, cmds, subs }, managerId) => {
-    office.set(managerId, run(sendToApp, cmds, subs, office.get(managerId)))
+  bags.forEach(({ initManager, cmds, subs }, managerId) => {
+    let manager = office.get(managerId)
+
+    if (manager == null) {
+      manager = initManager(sendToApp)
+      office.set(managerId, manager)
+    }
+
+    manager.execute(cmds, subs)
   })
 }
 
@@ -164,23 +168,19 @@ export interface Functor<T> {
   map<R>(fn: (value: T) => R): Functor<R>
 }
 
-// TODO InitManager
-type RunManager<
+type InitManager<
   AppMsg = unknown,
   SelfMsg = unknown,
   State = unknown,
   MyCmd extends Functor<AppMsg> = Functor<AppMsg>,
   MySub extends Functor<AppMsg> = Functor<AppMsg>
 > = (
-  sendToApp: (actions: Array<AppMsg>) => void,
-  cmds: Array<MyCmd>,
-  subs: Array<MySub>,
-  manager?: Manager<AppMsg, SelfMsg, State, MyCmd, MySub>
+  sendToApp: (actions: Array<AppMsg>) => void
 ) => Manager<AppMsg, SelfMsg, State, MyCmd, MySub>
 
 type Collector<T> = (
   managerId: number,
-  run: RunManager,
+  initManager: InitManager,
   value: Functor<T>
 ) => void
 
@@ -191,18 +191,26 @@ interface Effect<K, T> extends Functor<T> {
 class CreateEffect<K, T> implements Effect<K, T> {
   public constructor(
     private readonly managerId: number,
-    private readonly run: RunManager,
+    private readonly initManager: InitManager,
     private readonly value: Functor<T>
   ) {}
 
   public map<R>(fn: (value: T) => R): Effect<K, R> {
-    return new CreateEffect(this.managerId, this.run, this.value.map(fn))
+    return new CreateEffect(
+      this.managerId,
+      this.initManager,
+      this.value.map(fn)
+    )
   }
 
   public gather(
-    collector: (managerId: number, run: RunManager, value: Functor<T>) => void
+    collector: (
+      managerId: number,
+      initManager: InitManager,
+      value: Functor<T>
+    ) => void
   ): void {
-    collector(this.managerId, this.run, this.value)
+    collector(this.managerId, this.initManager, this.value)
   }
 }
 
@@ -269,7 +277,11 @@ class Manager<
   MyCmd extends Functor<AppMsg>,
   MySub extends Functor<AppMsg>
 > {
+  private readonly router: Router<AppMsg, SelfMsg>
+
   public constructor(
+    dispatch: (actions: Array<AppMsg>) => void,
+
     private chainState: Promise<State>,
 
     private readonly onEffects: (
@@ -279,32 +291,25 @@ class Manager<
       state: State
     ) => Promise<State>,
 
-    private readonly onSelfMsg: (
+    onSelfMsg: (
       sendToApp: (actions: Array<AppMsg>) => void,
       selfMsg: SelfMsg,
       state: State
     ) => Promise<State>
-  ) {}
-
-  public execute(
-    // TODO get in constructor
-    dispatch: (actions: Array<AppMsg>) => void,
-    cmds: Array<MyCmd>,
-    subs: Array<MySub>
-  ): void {
-    const sendToSelf = (selfMsg: SelfMsg): void => {
-      this.chainState = this.chainState.then(state =>
-        this.onSelfMsg(dispatch, selfMsg, state)
-      )
-    }
-
-    const router: Router<AppMsg, SelfMsg> = {
+  ) {
+    this.router = {
       sendToApp: action => dispatch([action]),
-      sendToSelf
+      sendToSelf: selfMsg => {
+        this.chainState = this.chainState.then(state =>
+          onSelfMsg(dispatch, selfMsg, state)
+        )
+      }
     }
+  }
 
+  public execute(cmds: Array<MyCmd>, subs: Array<MySub>): void {
     this.chainState = this.chainState.then(state =>
-      this.onEffects(router, cmds, subs, state)
+      this.onEffects(this.router, cmds, subs, state)
     )
   }
 }
@@ -339,22 +344,17 @@ export const registerManager = <
 }): EffectFactory<AppMsg, MyCmd, MySub> => {
   const managerId = MANAGER_ID++
 
-  const run: RunManager<AppMsg, SelfMsg, State, MyCmd, MySub> = (
-    sendToApp,
-    cmds,
-    subs,
-    manager = new Manager(init(), onEffects, onSelfMsg)
+  const initManager: InitManager<AppMsg, SelfMsg, State, MyCmd, MySub> = (
+    sendToApp: (actions: Array<AppMsg>) => void
   ) => {
-    manager.execute(sendToApp, cmds, subs)
-
-    return manager
+    return new Manager(sendToApp, init(), onEffects, onSelfMsg)
   }
 
   return {
     createCmd<M>(cmd: MyCmd): Cmd<AppMsg & M> {
       return new CreateEffect(
         managerId,
-        run,
+        initManager,
         (cmd as unknown) as Functor<AppMsg & M>
       )
     },
@@ -362,7 +362,7 @@ export const registerManager = <
     createSub<M>(sub: MySub): Sub<AppMsg & M> {
       return new CreateEffect(
         managerId,
-        run,
+        initManager,
         (sub as unknown) as Functor<AppMsg & M>
       )
     }
