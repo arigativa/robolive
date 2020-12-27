@@ -282,23 +282,20 @@ export const createStoreWithEffects = <S, A, Ext, StateExt>(
 ): Store<S, A> => {
   const office: Map<
     number,
-    {
-      chainState: Promise<unknown>
-      run: Run
-    }
+    Manager<A, unknown, unknown, Functor<A>, Functor<A>>
   > = new Map()
 
   const exec = (cmd: Cmd<A>, sub: Sub<A>): void => {
     const bags: Map<
       number,
       {
-        run: Run
+        run: Run<A>
         cmds: Array<Functor<A>>
         subs: Array<Functor<A>>
       }
     > = new Map()
 
-    cmd.gather((managerId, run, myCmd) => {
+    cmd.gather((managerId, run: Run<A>, myCmd) => {
       const bag = bags.get(managerId) ?? {
         run,
         cmds: [],
@@ -307,7 +304,7 @@ export const createStoreWithEffects = <S, A, Ext, StateExt>(
       bags.set(managerId, bag)
       bag.cmds.push(myCmd)
     })
-    sub.gather((managerId, run, mySub) => {
+    sub.gather((managerId, run: Run<A>, mySub) => {
       const bag = bags.get(managerId) ?? {
         run,
         cmds: [],
@@ -318,26 +315,18 @@ export const createStoreWithEffects = <S, A, Ext, StateExt>(
     })
 
     // run previous managers with empty effects
-    office.forEach(({ chainState, run }, managerId) => {
+    office.forEach((manager, managerId) => {
       if (!bags.has(managerId)) {
-        office.set(managerId, {
-          chainState: run(dispatchBatch, [], [], chainState),
-          run
-        })
+        manager.execute(dispatchBatch, [], [])
       }
     })
 
     // run effects
     bags.forEach(({ run, cmds, subs }, managerId) => {
-      office.set(managerId, {
-        chainState: run(
-          dispatchBatch,
-          cmds,
-          subs,
-          office.get(managerId)?.chainState
-        ),
-        run
-      })
+      office.set(
+        managerId,
+        run(dispatchBatch, cmds, subs, office.get(managerId))
+      )
     })
   }
 
@@ -472,15 +461,16 @@ interface Functor<T> {
 
 type Run<
   AppMsg = unknown,
+  SelfMsg = unknown,
   State = unknown,
-  MyCmd = unknown,
-  MySub = unknown
+  MyCmd extends Functor<AppMsg> = Functor<AppMsg>,
+  MySub extends Functor<AppMsg> = Functor<AppMsg>
 > = (
   sendToApp: (msg: Array<AppMsg>) => void,
   cmds: Array<MyCmd>,
   subs: Array<MySub>,
-  chainState?: Promise<State>
-) => Promise<State>
+  manager?: Manager<AppMsg, SelfMsg, State, MyCmd, MySub>
+) => Manager<AppMsg, SelfMsg, State, MyCmd, MySub>
 
 type Collector<T> = (managerId: number, run: Run, value: Functor<T>) => void
 
@@ -557,9 +547,59 @@ interface Router<AppMsg, SelfMsg> {
   sendToSelf(selfMsg: SelfMsg): void
 }
 
-interface Manager<AppMsg, MyCmd, MySub> {
+interface EffectFactory<AppMsg, MyCmd, MySub> {
   createCmd<M>(cmd: MyCmd): Cmd<AppMsg & M>
   createSub<M>(sub: MySub): Sub<AppMsg & M>
+}
+
+class Manager<
+  AppMsg,
+  SelfMsg,
+  State,
+  MyCmd extends Functor<AppMsg>,
+  MySub extends Functor<AppMsg>
+> {
+  private chainState: Promise<State>
+
+  public constructor(
+    init: () => Promise<State>,
+
+    private readonly onEffects: (
+      router: Router<AppMsg, SelfMsg>,
+      cmds: Array<MyCmd>,
+      subs: Array<MySub>,
+      state: State
+    ) => Promise<State>,
+
+    private readonly onSelfMsg: (
+      sendToApp: (msg: Array<AppMsg>) => void,
+      selfMsg: SelfMsg,
+      state: State
+    ) => Promise<State>
+  ) {
+    this.chainState = init()
+  }
+
+  public execute(
+    dispatch: (actions: Array<AppMsg>) => void,
+    cmds: Array<MyCmd>,
+    subs: Array<MySub>
+  ): void {
+    const sendToSelf = (selfMsg: SelfMsg): void => {
+      this.chainState = this.chainState.then(state =>
+        this.onSelfMsg(dispatch, selfMsg, state)
+      )
+    }
+
+    const router: Router<AppMsg, SelfMsg> = {
+      sendToApp: action => dispatch([action]),
+      sendToSelf
+    }
+
+    this.chainState = this.chainState.then(state =>
+      this.onEffects(router, cmds, subs, state)
+    )
+  }
 }
 
 let MANAGER_ID = 0
@@ -589,36 +629,25 @@ const registerManager = <
     selfMsg: SelfMsg,
     state: State
   ): Promise<State>
-}): Manager<AppMsg, MyCmd, MySub> => {
+}): EffectFactory<AppMsg, MyCmd, MySub> => {
   const managerId = MANAGER_ID++
 
-  const loop: Run<AppMsg, State, MyCmd, MySub> = (
+  const run: Run<AppMsg, SelfMsg, State, MyCmd, MySub> = (
     dispatch,
     cmds,
     subs,
-    chainState = init()
+    manager = new Manager(init, onEffects, onSelfMsg)
   ) => {
-    let nextState = chainState
+    manager.execute(dispatch, cmds, subs)
 
-    const sendToSelf = (selfMsg: SelfMsg): void => {
-      nextState = nextState.then(state => onSelfMsg(dispatch, selfMsg, state))
-    }
-
-    const router: Router<AppMsg, SelfMsg> = {
-      sendToApp: action => dispatch([action]),
-      sendToSelf
-    }
-
-    nextState = nextState.then(state => onEffects(router, cmds, subs, state))
-
-    return nextState
+    return manager
   }
 
   return {
     createCmd<M>(cmd: MyCmd): Cmd<AppMsg & M> {
       return new IEffectCreator(
         managerId,
-        loop,
+        run,
         (cmd as unknown) as Functor<AppMsg & M>
       )
     },
@@ -626,7 +655,7 @@ const registerManager = <
     createSub<M>(sub: MySub): Sub<AppMsg & M> {
       return new IEffectCreator(
         managerId,
-        loop,
+        run,
         (sub as unknown) as Functor<AppMsg & M>
       )
     }
@@ -897,7 +926,7 @@ const effectManager = registerManager<
 
     for (const key in state.subscriptions) {
       if (!(key in nextSubscriptions)) {
-        nextSubscriptions[key]?.cancel()
+        state.subscriptions[key]?.cancel()
       }
     }
 
@@ -907,8 +936,8 @@ const effectManager = registerManager<
     })
   },
 
-  onSelfMsg(router, msg, state) {
-    return Promise.resolve(state)
+  onSelfMsg(sendToApp, msg, state) {
+    return Promise.resolve(msg.execute(sendToApp, state))
   }
 })
 
