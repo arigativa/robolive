@@ -4,222 +4,6 @@ const noop = (): void => {
   // do nothing
 }
 
-// export interface Cmd<T> {
-//   map<R>(fn: (action: T) => R): Cmd<R>
-
-//   execute(
-//     register: (executor: CmdExecutor<T>) => void,
-//     state: Map<string, VoidFunction>
-//   ): void
-// }
-
-// const none: Cmd<never> = {
-//   map(): Cmd<never> {
-//     return none
-//   },
-
-//   execute(): void {
-//     // do nothing
-//   }
-// }
-
-// class Batch<T> implements Cmd<T> {
-//   public constructor(private readonly commands: Array<Cmd<T>>) {}
-
-//   public map<R>(fn: (action: T) => R): Cmd<R> {
-//     const N = this.commands.length
-//     const tmp: Array<Cmd<R>> = new Array(N)
-
-//     for (let index = 0; index < N; index++) {
-//       tmp[index] = this.commands[index].map(fn)
-//     }
-
-//     return new Batch(tmp)
-//   }
-
-//   public execute(
-//     register: (executor: CmdExecutor<T>) => void,
-//     state: Map<string, VoidFunction>
-//   ): void {
-//     for (const cmd of this.commands) {
-//       cmd.execute(register, state)
-//     }
-//   }
-// }
-
-// const batch = <T>(commands: Array<Cmd<T>>): Cmd<T> => {
-//   const commands_: Array<Cmd<T>> = commands.filter(cmd => cmd !== none)
-
-//   switch (commands_.length) {
-//     case 0: {
-//       return none
-//     }
-
-//     case 1: {
-//       return commands_[0]
-//     }
-
-//     default: {
-//       return new Batch(commands_)
-//     }
-//   }
-// }
-
-// class Effect<T> implements Cmd<T> {
-//   public constructor(private readonly executor: CmdExecutor<T>) {}
-
-//   public map<R>(fn: (action: T) => R): Cmd<R> {
-//     return new Effect((done, onCancel) => {
-//       this.executor((value: T) => done(fn(value)), onCancel)
-//     })
-//   }
-
-//   public execute(register: (executor: CmdExecutor<T>) => void): void {
-//     register(this.executor)
-//   }
-// }
-
-// function create<T>(executor: CmdExecutor<T>): Cmd<T> {
-//   return new Effect(executor)
-// }
-
-// class Cancel implements Cmd<never> {
-//   public constructor(private readonly key: string) {}
-
-//   public map(): Cmd<never> {
-//     return this
-//   }
-
-//   public execute(
-//     register: (executor: CmdExecutor<never>) => void,
-//     state: Map<string, VoidFunction>
-//   ): void {
-//     register(() => {
-//       state.get(this.key)?.()
-//     })
-//   }
-// }
-
-// const cancel = (key: string): Cmd<never> => new Cancel(key)
-
-// // eslint-disable-next-line @typescript-eslint/no-redeclare
-// export const Cmd = { none, batch, create, cancel }
-
-// export interface Sub<T> {
-//   map<R>(fn: (action: T) => R): Sub<R>
-
-//   execute(
-//     register: (
-//       key: string,
-//       action: (...args: Array<unknown>) => T,
-//       executor: SubExecutor<Array<unknown>>
-//     ) => void
-//   ): void
-// }
-
-// const subNone: Sub<never> = {
-//   map(): Sub<never> {
-//     return subNone
-//   },
-
-//   execute(): void {
-//     // do nothing
-//   }
-// }
-
-// class SubBatch<T> implements Sub<T> {
-//   public constructor(private readonly commands: Array<Sub<T>>) {}
-
-//   public map<R>(fn: (action: T) => R): Sub<R> {
-//     const N = this.commands.length
-//     const tmp: Array<Sub<R>> = new Array(N)
-
-//     for (let index = 0; index < N; index++) {
-//       tmp[index] = this.commands[index].map(fn)
-//     }
-
-//     return new SubBatch(tmp)
-//   }
-
-//   public execute<A extends Array<unknown>>(
-//     register: (
-//       key: string,
-//       action: (...args: A) => T,
-//       executor: SubExecutor<A>
-//     ) => void
-//   ): void {
-//     for (const cmd of this.commands) {
-//       cmd.execute(register)
-//     }
-//   }
-// }
-
-// const subBatch = <T>(commands: Array<Sub<T>>): Sub<T> => {
-//   const tmp: Array<Sub<T>> = commands.filter(sub => sub !== subNone)
-
-//   switch (tmp.length) {
-//     case 0: {
-//       return subNone
-//     }
-
-//     case 1: {
-//       return tmp[0]
-//     }
-
-//     default: {
-//       return new SubBatch(tmp)
-//     }
-//   }
-// }
-// class SubEffect<T, A extends Array<unknown>> implements Sub<T> {
-//   public constructor(
-//     private readonly key: string,
-//     private readonly action: (...args: A) => T,
-//     private readonly executor: SubExecutor<A>
-//   ) {}
-
-//   public map<R>(fn: (action: T) => R): Sub<R> {
-//     return new SubEffect(
-//       this.key,
-//       (...args) => fn(this.action(...args)),
-//       this.executor
-//     )
-//   }
-
-//   public execute(
-//     register: (
-//       key: string,
-//       action: (...args: A) => T,
-//       executor: SubExecutor<A>
-//     ) => void
-//   ): void {
-//     register(this.key, this.action, this.executor)
-//   }
-// }
-
-// const createSub = <T, A extends Array<unknown> = []>(
-//   key: string,
-//   action: (...args: A) => T,
-//   executor: SubExecutor<A>
-// ): Sub<T> => {
-//   return new SubEffect(key, action, executor)
-// }
-
-// // eslint-disable-next-line @typescript-eslint/no-redeclare
-// export const Sub = {
-//   none: subNone,
-//   batch: subBatch,
-//   create: createSub
-// }
-
-// type SubState<A> = Map<
-//   string,
-//   {
-//     mailbox: Array<(...args: Array<unknown>) => A>
-//     cancel(): void
-//   }
-// >
-
 /**
  * Dispatches action to be performed in order to update state.
  */
@@ -240,7 +24,7 @@ const SingleAction = <A>(payload: A): InnerAction<A> => ({
   payload
 })
 
-const innerUpdate = <S, A>(
+const batchUpdate = <S, A>(
   innerAction: InnerAction<A>,
   state: S,
   update: (action: A, state_: S) => [S, Cmd<A>]
@@ -265,11 +49,68 @@ const innerUpdate = <S, A>(
   return [currentState, Cmd.batch(commands)]
 }
 
-export type Unsubscribe = VoidFunction
 export interface Store<S, A> {
   dispatch: Dispatch<A>
   getState(): S
-  subscribe(listener: VoidFunction): Unsubscribe
+  subscribe(listener: VoidFunction): VoidFunction
+}
+
+type Office<A> = Map<
+  number,
+  Manager<A, unknown, unknown, Functor<A>, Functor<A>>
+>
+
+interface Bag<A> {
+  run: RunManager<A>
+  cmds: Array<Functor<A>>
+  subs: Array<Functor<A>>
+}
+
+const getBagSafe = <A>(
+  managerId: number,
+  run: RunManager<A>,
+  bags: Map<number, Bag<A>>
+): Bag<A> => {
+  const bag = bags.get(managerId)
+
+  if (bag != null) {
+    return bag
+  }
+
+  const newBag: Bag<A> = { run, cmds: [], subs: [] }
+
+  bags.set(managerId, newBag)
+
+  return newBag
+}
+
+const executeEffects = <A>(
+  sendToApp: (actions: Array<A>) => void,
+  cmd: Cmd<A>,
+  sub: Sub<A>,
+  office: Office<A>
+): void => {
+  const bags: Map<number, Bag<A>> = new Map()
+
+  cmd.gather((managerId, run: RunManager<A>, myCmd) => {
+    getBagSafe(managerId, run, bags).cmds.push(myCmd)
+  })
+
+  sub.gather((managerId, run: RunManager<A>, mySub) => {
+    getBagSafe(managerId, run, bags).subs.push(mySub)
+  })
+
+  // run previous managers with empty effects
+  office.forEach((manager, managerId) => {
+    if (!bags.has(managerId)) {
+      manager.execute(sendToApp, [], [])
+    }
+  })
+
+  // run effects
+  bags.forEach(({ run, cmds, subs }, managerId) => {
+    office.set(managerId, run(sendToApp, cmds, subs, office.get(managerId)))
+  })
 }
 
 export const createStoreWithEffects = <S, A, Ext, StateExt>(
@@ -280,148 +121,16 @@ export const createStoreWithEffects = <S, A, Ext, StateExt>(
   subscriptions: (state: S) => Sub<A>,
   enhancer?: StoreEnhancer<Ext, StateExt>
 ): Store<S, A> => {
-  const office: Map<
-    number,
-    Manager<A, unknown, unknown, Functor<A>, Functor<A>>
-  > = new Map()
-
-  const exec = (cmd: Cmd<A>, sub: Sub<A>): void => {
-    const bags: Map<
-      number,
-      {
-        run: Run<A>
-        cmds: Array<Functor<A>>
-        subs: Array<Functor<A>>
-      }
-    > = new Map()
-
-    cmd.gather((managerId, run: Run<A>, myCmd) => {
-      const bag = bags.get(managerId) ?? {
-        run,
-        cmds: [],
-        subs: []
-      }
-      bags.set(managerId, bag)
-      bag.cmds.push(myCmd)
-    })
-    sub.gather((managerId, run: Run<A>, mySub) => {
-      const bag = bags.get(managerId) ?? {
-        run,
-        cmds: [],
-        subs: []
-      }
-      bags.set(managerId, bag)
-      bag.subs.push(mySub)
-    })
-
-    // run previous managers with empty effects
-    office.forEach((manager, managerId) => {
-      if (!bags.has(managerId)) {
-        manager.execute(dispatchBatch, [], [])
-      }
-    })
-
-    // run effects
-    bags.forEach(({ run, cmds, subs }, managerId) => {
-      office.set(
-        managerId,
-        run(dispatchBatch, cmds, subs, office.get(managerId))
-      )
-    })
-  }
-
-  // const executeCmd = (executor: CmdExecutor<A>): void => {
-  //   let done = (action: A): void => {
-  //     clearCancel()
-  //     store.dispatch(SingleAction(action))
-  //   }
-
-  //   let clearCancel = (): void => {
-  //     onCancel = noop
-  //   }
-
-  //   let onCancel = (key: string, kill: VoidFunction): void => {
-  //     clearCancel = () => commandsState.delete(key)
-
-  //     commandsState.get(key)?.()
-
-  //     commandsState.set(key, () => {
-  //       done = noop
-  //       clearCancel()
-  //       kill()
-  //     })
-  //   }
-
-  //   setTimeout(() => {
-  //     executor(
-  //       action => done(action),
-  //       (key, kill) => onCancel(key, kill)
-  //     )
-  //   })
-  // }
-
-  // const executeSub = (state: S): void => {
-  //   const sub = subscriptions(state)
-  //   const nextSubState: SubState<A> = new Map()
-
-  //   sub.execute((key, action, listener) => {
-  //     const nextBag = nextSubState.get(key)
-
-  //     if (nextBag != null) {
-  //       nextBag.mailbox.push(action)
-
-  //       return
-  //     }
-
-  //     const prevBag = subscriptionsState.get(key)
-
-  //     if (prevBag != null) {
-  //       nextSubState.set(key, {
-  //         mailbox: [action],
-  //         cancel: prevBag.cancel
-  //       })
-
-  //       return
-  //     }
-
-  //     const kill = listener((...args) => {
-  //       const bag = subscriptionsState.get(key)
-
-  //       if (bag == null) {
-  //         return
-  //       }
-
-  //       store.dispatch(BatchAction(bag.mailbox.map(letter => letter(...args))))
-  //     })
-
-  //     nextSubState.set(key, {
-  //       mailbox: [action],
-  //       cancel: () => {
-  //         subscriptionsState.delete(key)
-  //         kill()
-  //       }
-  //     })
-  //   })
-
-  //   subscriptionsState.forEach((bag, key) => {
-  //     if (!nextSubState.has(key)) {
-  //       bag.cancel()
-  //     }
-  //   })
-
-  //   subscriptionsState = nextSubState
-  // }
+  const office: Office<A> = new Map()
 
   const effectReducer = (state: S, action: InnerAction<A>): S => {
     if (typeof action.payload === 'undefined') {
       return state
     }
 
-    const [nextState, cmd] = innerUpdate(action, state, update)
+    const [nextState, cmd] = batchUpdate(action, state, update)
 
-    // cmd.execute(executeCmd, commandsState)
-    // executeSub(nextState)
-    exec(cmd, subscriptions(nextState))
+    executeEffects(dispatchBatch, cmd, subscriptions(nextState), office)
 
     return nextState
   }
@@ -432,11 +141,7 @@ export const createStoreWithEffects = <S, A, Ext, StateExt>(
     enhancer
   )
 
-  // executeSub(store.getState())
-
-  // initialCmd.execute(executeCmd, commandsState)
-
-  const dispatch = (action: A): void => {
+  const dispatchSingle = (action: A): void => {
     store.dispatch(SingleAction(action))
   }
 
@@ -444,69 +149,74 @@ export const createStoreWithEffects = <S, A, Ext, StateExt>(
     store.dispatch(BatchAction(actions))
   }
 
-  exec(initialCmd, subscriptions(initialState))
+  executeEffects(dispatchBatch, initialCmd, subscriptions(initialState), office)
 
   return {
-    dispatch,
+    dispatch: dispatchSingle,
     getState: store.getState,
     subscribe: store.subscribe
   }
 }
 
-// ----------------------------------------------------
+// E F F E C T S
 
-interface Functor<T> {
+export interface Functor<T> {
   map<R>(fn: (value: T) => R): Functor<R>
 }
 
-type Run<
+// TODO InitManager
+type RunManager<
   AppMsg = unknown,
   SelfMsg = unknown,
   State = unknown,
   MyCmd extends Functor<AppMsg> = Functor<AppMsg>,
   MySub extends Functor<AppMsg> = Functor<AppMsg>
 > = (
-  sendToApp: (msg: Array<AppMsg>) => void,
+  sendToApp: (actions: Array<AppMsg>) => void,
   cmds: Array<MyCmd>,
   subs: Array<MySub>,
   manager?: Manager<AppMsg, SelfMsg, State, MyCmd, MySub>
 ) => Manager<AppMsg, SelfMsg, State, MyCmd, MySub>
 
-type Collector<T> = (managerId: number, run: Run, value: Functor<T>) => void
+type Collector<T> = (
+  managerId: number,
+  run: RunManager,
+  value: Functor<T>
+) => void
 
-interface IEffect<K, T> extends Functor<T> {
-  map<R>(fn: (value: T) => R): IEffect<K, R>
+interface Effect<K, T> extends Functor<T> {
+  map<R>(fn: (value: T) => R): Effect<K, R>
   gather(collector: Collector<T>, key?: K): void
 }
-class IEffectCreator<K, T> implements IEffect<K, T> {
+class CreateEffect<K, T> implements Effect<K, T> {
   public constructor(
     private readonly managerId: number,
-    private readonly run: Run,
+    private readonly run: RunManager,
     private readonly value: Functor<T>
   ) {}
 
-  public map<R>(fn: (value: T) => R): IEffect<K, R> {
-    return new IEffectCreator(this.managerId, this.run, this.value.map(fn))
+  public map<R>(fn: (value: T) => R): Effect<K, R> {
+    return new CreateEffect(this.managerId, this.run, this.value.map(fn))
   }
 
   public gather(
-    collector: (managerId: number, run: Run, value: Functor<T>) => void
+    collector: (managerId: number, run: RunManager, value: Functor<T>) => void
   ): void {
     collector(this.managerId, this.run, this.value)
   }
 }
 
-class IEffectBatch<K, T> implements IEffect<K, T> {
-  public constructor(private readonly cmds: Array<IEffect<K, T>>) {}
+class BatchEffect<K, T> implements Effect<K, T> {
+  public constructor(private readonly cmds: Array<Effect<K, T>>) {}
 
-  public map<R>(fn: (value: T) => R): IEffect<K, R> {
-    const nextCmds: Array<IEffect<K, R>> = new Array(this.cmds.length)
+  public map<R>(fn: (value: T) => R): Effect<K, R> {
+    const nextCmds: Array<Effect<K, R>> = new Array(this.cmds.length)
 
     for (let index = 0; index < this.cmds.length; index++) {
       nextCmds[index] = this.cmds[index].map(fn)
     }
 
-    return new IEffectBatch(nextCmds)
+    return new BatchEffect(nextCmds)
   }
 
   public gather(collector: Collector<T>): void {
@@ -516,38 +226,38 @@ class IEffectBatch<K, T> implements IEffect<K, T> {
   }
 }
 
-const iEffectNone: IEffect<never, never> = new IEffectBatch([])
+const none: Effect<never, never> = new BatchEffect([])
 
-const iEffectBatch = <K, T>(commands: Array<IEffect<K, T>>): IEffect<K, T> => {
-  const cmds = commands.filter(cmd => cmd !== iEffectNone)
+const batch = <K, T>(commands: Array<Effect<K, T>>): Effect<K, T> => {
+  const cmds = commands.filter(cmd => cmd !== none)
 
   switch (cmds.length) {
     case 0:
-      return iEffectNone
+      return none
 
     case 1: {
       return cmds[0]
     }
 
     default:
-      return new IEffectBatch(cmds)
+      return new BatchEffect(cmds)
   }
 }
 
-export interface Cmd<T> extends IEffect<'Cmd', T> {
+export interface Cmd<T> extends Effect<'Cmd', T> {
   map<R>(fn: (value: T) => R): Cmd<R>
 }
 
-export interface Sub<T> extends IEffect<'Sub', T> {
+export interface Sub<T> extends Effect<'Sub', T> {
   map<R>(fn: (value: T) => R): Sub<R>
 }
 
-interface Router<AppMsg, SelfMsg> {
+export interface Router<AppMsg, SelfMsg> {
   sendToApp(msg: AppMsg): void
   sendToSelf(selfMsg: SelfMsg): void
 }
 
-interface EffectFactory<AppMsg, MyCmd, MySub> {
+export interface EffectFactory<AppMsg, MyCmd, MySub> {
   createCmd<M>(cmd: MyCmd): Cmd<AppMsg & M>
   createSub<M>(sub: MySub): Sub<AppMsg & M>
 }
@@ -559,10 +269,8 @@ class Manager<
   MyCmd extends Functor<AppMsg>,
   MySub extends Functor<AppMsg>
 > {
-  private chainState: Promise<State>
-
   public constructor(
-    init: () => Promise<State>,
+    private chainState: Promise<State>,
 
     private readonly onEffects: (
       router: Router<AppMsg, SelfMsg>,
@@ -572,15 +280,14 @@ class Manager<
     ) => Promise<State>,
 
     private readonly onSelfMsg: (
-      sendToApp: (msg: Array<AppMsg>) => void,
+      sendToApp: (actions: Array<AppMsg>) => void,
       selfMsg: SelfMsg,
       state: State
     ) => Promise<State>
-  ) {
-    this.chainState = init()
-  }
+  ) {}
 
   public execute(
+    // TODO get in constructor
     dispatch: (actions: Array<AppMsg>) => void,
     cmds: Array<MyCmd>,
     subs: Array<MySub>
@@ -604,7 +311,7 @@ class Manager<
 
 let MANAGER_ID = 0
 
-const registerManager = <
+export const registerManager = <
   AppMsg,
   SelfMsg,
   State,
@@ -625,27 +332,27 @@ const registerManager = <
   ): Promise<State>
 
   onSelfMsg(
-    sendToApp: (msg: Array<AppMsg>) => void,
+    sendToApp: (actions: Array<AppMsg>) => void,
     selfMsg: SelfMsg,
     state: State
   ): Promise<State>
 }): EffectFactory<AppMsg, MyCmd, MySub> => {
   const managerId = MANAGER_ID++
 
-  const run: Run<AppMsg, SelfMsg, State, MyCmd, MySub> = (
-    dispatch,
+  const run: RunManager<AppMsg, SelfMsg, State, MyCmd, MySub> = (
+    sendToApp,
     cmds,
     subs,
-    manager = new Manager(init, onEffects, onSelfMsg)
+    manager = new Manager(init(), onEffects, onSelfMsg)
   ) => {
-    manager.execute(dispatch, cmds, subs)
+    manager.execute(sendToApp, cmds, subs)
 
     return manager
   }
 
   return {
     createCmd<M>(cmd: MyCmd): Cmd<AppMsg & M> {
-      return new IEffectCreator(
+      return new CreateEffect(
         managerId,
         run,
         (cmd as unknown) as Functor<AppMsg & M>
@@ -653,7 +360,7 @@ const registerManager = <
     },
 
     createSub<M>(sub: MySub): Sub<AppMsg & M> {
-      return new IEffectCreator(
+      return new CreateEffect(
         managerId,
         run,
         (sub as unknown) as Functor<AppMsg & M>
@@ -661,7 +368,8 @@ const registerManager = <
     }
   }
 }
-// ---- CORE
+
+// C O R E  E F F E C T   M A N A G E M E N T
 
 type CommandsState = Record<string, undefined | VoidFunction>
 
@@ -673,62 +381,48 @@ type SubscriptionsState<AppMsg> = Record<
       cancel(): void
     }
 >
-interface EffectState<AppMsg> {
+interface CoreState<AppMsg> {
   commands: CommandsState
   subscriptions: SubscriptionsState<AppMsg>
 }
 
-const cancelCommand = (
-  key: string,
-  commandsState: CommandsState
-): CommandsState => {
-  const cancel = commandsState[key]
-
-  if (typeof cancel === 'function') {
-    const { [key]: _, ...nextCommandsState } = commandsState
-
-    cancel()
-
-    return nextCommandsState
-  }
-
-  return commandsState
-}
 interface CoreSelfMsg<AppMsg> {
   execute(
-    sendToApp: (msg: Array<AppMsg>) => void,
-    state: EffectState<AppMsg>
-  ): EffectState<AppMsg>
+    sendToApp: (actions: Array<AppMsg>) => void,
+    state: CoreState<AppMsg>
+  ): CoreState<AppMsg>
 }
 
-class CoreCancelSelfMsg<AppMsg> implements CoreSelfMsg<AppMsg> {
+class CoreClearCancelSelfMsg<AppMsg> implements CoreSelfMsg<AppMsg> {
   public constructor(private readonly key: string) {}
 
   public execute(
-    _: (msg: Array<AppMsg>) => void,
-    state: EffectState<AppMsg>
-  ): EffectState<AppMsg> {
-    const nextCommands = cancelCommand(this.key, state.commands)
+    sendToApp: (actions: Array<AppMsg>) => void,
+    state: CoreState<AppMsg>
+  ): CoreState<AppMsg> {
+    if (this.key in state.commands) {
+      const { [this.key]: _, ...nextCommandsState } = state.commands
 
-    if (state.commands === nextCommands) {
-      return state
+      return {
+        commands: nextCommandsState,
+        subscriptions: state.subscriptions
+      }
     }
 
-    return {
-      commands: nextCommands,
-      subscriptions: state.subscriptions
-    }
+    return state
   }
 }
 
-class CoreTickSelfMsg<A extends Array<unknown>, AppMsg>
-  implements CoreSelfMsg<AppMsg> {
-  public constructor(private readonly key: string, private readonly args: A) {}
+class CoreTickSelfMsg<AppMsg> implements CoreSelfMsg<AppMsg> {
+  public constructor(
+    private readonly key: string,
+    private readonly args: Array<unknown>
+  ) {}
 
   public execute(
-    sendToApp: (msg: Array<AppMsg>) => void,
-    state: EffectState<AppMsg>
-  ): EffectState<AppMsg> {
+    sendToApp: (actions: Array<AppMsg>) => void,
+    state: CoreState<AppMsg>
+  ): CoreState<AppMsg> {
     const bag = state.subscriptions[this.key]
 
     if (bag == null) {
@@ -745,15 +439,16 @@ type CmdExecutor<T> = (
   done: (value: T) => void,
   onCancel: (key: string, kill: VoidFunction) => void
 ) => void
+
 interface CoreCmd<T> extends Functor<T> {
   execute(router: Router<T, never>, state: CommandsState): CommandsState
 }
 
-class CoreCmdExecutor<T> implements CoreCmd<T> {
+class CoreExecuteCmd<T> implements CoreCmd<T> {
   public constructor(private readonly executor: CmdExecutor<T>) {}
 
   public map<R>(fn: (action: T) => R): CoreCmd<R> {
-    return new CoreCmdExecutor((done, onCancel) => {
+    return new CoreExecuteCmd((done, onCancel) => {
       this.executor((value: T) => done(fn(value)), onCancel)
     })
   }
@@ -768,7 +463,7 @@ class CoreCmdExecutor<T> implements CoreCmd<T> {
       // no way to call it twice
       onCancel = noop
 
-      clearCancel = () => router.sendToSelf(new CoreCancelSelfMsg(key))
+      clearCancel = () => router.sendToSelf(new CoreClearCancelSelfMsg(key))
 
       const cancelPrev = nextCommandsState[key]
 
@@ -800,7 +495,7 @@ class CoreCmdExecutor<T> implements CoreCmd<T> {
       // no way to call done twice
       done = noop
 
-      // clears killer if it was assigned in onCancel
+      // clears cancel if it was assigned in onCancel
       clearCancel()
 
       router.sendToApp(action)
@@ -818,7 +513,7 @@ class CoreCmdExecutor<T> implements CoreCmd<T> {
   }
 }
 
-class CoreCmdCancel implements CoreCmd<never> {
+class CoreCancelCmd implements CoreCmd<never> {
   public constructor(private readonly key: string) {}
 
   public map(): CoreCmd<never> {
@@ -826,10 +521,20 @@ class CoreCmdCancel implements CoreCmd<never> {
   }
 
   public execute(
-    _: Router<never, CoreSelfMsg<never>>,
+    router: Router<never, CoreSelfMsg<never>>,
     commandsState: CommandsState
   ): CommandsState {
-    return cancelCommand(this.key, commandsState)
+    const cancel = commandsState[this.key]
+
+    if (typeof cancel === 'function') {
+      const { [this.key]: _, ...nextCommandsState } = commandsState
+
+      cancel()
+
+      return nextCommandsState
+    }
+
+    return commandsState
   }
 }
 
@@ -845,7 +550,7 @@ interface CoreSub<T> extends Functor<T> {
   ): void
 }
 
-class CoreSubExecutor<T, A extends Array<unknown>> implements CoreSub<T> {
+class CoreExecuteSub<T, A extends Array<unknown>> implements CoreSub<T> {
   public constructor(
     private readonly key: string,
     private readonly action: (...args: A) => T,
@@ -853,7 +558,7 @@ class CoreSubExecutor<T, A extends Array<unknown>> implements CoreSub<T> {
   ) {}
 
   public map<R>(fn: (action: T) => R): CoreSub<R> {
-    return new CoreSubExecutor(
+    return new CoreExecuteSub(
       this.key,
       (...args) => fn(this.action(...args)),
       this.listener
@@ -901,7 +606,7 @@ class CoreSubExecutor<T, A extends Array<unknown>> implements CoreSub<T> {
 const effectManager = registerManager<
   unknown,
   CoreSelfMsg<unknown>,
-  EffectState<unknown>,
+  CoreState<unknown>,
   CoreCmd<unknown>,
   CoreSub<unknown>
 >({
@@ -943,28 +648,28 @@ const effectManager = registerManager<
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 export const Cmd = {
-  none: iEffectNone as Cmd<never>,
-  batch: iEffectBatch as <T>(cmds: Array<Cmd<T>>) => Cmd<T>,
+  none: none as Cmd<never>,
+  batch: batch as <T>(cmds: Array<Cmd<T>>) => Cmd<T>,
 
   create<T>(executor: CmdExecutor<T>): Cmd<T> {
-    return effectManager.createCmd(new CoreCmdExecutor(executor))
+    return effectManager.createCmd(new CoreExecuteCmd(executor))
   },
 
   cancel(key: string): Cmd<never> {
-    return effectManager.createCmd(new CoreCmdCancel(key))
+    return effectManager.createCmd(new CoreCancelCmd(key))
   }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 export const Sub = {
-  none: iEffectNone as Sub<never>,
-  batch: iEffectBatch as <T>(subs: Array<Sub<T>>) => Sub<T>,
+  none: none as Sub<never>,
+  batch: batch as <T>(subs: Array<Sub<T>>) => Sub<T>,
 
   create<T, A extends Array<unknown> = []>(
     key: string,
     action: (...args: A) => T,
     listener: SubListener<A>
   ): Sub<T> {
-    return effectManager.createSub(new CoreSubExecutor(key, action, listener))
+    return effectManager.createSub(new CoreExecuteSub(key, action, listener))
   }
 }
