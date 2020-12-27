@@ -327,27 +327,32 @@ export const registerManager = <
   onEffects,
   onSelfMsg
 }: {
-  init(): Promise<State>
+  init(): State | Promise<State>
 
   onEffects(
     router: Router<AppMsg, SelfMsg>,
     cmds: Array<MyCmd>,
     subs: Array<MySub>,
     state: State
-  ): Promise<State>
+  ): State | Promise<State>
 
   onSelfMsg(
     sendToApp: (actions: Array<AppMsg>) => void,
     selfMsg: SelfMsg,
     state: State
-  ): Promise<State>
+  ): State | Promise<State>
 }): EffectFactory<AppMsg, MyCmd, MySub> => {
   const managerId = MANAGER_ID++
 
   const initManager: InitManager<AppMsg, SelfMsg, State, MyCmd, MySub> = (
     sendToApp: (actions: Array<AppMsg>) => void
   ) => {
-    return new Manager(sendToApp, init(), onEffects, onSelfMsg)
+    return new Manager(
+      sendToApp,
+      Promise.resolve(init()),
+      (...args) => Promise.resolve(onEffects(...args)),
+      (...args) => Promise.resolve(onSelfMsg(...args))
+    )
   }
 
   return {
@@ -610,12 +615,10 @@ const effectManager = registerManager<
   CoreCmd<unknown>,
   CoreSub<unknown>
 >({
-  init: () => {
-    return Promise.resolve({
-      commands: {},
-      subscriptions: {}
-    })
-  },
+  init: () => ({
+    commands: {},
+    subscriptions: {}
+  }),
 
   onEffects(router, cmds, subs, state) {
     let nextCommandsState = state.commands
@@ -635,14 +638,14 @@ const effectManager = registerManager<
       }
     }
 
-    return Promise.resolve({
+    return {
       commands: nextCommandsState,
       subscriptions: nextSubscriptions
-    })
+    }
   },
 
   onSelfMsg(sendToApp, msg, state) {
-    return Promise.resolve(msg.execute(sendToApp, state))
+    return msg.execute(sendToApp, state)
   }
 })
 
