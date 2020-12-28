@@ -281,84 +281,81 @@ class RequestImpl<T> implements Request<T> {
   }
 
   public send<A>(tagger: (result: Either<HttpError, T>) => A): Cmd<A> {
-    return Cmd.create(
-      () =>
-        new Promise(done => {
-          const xhr = new XMLHttpRequest()
+    return Cmd.create<A>(done => {
+      const xhr = new XMLHttpRequest()
 
-          xhr.addEventListener('error', () => {
-            done(tagger(Either.Left(NetworkError)))
-          })
+      xhr.addEventListener('error', () => {
+        done(tagger(Either.Left(NetworkError)))
+      })
 
-          xhr.addEventListener('timeout', () => {
-            done(tagger(Either.Left(Timeout)))
-          })
+      xhr.addEventListener('timeout', () => {
+        done(tagger(Either.Left(Timeout)))
+      })
 
-          xhr.addEventListener('load', () => {
-            const stringResponse: Response<string> = {
-              url: xhr.responseURL,
-              statusCode: xhr.status,
-              statusText: xhr.statusText,
-              headers: parseHeaders(xhr.getAllResponseHeaders()),
-              body: xhr.responseText
-            }
+      xhr.addEventListener('load', () => {
+        const stringResponse: Response<string> = {
+          url: xhr.responseURL,
+          statusCode: xhr.status,
+          statusText: xhr.statusText,
+          headers: parseHeaders(xhr.getAllResponseHeaders()),
+          body: xhr.responseText
+        }
 
-            if (xhr.status < 200 || xhr.status >= 300) {
-              done(tagger(Either.Left(BadStatus(stringResponse))))
-            } else {
-              done(
-                tagger(
-                  this.expect_
-                    .responseToResult({
-                      ...stringResponse,
-                      body: xhr.response || ''
-                    })
-                    .mapLeft(decodeError =>
-                      BadBody({
-                        decodeError,
-                        response: stringResponse
-                      })
-                    )
+        if (xhr.status < 200 || xhr.status >= 300) {
+          done(tagger(Either.Left(BadStatus(stringResponse))))
+        } else {
+          done(
+            tagger(
+              this.expect_
+                .responseToResult({
+                  ...stringResponse,
+                  body: xhr.response || ''
+                })
+                .mapLeft(decodeError =>
+                  BadBody({
+                    decodeError,
+                    response: stringResponse
+                  })
                 )
-              )
-            }
-          })
-
-          try {
-            xhr.open(
-              this.method,
-              buildUrlWithQuery(this.url, this.queryParams),
-              true
             )
-          } catch (e) {
-            done(tagger(Either.Left(BadUrl(this.url))))
+          )
+        }
+      })
 
-            return
-          }
+      try {
+        xhr.open(
+          this.method,
+          buildUrlWithQuery(this.url, this.queryParams),
+          true
+        )
+      } catch (e) {
+        done(tagger(Either.Left(BadUrl(this.url))))
 
-          for (const requestHeader of this.headers) {
-            xhr.setRequestHeader(requestHeader.name, requestHeader.value)
-          }
+        return
+      }
 
-          xhr.responseType = this.expect_.responseType
-          xhr.withCredentials = this.withCredentials_
+      for (const requestHeader of this.headers) {
+        xhr.setRequestHeader(requestHeader.name, requestHeader.value)
+      }
 
-          if (this.timeout > 0) {
-            xhr.timeout = this.timeout
-          }
+      xhr.responseType = this.expect_.responseType
+      xhr.withCredentials = this.withCredentials_
 
-          this.body.content.cata({
-            Nothing() {
-              xhr.send()
-            },
+      if (this.timeout > 0) {
+        xhr.timeout = this.timeout
+      }
 
-            Just(content) {
-              xhr.setRequestHeader('Content-Type', content.type)
-              xhr.send(content.value)
-            }
-          })
-        })
-    )
+      this.body.content.cata({
+        Nothing() {
+          xhr.send()
+        },
+
+        Just(content) {
+          xhr.setRequestHeader('Content-Type', content.type)
+          xhr.send(content.value)
+        }
+      })
+    })
   }
 }
 

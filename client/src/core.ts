@@ -441,7 +441,7 @@ class CoreTickSelfMsg<AppMsg> implements CoreSelfMsg<AppMsg> {
 }
 
 type CmdExecutor<T> = (
-  done: (value: T) => void,
+  done: (value?: T) => void,
   onCancel: (key: string, kill: VoidFunction) => void
 ) => void
 
@@ -496,14 +496,16 @@ class CoreExecuteCmd<T> implements CoreCmd<T> {
       onCancel = noop
     }
 
-    let done = (action: T): void => {
+    let done = (action?: T): void => {
       // no way to call done twice
       done = noop
 
       // clears cancel if it was assigned in onCancel
       clearCancel()
 
-      router.sendToApp(action)
+      if (typeof action !== 'undefined') {
+        router.sendToApp(action)
+      }
     }
 
     this.executor(
@@ -649,14 +651,28 @@ const effectManager = registerManager<
   }
 })
 
+function createCmd(executor: (done: () => void) => void): Cmd<never>
+function createCmd<T>(
+  executor: (
+    done: (value: T) => void,
+    onCancel: (key: string, kill: () => void) => void
+  ) => void
+): Cmd<T>
+function createCmd<T>(
+  executor: (
+    done: (value?: T) => void,
+    onCancel: (key: string, kill: () => void) => void
+  ) => void
+): Cmd<T> {
+  return effectManager.createCmd(new CoreExecuteCmd(executor))
+}
+
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 export const Cmd = {
   none: none as Cmd<never>,
   batch: batch as <T>(cmds: Array<Cmd<T>>) => Cmd<T>,
 
-  create<T>(executor: CmdExecutor<T>): Cmd<T> {
-    return effectManager.createCmd(new CoreExecuteCmd(executor))
-  },
+  create: createCmd,
 
   cancel(key: string): Cmd<never> {
     return effectManager.createCmd(new CoreCancelCmd(key))

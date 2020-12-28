@@ -46,7 +46,7 @@ export const init: [State, Cmd<Action>] = [
     robots: RemoteData.Loading,
     join: NotJoin
   },
-  Cmd.create(done => {
+  Cmd.create<Action>(done => {
     getAgentList().then(result => done(LoadRobots(result)))
   })
 ]
@@ -72,7 +72,7 @@ const SelectRobot = ActionOf<string, Action>((robotId, username, state) => [
     ...state,
     join: Joining(robotId)
   },
-  Cmd.create(done => {
+  Cmd.create<Action>(done => {
     joinRoom({ username, robotId }).then(result =>
       done(SelectRobotDone(result.mapLeft(message => ({ robotId, message }))))
     )

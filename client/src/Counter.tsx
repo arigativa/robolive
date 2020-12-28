@@ -17,7 +17,7 @@ export const init: [State, Cmd<Action>] = [
     auto: true,
     delayed: false
   },
-  Cmd.create(done => {
+  Cmd.create<Action>(done => {
     done(SetUUID(Date.now().toString() + Math.random().toFixed(6)))
   })
 ]
@@ -66,7 +66,7 @@ const Delayed = ActionOf<Action, Action>((action, state) => {
           ...state,
           delayed: true
         },
-        Cmd.create((done, onCancel) => {
+        Cmd.create<Action>((done, onCancel) => {
           const timeoutId = setTimeout(() => {
             done(DelayedDone(action))
           }, 3000)
