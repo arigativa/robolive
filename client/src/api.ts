@@ -5,9 +5,7 @@ import { AgentListRequest, AgentView } from './generated/Info_pb'
 import { ClientEndpointClient } from './generated/Client_pb_service'
 import { JoinRequest } from './generated/Client_pb'
 
-const ENDPOINT = 'https://rl.arigativa.ru:10477'
-
-const infoClient = new InfoEndpointClient(ENDPOINT)
+const infoClient = new InfoEndpointClient('https://rl.arigativa.ru:10477')
 
 export interface Agent {
   id: string
