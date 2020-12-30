@@ -11,7 +11,7 @@ import {
 } from '@chakra-ui/react'
 
 import { Dispatch } from 'core'
-import { ActionOf, caseOf, hasWhitespaces } from 'utils'
+import { ActionOf, CaseCreator, CaseOf, hasWhitespaces } from 'utils'
 
 // S T A T E
 
@@ -26,6 +26,11 @@ export const initial: State = {
 }
 
 // U P D A T E
+
+export type Stage = CaseOf<'Updated', State> | CaseOf<'Registered', string>
+
+const Updated: CaseCreator<Stage> = CaseOf('Updated')
+const Registered: CaseCreator<Stage> = CaseOf('Registered')
 
 export type Action = ActionOf<[State], Stage>
 
@@ -53,11 +58,6 @@ const ChangeUsername = ActionOf<string, Action>((username, state) =>
     username
   })
 )
-
-export type Stage = ReturnType<typeof Updated> | ReturnType<typeof Registered>
-
-const Updated = caseOf<'Updated', State>('Updated')
-const Registered = caseOf<'Registered', string>('Registered')
 
 // V I E W
 

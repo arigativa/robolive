@@ -8,9 +8,9 @@ import * as serviceWorker from 'serviceWorker'
 import { useStore } from 'store'
 import { Cmd } from 'core'
 
-import * as Main from 'CounterList'
+import * as Main from 'Main'
 
-const init: [Main.State, Cmd<Main.Action>] = Main.init
+const init: [Main.State, Cmd<Main.Action>] = [Main.initial, Cmd.none]
 
 const update = (
   action: Main.Action,

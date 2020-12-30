@@ -41,44 +41,56 @@ export function ActionOf<T, A extends Array<unknown>, R>(
       : new ActionWithPayload(payload, handler)
 }
 
-export type Case<T extends string = string, P = never> = {
+export interface CaseOf<T extends string = string, P = never> {
   type: T
   payload: P
 }
 
-export type CreateCaseWithoutPayload<T extends string = string> = {
+export interface CreateCaseWithoutPayload<T extends string = string> {
   type: T
-  (): Case<T>
+  (): CaseOf<T>
 }
 
-export type CreateCaseWithPayload<T extends string = string, P = never> = {
+export interface CreateCaseWithPayload<T extends string = string, P = never> {
   type: T
-  (payload: P): Case<T, P>
+  (payload: P): CaseOf<T, P>
 }
 
-export function caseOf<T extends string>(type: T): CreateCaseWithoutPayload<T>
-export function caseOf<T extends string, P>(
+type ExtractPayloadFor<
+  K extends string,
+  A extends CaseOf<string, unknown>
+> = Extract<A, { type: K }>['payload']
+
+export type CaseCreator<A extends CaseOf<string, unknown>> = {
+  [K in A['type']]: [ExtractPayloadFor<K, A>] extends [never]
+    ? CreateCaseWithoutPayload<K>
+    : CreateCaseWithPayload<K, ExtractPayloadFor<K, A>>
+}[A['type']]
+
+export function CaseOf<T extends string>(type: T): CreateCaseWithoutPayload<T>
+export function CaseOf<T extends string, P>(
   type: T
 ): CreateCaseWithPayload<T, P>
-export function caseOf<T extends string, P>(
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export function CaseOf<T extends string, P>(
   type: T
 ): CreateCaseWithPayload<T, P> {
-  const creator = (payload: P): Case<T, P> => ({ type, payload })
+  const creator = (payload: P): CaseOf<T, P> => ({ type, payload })
 
   creator.type = type
 
   return creator
 }
 
-type CaseOfSchema<A extends Case<string, unknown>, R> = {
+type CaseOfSchema<A extends CaseOf<string, unknown>, R> = {
   [K in A['type']]: (payload: Extract<A, { type: K }>['payload']) => R
 }
 
-export type Schema<A extends Case<string, unknown>, R> =
+export type Schema<A extends CaseOf<string, unknown>, R> =
   | CaseOfSchema<A, R>
   | (Partial<CaseOfSchema<A, R>> & { _(): R })
 
-export const match = <A extends Case<string, unknown>, R>(
+export const match = <A extends CaseOf<string, unknown>, R>(
   case_: A,
   schema: Schema<A, R>
 ): R => {

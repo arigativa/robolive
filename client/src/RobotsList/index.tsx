@@ -17,24 +17,18 @@ import RemoteData from 'frctl/RemoteData'
 import { Cmd, Dispatch } from 'core'
 import { Agent, getAgentList, joinRoom } from 'api'
 import { SkeletonText, SkeletonRect } from 'Skeleton'
-import { ActionOf, range, caseOf, match } from 'utils'
+import { ActionOf, CaseOf, CaseCreator, range, match } from 'utils'
 
 // S T A T E
 
 type Join =
-  | typeof NotJoin
-  | ReturnType<typeof Joining>
-  | ReturnType<typeof JoinFail>
+  | CaseOf<'NotJoin'>
+  | CaseOf<'Joining', string>
+  | CaseOf<'JoinFail', { robotId: string; message: string }>
 
-const NotJoin = caseOf('NotJoin')()
-const Joining = caseOf<'Joining', string>('Joining')
-const JoinFail = caseOf<
-  'JoinFail',
-  {
-    robotId: string
-    message: string
-  }
->('JoinFail')
+const NotJoin: Join = CaseOf('NotJoin')()
+const Joining: CaseCreator<Join> = CaseOf('Joining')
+const JoinFail: CaseCreator<Join> = CaseOf('JoinFail')
 
 export type State = {
   robots: RemoteData<string, Array<Agent>>

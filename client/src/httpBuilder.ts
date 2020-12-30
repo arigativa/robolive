@@ -4,7 +4,7 @@ import Decode from 'frctl/Json/Decode'
 import Encode from 'frctl/Json/Encode'
 
 import { Cmd } from 'core'
-import { caseOf } from 'utils'
+import { CaseOf, CaseCreator } from 'utils'
 
 /**
  * Adapts frctl/Http to use with redux
@@ -59,20 +59,17 @@ const parseHeaders = (rawHeaders: string): Record<string, string> => {
 /* E R R O R */
 
 export type HttpError =
-  | typeof HttpError.Timeout
-  | typeof HttpError.NetworkError
-  | ReturnType<typeof HttpError.BadUrl>
-  | ReturnType<typeof HttpError.BadStatus>
-  | ReturnType<typeof HttpError.BadBody>
+  | CaseOf<'Timeout'>
+  | CaseOf<'NetworkError'>
+  | CaseOf<'BadUrl', string>
+  | CaseOf<'BadStatus', Response<string>>
+  | CaseOf<'BadBody', { decodeError: Decode.Error; response: Response<string> }>
 
-const Timeout = caseOf('Timeout')()
-const NetworkError = caseOf('NetworkError')()
-const BadUrl = caseOf<'BadUrl', string>('BadUrl')
-const BadStatus = caseOf<'BadStatus', Response<string>>('BadStatus')
-const BadBody = caseOf<
-  'BadBody',
-  { decodeError: Decode.Error; response: Response<string> }
->('BadBody')
+const Timeout: HttpError = CaseOf('Timeout')()
+const NetworkError: HttpError = CaseOf('NetworkError')()
+const BadUrl: CaseCreator<HttpError> = CaseOf('BadUrl')
+const BadStatus: CaseCreator<HttpError> = CaseOf('BadStatus')
+const BadBody: CaseCreator<HttpError> = CaseOf('BadBody')
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 export const HttpError = { Timeout, NetworkError, BadUrl, BadStatus, BadBody }
@@ -285,11 +282,11 @@ class RequestImpl<T> implements Request<T> {
       const xhr = new XMLHttpRequest()
 
       xhr.addEventListener('error', () => {
-        done(tagger(Either.Left(NetworkError)))
+        done(tagger(Either.Left(HttpError.NetworkError)))
       })
 
       xhr.addEventListener('timeout', () => {
-        done(tagger(Either.Left(Timeout)))
+        done(tagger(Either.Left(HttpError.Timeout)))
       })
 
       xhr.addEventListener('load', () => {
@@ -302,7 +299,7 @@ class RequestImpl<T> implements Request<T> {
         }
 
         if (xhr.status < 200 || xhr.status >= 300) {
-          done(tagger(Either.Left(BadStatus(stringResponse))))
+          done(tagger(Either.Left(HttpError.BadStatus(stringResponse))))
         } else {
           done(
             tagger(
@@ -312,7 +309,7 @@ class RequestImpl<T> implements Request<T> {
                   body: xhr.response || ''
                 })
                 .mapLeft(decodeError =>
-                  BadBody({
+                  HttpError.BadBody({
                     decodeError,
                     response: stringResponse
                   })
@@ -329,7 +326,7 @@ class RequestImpl<T> implements Request<T> {
           true
         )
       } catch (e) {
-        done(tagger(Either.Left(BadUrl(this.url))))
+        done(tagger(Either.Left(HttpError.BadUrl(this.url))))
 
         return
       }

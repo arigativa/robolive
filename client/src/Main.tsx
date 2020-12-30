@@ -1,20 +1,23 @@
 import React from 'react'
 
 import { Dispatch, Cmd, Sub } from 'core'
-import { ActionOf, caseOf, match } from 'utils'
+import { ActionOf, CaseOf, CaseCreator, match } from 'utils'
 import * as Login from 'Login'
 import * as RobotsList from 'RobotsList'
 
 // S T A T E
 
 export type State =
-  | ReturnType<typeof LoginScreen>
-  | ReturnType<typeof RobotsListScreen>
+  | CaseOf<'LoginScreen', Login.State>
+  | CaseOf<
+      'RobotsListScreen',
+      ScreenWithUsername<{ robotsList: RobotsList.State }>
+    >
 
 type ScreenWithUsername<T> = T & { username: string }
 
-const LoginScreen = caseOf<'LoginScreen', Login.State>('LoginScreen')
-const RobotsListScreen = caseOf<
+const LoginScreen: CaseCreator<State> = CaseOf('LoginScreen')
+const RobotsListScreen: CaseCreator<State> = CaseOf<
   'RobotsListScreen',
   ScreenWithUsername<{
     robotsList: RobotsList.State
