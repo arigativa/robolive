@@ -52,6 +52,12 @@ export const joinRoom = (options: {
 }): Promise<Either<string, Array<[string, string]>>> => {
   return new Promise(done => {
     const req = new JoinRequest()
+    const settings = req.getSettingsMap()
+
+    settings.set('videoSrcFn', 'circles"')
+    settings.set('videoSrcFn1', 'jetson_camera_scaled(0,3,270)"')
+    settings.set('videoSrcFn2', 'jetson_camera(0,3)')
+    settings.set('servoControllerType', 'FAKE')
 
     req.setName(options.username)
     req.setTargetid(options.robotId)
