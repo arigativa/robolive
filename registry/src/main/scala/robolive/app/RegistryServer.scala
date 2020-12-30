@@ -36,14 +36,10 @@ object RegistryServer extends App {
   val ClientPort = getEnv("REGISTRY_PORT_FOR_CLIENT", "3478").toInt
   val StoragePort = getEnv("REGISTRY_PORT_FOR_STORAGE", "3479").toInt
   val SipChannelPort = getEnv("REGISTRY_PORT_FOR_SIP_CHANNEL", "3480").toInt
-  val videoSrcFn: String = getEnv("VIDEO_SRC_FN", "circles")
   val signallingSipEndpointUri: String = getEnv("SIGNALLING_SIP_URI", "localhost:9031")
   val signallingHttpUri: String = getEnv("SIGNALLING_HTTP_URI", "http://localhost:9031")
   val stunUri: String = getEnv("STUN_URI", "stun://rl.arigativa.ru:8080")
 
-  val enableUserVideo: Boolean = sys.env.contains("ENABLE_USER_VIDEO")
-
-  val servoControllerType: String = getEnv("SERVO_CONTROLLER", default = "PYTHON_SHELL")
   val turnUri: String = getEnv("TURN_URI", "turn:rl.arigativa.ru:8080?transport=tcp")
 
   val robotsState = new ConcurrentHashMap[String, server.AgentState]()
@@ -75,11 +71,8 @@ object RegistryServer extends App {
 
   val storageEndpoint = {
     val configMap = Map(
-      "videoSrcFn" -> videoSrcFn,
       "signallingUri" -> signallingSipEndpointUri,
       "stunUri" -> stunUri,
-      "enableUserVideo" -> enableUserVideo.toString,
-      "servoControllerType" -> servoControllerType,
       "turnUri" -> turnUri,
     )
 

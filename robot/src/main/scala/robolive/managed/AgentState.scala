@@ -96,8 +96,8 @@ object AgentState {
             val videoSrcFn = settings("videoSrcFn").get
             val signallingUri = settings("signallingUri").get
             val stunUri = settings("stunUri").get
-            val enableUserVideo = settings("enableUserVideo").get.toBoolean
-            val servoControllerType = settings("servoControllerType").get
+            val enableUserVideo = settings("enableUserVideo").getOrElse("false").toBoolean
+            val servoControllerType = settings("servoControllerType").getOrElse("FAKE")
 
             // todo: how is this part working?
             val videoSource = deps.videoSources.getSource(videoSrcFn)
