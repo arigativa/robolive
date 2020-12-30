@@ -44,7 +44,7 @@ export const getAgentList = (): Promise<Either<string, Array<Agent>>> => {
   })
 }
 
-const clientClient = new ClientEndpointClient('http://rl.arigativa.ru:10478')
+const clientClient = new ClientEndpointClient('https://rl.arigativa.ru:10478')
 
 export const joinRoom = (options: {
   username: string

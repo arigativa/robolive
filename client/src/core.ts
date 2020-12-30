@@ -87,6 +87,7 @@ const executeEffects = <A>(
   sub: Sub<A>,
   office: Office<A>
 ): void => {
+  // it's going to mutate bags because nothing uses the value outside
   const bags: Map<number, Bag<A>> = new Map()
 
   cmd.gather((managerId, initManager: InitManager<A>, myCmd) => {
@@ -186,6 +187,8 @@ type Collector<T> = (
 
 interface Effect<K, T> extends Functor<T> {
   map<R>(fn: (value: T) => R): Effect<K, R>
+
+  // it needs `K` to split Cmd and Sub because API exactly the same
   gather(collector: Collector<T>, key?: K): void
 }
 class CreateEffect<K, T> implements Effect<K, T> {
