@@ -15,7 +15,6 @@ final class WebRTCController(
   stunServerUrl: String,
   servoController: ServoController,
   enableUserVideo: Boolean,
-  eventListener: WebRTCController.ControllerEventListener
 )(implicit gst: GstManaged.GSTInit.type) {
   import WebRTCController._
 
@@ -71,7 +70,6 @@ final class WebRTCController(
     pipeline.dispose()
     webRTCBin = null
     pipeline = null
-    eventListener.stop()
     logger.debug("State transition to 'WAIT'")
     state = WebRTCControllerPlayState.Wait
   }
@@ -314,9 +312,5 @@ object WebRTCController {
     s"""webrtcbin name=sendrecv bundle-policy=max-bundle stun-server=$stunServerUrl
        | $videoSrc ! queue ! vp8enc deadline=1 ! rtpvp8pay pt=$rtcType !
        | queue ! application/x-rtp,media=video,encoding-name=VP8,payload=$rtcType ! sendrecv.""".stripMargin
-  }
-
-  trait ControllerEventListener {
-    def stop(): Unit
   }
 }

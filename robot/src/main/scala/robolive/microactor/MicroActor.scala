@@ -78,14 +78,18 @@ object MicroActor extends App {
     @volatile private var timer = new Timer(s"MicroActor Timer")
 
     override def shutdown(): Unit = {
+      println("Trying to stop TimeredMicroActor")
       super.shutdown()
       timer.cancel()
       timer.purge()
+      println("TimeredMicroActor stopped")
     }
 
     override protected def onStateTransitioning(oldState: State[D, E, S]): Unit = {
+      println("Stopping timers")
       timer.cancel()
       timer.purge()
+      println("Timers stopped")
     }
 
     def scheduleTaskWhileInNextState(

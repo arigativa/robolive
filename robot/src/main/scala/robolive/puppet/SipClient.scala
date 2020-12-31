@@ -23,7 +23,7 @@ final class SipTransportHandler(sipCallToEventAdapter: SIPCallEventHandler, sipU
   }
 }
 
-final class SIPCallEventHandler(controller: WebRTCController)(
+final class SIPCallEventHandler(controller: WebRTCController, halt: () => ())(
   implicit ec: ExecutionContext
 ) extends ExtendedCallListener {
   private val logger = LoggerFactory.getLogger(getClass.getName)
@@ -50,16 +50,20 @@ final class SIPCallEventHandler(controller: WebRTCController)(
     logger.debug(s"IGNORED onCallTransferAccepted")
 
   /** Callback function called when a call transfer is refused. */
-  override def onCallTransferRefused(call: ExtendedCall, reason: String, resp: SipMessage): Unit =
-    logger.debug(s"IGNORED onCallTransferRefused")
+  override def onCallTransferRefused(call: ExtendedCall, reason: String, resp: SipMessage): Unit = {
+    logger.debug(s"onCallTransferRefused")
+    halt()
+  }
 
   /** Callback function called when a call transfer is successfully completed. */
   override def onCallTransferSuccess(call: ExtendedCall, notify: SipMessage): Unit =
     logger.debug(s"IGNORED onCallTransferSuccess")
 
   /** Callback function called when a call transfer is NOT sucessfully completed. */
-  override def onCallTransferFailure(call: ExtendedCall, reason: String, notify: SipMessage): Unit =
-    logger.debug(s"IGNORED onCallTransferFailure")
+  override def onCallTransferFailure(call: ExtendedCall, reason: String, notify: SipMessage): Unit = {
+    logger.debug(s"onCallTransferFailure")
+    halt()
+  }
 
   /** Callback function called when arriving a new INVITE method (incoming call) */
   override def onCallInvite(
@@ -99,8 +103,10 @@ final class SIPCallEventHandler(controller: WebRTCController)(
     logger.debug(s"IGNORED onCallAccepted")
 
   /** Callback function called when arriving a 4xx (call failure) */
-  override def onCallRefused(call: Call, reason: String, resp: SipMessage): Unit =
-    logger.debug(s"IGNORED onCallRefused")
+  override def onCallRefused(call: Call, reason: String, resp: SipMessage): Unit = {
+    logger.debug(s"onCallRefused")
+    halt()
+  }
 
   /** Callback function called when arriving a 3xx (call redirection) */
   override def onCallRedirected(
@@ -108,7 +114,13 @@ final class SIPCallEventHandler(controller: WebRTCController)(
     reason: String,
     contact_list: util.Vector[_],
     resp: SipMessage
-  ): Unit = ???
+  ): Unit = {
+    logger.info(
+      s"""onCallRedirected:
+         |reason: $reason""".stripMargin
+    )
+    halt()
+  }
 
   /** Callback function called when arriving an ACK method (call confirmed) */
   override def onCallConfirmed(call: Call, sdp: String, ack: SipMessage): Unit = {
@@ -120,7 +132,10 @@ final class SIPCallEventHandler(controller: WebRTCController)(
   }
 
   /** Callback function called when the invite expires */
-  override def onCallTimeout(call: Call): Unit = logger.debug(s"IGNORED onCallTimeout")
+  override def onCallTimeout(call: Call): Unit = {
+    logger.debug(s"onCallTimeout")
+    halt()
+  }
 
   /** Callback function called when arriving an  INFO method. */
   override def onCallInfo(
@@ -142,15 +157,22 @@ final class SIPCallEventHandler(controller: WebRTCController)(
     logger.debug(s"IGNORED onCallModifyAccepted")
 
   /** Callback function called when arriving a 4xx (re-invite/modify failure) */
-  override def onCallModifyRefused(call: Call, reason: String, resp: SipMessage): Unit =
-    logger.debug(s"IGNORED onCallModifyRefused")
+  override def onCallModifyRefused(call: Call, reason: String, resp: SipMessage): Unit ={
+    logger.debug(s"onCallModifyRefused")
+    halt()
+}
 
   /** Callback function called when a re-invite expires */
-  override def onCallModifyTimeout(call: Call): Unit = logger.debug(s"IGNORED onCallModifyTimeout")
+  override def onCallModifyTimeout(call: Call): Unit = {
+    logger.debug(s"onCallModifyTimeout")
+    halt()
+  }
 
   /** Callback function called when arriving a CANCEL request */
-  override def onCallCancel(call: Call, cancel: SipMessage): Unit =
-    logger.debug(s"IGNORED onCallCancel")
+  override def onCallCancel(call: Call, cancel: SipMessage): Unit ={
+    logger.debug(s"onCallCancel")
+    halt()
+}
 
   /** Callback function called when arriving a new UPDATE method (update request). */
   override def onCallUpdate(call: Call, sdp: String, update: SipMessage): Unit = {
@@ -164,7 +186,8 @@ final class SIPCallEventHandler(controller: WebRTCController)(
 
   /** Callback function called when arriving a non 2xx for an UPDATE request */
   override def onCallUpdateRefused(call: Call, sdp: String, resp: SipMessage): Unit = {
-    logger.debug(s"Ignored onCallUpdateRefused($call, $sdp, $resp)")
+    logger.debug(s"onCallUpdateRefused($call, $sdp, $resp)")
+    halt()
   }
 
   /** Callback function called when arriving a BYE request */
@@ -174,16 +197,17 @@ final class SIPCallEventHandler(controller: WebRTCController)(
          |$bye
          |""".stripMargin
     }
-    controller.dispose()
+    halt()
   }
 
   /** Callback function called when arriving a response for the BYE request (call closed) */
-  override def onCallClosed(call: Call, resp: SipMessage): Unit =
-    logger.debug(s"IGNORED onCallClosed")
+  override def onCallClosed(call: Call, resp: SipMessage): Unit = {
+    logger.debug(s"onCallClosed")
+    halt()
+  }
 }
 
-final class RegistrationClientHandler(controller: WebRTCController)
-    extends RegistrationClientListener {
+final class RegistrationClientHandler(halt: () => ()) extends RegistrationClientListener {
   private val logger = LoggerFactory.getLogger(getClass.getName)
 
   override def onRegistrationSuccess(
@@ -202,6 +226,7 @@ final class RegistrationClientHandler(controller: WebRTCController)
          |""".stripMargin
     }
   }
+
   override def onRegistrationFailure(
     registrationClient: RegistrationClient,
     nameAddress: NameAddress,
@@ -215,7 +240,7 @@ final class RegistrationClientHandler(controller: WebRTCController)
          |result:  $s
          |""".stripMargin
     }
-    controller.dispose()
+    halt()
   }
 }
 
@@ -230,14 +255,17 @@ final class SipClient(
   registrationClientHandler: RegistrationClientHandler,
   config: SipConfig,
 ) {
-  val nameAddress = s"${config.name}@${config.registrarUri}"
-  val sipUser = new SipUser(new NameAddress(nameAddress))
-  val sipTransportHandler = new SipTransportHandler(sipEventHandler, sipUser)
+  private val nameAddress = s"${config.name}@${config.registrarUri}"
+  private val sipUser = new SipUser(new NameAddress(nameAddress))
+  private val sipTransportHandler = new SipTransportHandler(sipEventHandler, sipUser)
 
-  val sipProvider = new SipProvider(null, 0, Array(config.protocol))
-  sipProvider.addPromiscuousListener(sipTransportHandler)
+  private val sipProvider = {
+    val provider = new SipProvider(null, 0, Array(config.protocol))
+    provider.addPromiscuousListener(sipTransportHandler)
+    provider
+  }
 
-  val rc = {
+  private val rc = {
     val toAddress = sipUser.getAddress
     val fromAddress = sipUser.getAddress
     val contactAddress = sipUser.getAddress
@@ -253,6 +281,14 @@ final class SipClient(
     )
   }
 
-  if (rc.isRegistering) rc.halt()
-  rc.loopRegister(30, 30)
+  def start(expireTime: Int, renewTime: Int): Unit = {
+    if (rc.isRegistering) rc.halt() // discard default registering loop
+    rc.loopRegister(expireTime, renewTime)
+  }
+
+  def stop(): Unit = {
+    rc.halt()
+    sipProvider.halt()
+  }
+
 }
