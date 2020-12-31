@@ -32,8 +32,19 @@ final class Puppet(
       stunServerUrl = stunUri,
       servoController = servoController,
       enableUserVideo = enableUserVideo,
-      eventListener = () => eventListener.stop(),
     )
+  }
+
+  private val sipClient = {
+    val sipConfig = SipConfig(
+      registrarUri = signallingUri,
+      name = sipRobotName,
+      protocol = "tcp",
+    )
+
+    val sipEventsHandler = new SIPCallEventHandler(controller, () => eventListener.stop())
+    val registrationClientHandler = new RegistrationClientHandler(() => eventListener.stop())
+    new SipClient(sipEventsHandler, registrationClientHandler, sipConfig)
   }
 
   def start(): Puppet = {
@@ -41,19 +52,13 @@ final class Puppet(
     logger.info(s"Hello, I'm $robotName")
     logger.info(s"Trying to connect to signalling `$signallingUri`")
 
-    val sipConfig = SipConfig(
-      registrarUri = signallingUri,
-      name = sipRobotName,
-      protocol = "tcp",
-    )
+    sipClient.start(30, 30)
 
-    val sipEventsHandler = new SIPCallEventHandler(controller)
-    val registrationClientHandler = new RegistrationClientHandler(controller)
-    new SipClient(sipEventsHandler, registrationClientHandler, sipConfig)
     this
   }
 
-  def stop(): Unit = { // TODO: stop SIPClient
+  def stop(): Unit = {
+    sipClient.stop()
     controller.dispose()
   }
 }

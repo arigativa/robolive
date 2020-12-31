@@ -237,7 +237,9 @@ object AgentState {
     ): Future[AgentState] = {
       event match {
         // fixme: hack to not create additional message for `Disconnect`
-        case Message.Registered(_) => Future.successful(AgentState.Registered)
+        case Message.Registered(_) =>
+          puppet.stop()
+          Future.successful(AgentState.Registered)
 
         case other =>
           deps.logger.error(s"Unexpected message $other in Busy state")
