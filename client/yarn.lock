@@ -6989,6 +6989,11 @@ decimal.js@^10.2.0:
   resolved "https://registry.yarnpkg.com/decimal.js/-/decimal.js-10.2.1.tgz#238ae7b0f0c793d3e3cea410108b35a2c01426a3"
   integrity sha512-KaL7+6Fw6i5A2XSnsbhm/6B+NuEA7TZ4vqxnd5tXz9sbKtrN9Srj8ab4vKVdK8YAqZO9P1kg45Y6YLoduPf+kw==
 
+decode-json@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/decode-json/-/decode-json-1.0.0.tgz#a31ba7217f05e5971a7420c8aa63dca4d37f4deb"
+  integrity sha512-OZ39knXPyGAMzPbqj6JlL2F3QKpoPDnTHkQVIj2aDK3n/r/7fmY+diPhtby8ta4jl4vUtuaqpKj9PdF3xjGFFg==
+
 decode-uri-component@^0.2.0:
   version "0.2.0"
   resolved "https://registry.yarnpkg.com/decode-uri-component/-/decode-uri-component-0.2.0.tgz#eb3913333458775cb84cd1a1fae062106bb87545"

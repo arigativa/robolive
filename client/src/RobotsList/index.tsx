@@ -15,7 +15,7 @@ import Either from 'frctl/Either'
 import RemoteData from 'frctl/RemoteData'
 
 import { Cmd, Dispatch } from 'core'
-import { Agent, getAgentList, joinRoom } from 'api'
+import { Agent, RoomConfiguration, getAgentList, joinRoom } from 'api'
 import { SkeletonText, SkeletonRect } from 'Skeleton'
 import { ActionOf, CaseOf, CaseCreator, range, match } from 'utils'
 
@@ -79,7 +79,7 @@ const SelectRobotDone = ActionOf<
       robotId: string
       message: string
     },
-    Array<[string, string]>
+    RoomConfiguration
   >,
   Action
 >((result, _, state) => {

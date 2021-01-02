@@ -1,3 +1,5 @@
+import Decode, { Decoder } from 'decode-json'
+import errorToHumanReadable from 'decode-json/error-to-human-readable'
 import Either from 'frctl/Either'
 
 import { InfoEndpointClient } from './generated/Info_pb_service'
@@ -46,10 +48,38 @@ export const getAgentList = (): Promise<Either<string, Array<Agent>>> => {
 
 const clientClient = new ClientEndpointClient('https://rl.arigativa.ru:10478')
 
+const keyValuesToRecord = <T>(
+  keyValues: Array<[string, T]>
+): Record<string, T> => {
+  const acc: Record<string, T> = {}
+
+  for (const [key, value] of keyValues) {
+    acc[key] = value
+  }
+
+  return acc
+}
+
+export interface RoomConfiguration {
+  signallingUri: string
+  sipAgentName: string
+  sipClientName: string
+  stunUri: string
+  turnUri: string
+}
+
+const roomConfigurationDecoder: Decoder<RoomConfiguration> = Decode.shape({
+  signallingUri: Decode.field('signallingUri').string,
+  sipAgentName: Decode.field('sipAgentName').string,
+  sipClientName: Decode.field('sipClientName').string,
+  stunUri: Decode.field('stunUri').string,
+  turnUri: Decode.field('turnUri').string
+})
+
 export const joinRoom = (options: {
   username: string
   robotId: string
-}): Promise<Either<string, Array<[string, string]>>> => {
+}): Promise<Either<string, RoomConfiguration>> => {
   return new Promise(done => {
     const req = new JoinRequest()
     const settings = req.getSettingsMap()
@@ -75,7 +105,15 @@ export const joinRoom = (options: {
         }
 
         if (success) {
-          done(Either.Right(success.settingsMap))
+          const roomResult = roomConfigurationDecoder.decode(
+            keyValuesToRecord(success.settingsMap)
+          )
+
+          if (roomResult.error) {
+            done(Either.Left(errorToHumanReadable(roomResult.error)))
+          } else {
+            done(Either.Right(roomResult.value))
+          }
         }
       }
     })
