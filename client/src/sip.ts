@@ -7,7 +7,7 @@ import { CaseOf, CaseCreator, match } from 'utils'
 debug.enable('JsSIP:*')
 
 // eslint-disable-next-line no-shadow
-export enum WebSocketProtocol {
+enum WebSocketProtocol {
   WS = 'ws',
   WSS = 'wss'
 }
@@ -308,8 +308,8 @@ const sipManager = registerManager<
   }
 })
 
-export const call = <T>(options: {
-  protocol: WebSocketProtocol
+export const callRTC = <T>(options: {
+  secure: boolean
   server: string
   agent: string
   client: string
@@ -323,7 +323,7 @@ export const call = <T>(options: {
   return sipManager.createSub(
     new Call(
       {
-        protocol: options.protocol,
+        protocol: options.secure ? WebSocketProtocol.WSS : WebSocketProtocol.WS,
         host: extractHost(options.server),
         port: extractPort(options.server),
         agent: options.agent,

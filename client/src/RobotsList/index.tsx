@@ -47,31 +47,41 @@ export const init: [State, Cmd<Action>] = [
 
 // U P D A T E
 
-export type Action = ActionOf<[string, State], [State, Cmd<Action>]>
+export type Stage =
+  | CaseOf<'Updated', [State, Cmd<Action>]>
+  | CaseOf<'Joined', RoomConfiguration>
 
-const ReInit = ActionOf<Action>((_, __) => init)()
+const Updated: CaseCreator<Stage> = CaseOf('Updated')
+const Joined: CaseCreator<Stage> = CaseOf('Joined')
+
+export type Action = ActionOf<[string, State], Stage>
+
+const ReInit = ActionOf<Action>((_, __) => Updated(init))()
 
 const LoadRobots = ActionOf<Either<string, Array<Agent>>, Action>(
-  (result, _, state) => [
-    {
-      ...state,
-      robots: RemoteData.fromEither(result)
-    },
-    Cmd.none
-  ]
+  (result, _, state) =>
+    Updated([
+      {
+        ...state,
+        robots: RemoteData.fromEither(result)
+      },
+      Cmd.none
+    ])
 )
 
-const SelectRobot = ActionOf<string, Action>((robotId, username, state) => [
-  {
-    ...state,
-    join: Joining(robotId)
-  },
-  Cmd.create<Action>(done => {
-    joinRoom({ username, robotId }).then(result =>
-      done(SelectRobotDone(result.mapLeft(message => ({ robotId, message }))))
-    )
-  })
-])
+const SelectRobot = ActionOf<string, Action>((robotId, username, state) =>
+  Updated([
+    {
+      ...state,
+      join: Joining(robotId)
+    },
+    Cmd.create<Action>(done => {
+      joinRoom({ username, robotId }).then(result =>
+        done(SelectRobotDone(result.mapLeft(message => ({ robotId, message }))))
+      )
+    })
+  ])
+)
 
 const SelectRobotDone = ActionOf<
   Either<
@@ -83,16 +93,17 @@ const SelectRobotDone = ActionOf<
   >,
   Action
 >((result, _, state) => {
-  return [
-    result.fold(
-      error => ({
-        ...state,
-        join: JoinFail(error)
-      }),
-      () => state
-    ),
-    Cmd.none
-  ]
+  return result.fold<Stage>(
+    error =>
+      Updated([
+        {
+          ...state,
+          join: JoinFail(error)
+        },
+        Cmd.none
+      ]),
+    Joined
+  )
 })
 
 // V I E W

@@ -4,6 +4,7 @@ import { Dispatch, Cmd, Sub } from 'core'
 import { ActionOf, CaseOf, CaseCreator, match } from 'utils'
 import * as Login from 'Login'
 import * as RobotsList from 'RobotsList'
+import * as Room from 'Room'
 
 // S T A T E
 
@@ -13,16 +14,13 @@ export type State =
       'RobotsListScreen',
       ScreenWithUsername<{ robotsList: RobotsList.State }>
     >
+  | CaseOf<'RoomScreen', Room.State>
 
 type ScreenWithUsername<T> = T & { username: string }
 
 const LoginScreen: CaseCreator<State> = CaseOf('LoginScreen')
-const RobotsListScreen: CaseCreator<State> = CaseOf<
-  'RobotsListScreen',
-  ScreenWithUsername<{
-    robotsList: RobotsList.State
-  }>
->('RobotsListScreen')
+const RobotsListScreen: CaseCreator<State> = CaseOf('RobotsListScreen')
+const RoomScreen: CaseCreator<State> = CaseOf('RoomScreen')
 
 export const initial: State = LoginScreen(Login.initial)
 
@@ -53,16 +51,29 @@ const LoginAction = ActionOf<Login.Action, Action>((action, state) =>
 const RobotsListAction = ActionOf<RobotsList.Action, Action>((action, state) =>
   match<State, [State, Cmd<Action>]>(state, {
     RobotsListScreen: ({ username, robotsList }): [State, Cmd<Action>] => {
-      const [nextRobotsList, cmd] = action.update(username, robotsList)
+      return match(action.update(username, robotsList), {
+        Updated: ([nextRobotsList, cmd]) => [
+          RobotsListScreen({
+            username,
+            robotsList: nextRobotsList
+          }),
+          cmd.map(RobotsListAction)
+        ],
 
-      return [
-        RobotsListScreen({
-          username,
-          robotsList: nextRobotsList
-        }),
-        cmd.map(RobotsListAction)
-      ]
+        Joined: configuration => [
+          RoomScreen(Room.init(configuration)),
+          Cmd.none
+        ]
+      })
     },
+
+    _: () => [state, Cmd.none]
+  })
+)
+
+const RoomAction = ActionOf<Room.Action, Action>((action, state) =>
+  match<State, [State, Cmd<Action>]>(state, {
+    RoomScreen: room => [RoomScreen(action.update(room)), Cmd.none],
 
     _: () => [state, Cmd.none]
   })
@@ -70,8 +81,12 @@ const RobotsListAction = ActionOf<RobotsList.Action, Action>((action, state) =>
 
 // S U B S C R I P T I O N S
 
-export const subscriptions = (_state: State): Sub<Action> => {
-  return Sub.none
+export const subscriptions = (state: State): Sub<Action> => {
+  return match<State, Sub<Action>>(state, {
+    RoomScreen: room => Room.subscriptions(room).map(RoomAction),
+
+    _: () => Sub.none
+  })
 }
 
 // V I E W
@@ -114,6 +129,8 @@ export const View: React.FC<{
         mapAction={RobotsListAction}
         dispatch={dispatch}
       />
-    )
+    ),
+
+    RoomScreen: room => <Room.View state={room} />
   })
 }
