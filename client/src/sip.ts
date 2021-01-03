@@ -38,6 +38,29 @@ const buildUri = (username: string, host: string): string => {
   return `sip:${username}@${host}`
 }
 
+const generateKey = (options: RegisterOptions): string => {
+  return [
+    options.protocol,
+    options.host,
+    options.port,
+    options.agent,
+    options.client,
+    options.withAudio,
+    options.withVideo,
+    options.iceServers.sort((a, b) => {
+      if (a < b) {
+        return -1
+      }
+
+      if (a > b) {
+        return 1
+      }
+
+      return 0
+    })
+  ].join('|')
+}
+
 interface Listeners<AppMsg> {
   onFailure: Array<(reason: string) => AppMsg>
   onTerminate: Array<AppMsg>
@@ -198,7 +221,7 @@ class Call<AppMsg> implements SipSub<AppMsg> {
     prevState: State<AppMsg>,
     nextState: State<AppMsg>
   ): State<AppMsg> {
-    const key = JSON.stringify(this.options)
+    const key = generateKey(this.options)
 
     const newRoom = nextState[key]
 
