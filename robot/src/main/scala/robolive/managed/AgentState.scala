@@ -7,6 +7,7 @@ import robolive.microactor.MicroActor
 import SipChannel.{AllocateRequest, SipChannelEndpointGrpc}
 import Storage.{ReadRequest, StorageEndpointGrpc}
 import org.slf4j.Logger
+import robolive.managed.AgentState.Registered.statusUpdate
 import robolive.microactor.MicroActor.TimeredMicroActor
 import robolive.puppet.Puppet
 
@@ -16,7 +17,45 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 sealed trait AgentState
-    extends MicroActor.State[AgentState.Deps, RegistryMessage.Message, AgentState]
+    extends MicroActor.State[AgentState.Deps, RegistryMessage.Message, AgentState] {
+
+  protected def accept(requestId: String, settings: Map[String, String]): AgentMessage = {
+    AgentMessage(
+      AgentMessage.Message.Join(
+        AgentMessage.JoinDecision(
+          AgentMessage.JoinDecision.Message
+            .Accepted(
+              AgentMessage.JoinDecision.Accepted(settings, requestId)
+            )
+        )
+      )
+    )
+  }
+
+  protected def statusUpdate(status: String): AgentMessage = {
+    AgentMessage(
+      AgentMessage.Message.StatusUpdate(
+        AgentMessage.StatusUpdate(
+          status = status,
+        )
+      )
+    )
+  }
+
+  protected def decline(requestId: String, reason: String): AgentMessage = {
+    AgentMessage(
+      AgentMessage.Message.Join(
+        AgentMessage.JoinDecision(
+          AgentMessage.JoinDecision.Message
+            .Declined(
+              AgentMessage.JoinDecision
+                .Declined(reason, requestId)
+            )
+        )
+      )
+    )
+  }
+}
 
 object AgentState {
   final case class Deps(
@@ -39,6 +78,7 @@ object AgentState {
     ): Future[AgentState] = {
       event match {
         case Message.Registered(_) =>
+          deps.sendMessage(statusUpdate("Registered"))
           Future.successful(Registered)
 
         case other =>
@@ -175,6 +215,8 @@ object AgentState {
                   )
                 }
 
+                deps.sendMessage(statusUpdate("Busy"))
+
                 Busy(
                   puppet = puppet,
                   clientName = sipClientName,
@@ -201,33 +243,6 @@ object AgentState {
           Future.successful(this)
       }
     }
-
-    private def accept(requestId: String, settings: Map[String, String]) = {
-      AgentMessage(
-        AgentMessage.Message.Join(
-          AgentMessage.JoinDecision(
-            AgentMessage.JoinDecision.Message
-              .Accepted(
-                AgentMessage.JoinDecision.Accepted(settings, requestId)
-              )
-          )
-        )
-      )
-    }
-
-    private def decline(requestId: String, reason: String) = {
-      AgentMessage(
-        AgentMessage.Message.Join(
-          AgentMessage.JoinDecision(
-            AgentMessage.JoinDecision.Message
-              .Declined(
-                AgentMessage.JoinDecision
-                  .Declined(reason, requestId)
-              )
-          )
-        )
-      )
-    }
   }
 
   final case class Busy(puppet: Puppet, clientName: String, agentName: String, duration: Long)
@@ -239,6 +254,7 @@ object AgentState {
         // fixme: hack to not create additional message for `Disconnect`
         case Message.Registered(_) =>
           puppet.stop()
+          deps.sendMessage(statusUpdate("Registered"))
           Future.successful(AgentState.Registered)
 
         case other =>

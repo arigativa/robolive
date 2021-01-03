@@ -4,17 +4,26 @@ import Agent.RegistryMessage
 
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
 package object server {
   type AgentChannel = RegistryMessage => Unit
   type Reason = String
 
+  // fixme: separate `Client` and `Agent` interfaces
   final class AgentState(
     val name: String,
+    private val statusRef: AtomicReference[String],
     callback: AgentChannel,
     requests: ConcurrentHashMap[String, Promise[Map[String, String]]],
   ) {
+    def updateStatus(status: String): String = {
+      statusRef.updateAndGet(_ => status)
+    }
+
+    def status: String = statusRef.get()
+
     def send(name: String, settings: Map[String, String])(
       implicit ec: ExecutionContext
     ): Future[Map[String, String]] = {
