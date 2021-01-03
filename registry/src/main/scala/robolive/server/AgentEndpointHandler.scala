@@ -3,10 +3,12 @@ package robolive.server
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import Agent.AgentEndpointGrpc.AgentEndpoint
+import Agent.AgentMessage.Message
 import Agent._
 import io.grpc.stub.StreamObserver
 import org.slf4j.LoggerFactory
 
+import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.Promise
 
 final class AgentEndpointHandler(
@@ -33,12 +35,13 @@ final class AgentEndpointHandler(
 
         agentMessage.message match {
           case AgentMessage.Message.Empty =>
-          case AgentMessage.Message.Register(value) =>
-            logger.info(s"register `${value.name}`")
+          case AgentMessage.Message.Register(message) =>
+            logger.info(s"register `${message.name}")
 
             if (agentTable.get(agentId) == null) {
               val agentState = new AgentState(
-                name = value.name,
+                name = message.name,
+                statusRef = new AtomicReference[String]("Status unknown"),
                 callback = responseObserver.onNext,
                 requests = new ConcurrentHashMap[String, Promise[Map[String, String]]]()
               )
@@ -46,22 +49,28 @@ final class AgentEndpointHandler(
 
               responseObserver.onNext(registerResponse)
             } else {
-              val errorMessage = s"agent $agentId | ${value.name}: already registered"
+              val errorMessage = s"agent $agentId | ${message.name}: already registered"
               logger.error(errorMessage)
               responseObserver.onError(new RuntimeException(errorMessage))
             }
 
-          case AgentMessage.Message.Join(value) =>
-            logger.info(agentLog(s"join decision `$value`"))
+          case AgentMessage.Message.Join(message) =>
+            logger.info(agentLog(s"join decision `$message`"))
 
             import Agent.AgentMessage.JoinDecision.{Message => JoinMessage, _}
 
-            value.message match {
+            message.message match {
               case JoinMessage.Accepted(Accepted(settings, requestId, _)) =>
                 agentTable.get(agentId).success(requestId, settings)
               case JoinMessage.Declined(Declined(reason, requestId, _)) =>
                 agentTable.get(agentId).fail(requestId, reason)
               case JoinMessage.Empty =>
+            }
+
+          case Message.StatusUpdate(message) =>
+            val agentState = agentTable.get(agentId)
+            if (agentState != null) {
+              agentState.updateStatus(message.status)
             }
         }
       }

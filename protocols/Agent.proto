@@ -5,6 +5,10 @@ message AgentMessage {
     required string name = 1;
   }
 
+  message StatusUpdate {
+    required string status = 1;
+  }
+
   message JoinDecision {
     message Accepted {
       map<string, string> settings = 1;
@@ -23,6 +27,7 @@ message AgentMessage {
   oneof message {
     RegisterRequest register = 1;
     JoinDecision join = 2;
+    StatusUpdate statusUpdate = 3;
   }
 }
 

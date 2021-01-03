@@ -16,7 +16,7 @@ final class InfoEndpointHandler(
   override def agentList(request: AgentListRequest): Future[AgentListResponse] = {
     Future {
       val agents = robotTable.asScala.map {
-        case (id, state) => AgentView(state.toString, state.name, id)
+        case (id, state) => AgentView(state.status, state.name, id)
       }
       AgentListResponse(agents.toSeq)
     }
