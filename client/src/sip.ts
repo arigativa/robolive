@@ -73,6 +73,15 @@ interface Room<AppMsg> {
   listeners: Listeners<AppMsg>
 }
 
+const closeRoom = <AppMsg>(room: Room<AppMsg>): void => {
+  if (room.session?.isEstablished()) {
+    room.session.terminate()
+  }
+  if (room.ua?.isConnected()) {
+    room.ua.stop()
+  }
+}
+
 type State<AppMsg> = Record<string, undefined | Room<AppMsg>>
 
 type CallEvent =
@@ -140,9 +149,7 @@ class StopUserAgent implements SipSelfMsg<never> {
     }
 
     sendToApp(room.listeners.onFailure.map(letter => letter(this.reason)))
-
-    room.session?.terminate()
-    room.ua?.stop()
+    closeRoom(room)
 
     return state
   }
@@ -162,9 +169,7 @@ class TerminateSession<AppMsg> implements SipSelfMsg<AppMsg> {
     }
 
     sendToApp(room.listeners.onTerminate)
-
-    room.session?.terminate()
-    room.ua?.stop()
+    closeRoom(room)
 
     const { [this.key]: _, ...nextState } = state
 
@@ -177,7 +182,7 @@ interface SipSub<AppMsg> extends Functor<AppMsg> {
     router: Router<AppMsg, SipSelfMsg<AppMsg>>,
     prevState: State<AppMsg>,
     nextState: State<AppMsg>
-  ): State<AppMsg>
+  ): void
 }
 
 interface RegisterOptions {
@@ -220,7 +225,7 @@ class Call<AppMsg> implements SipSub<AppMsg> {
     router: Router<AppMsg, SipSelfMsg<AppMsg>>,
     prevState: State<AppMsg>,
     nextState: State<AppMsg>
-  ): State<AppMsg> {
+  ): void {
     const key = generateKey(this.options)
 
     const newRoom = nextState[key]
@@ -228,19 +233,19 @@ class Call<AppMsg> implements SipSub<AppMsg> {
     if (newRoom != null) {
       newRoom.listeners = pushListeners(this.onEvent, newRoom.listeners)
 
-      return nextState
+      return
     }
 
     const oldRoom = prevState[key]
 
     if (oldRoom != null) {
-      return {
-        ...nextState,
-        [key]: {
-          ...oldRoom,
-          listeners: pushListeners(this.onEvent)
-        }
+      nextState[key] = {
+        ua: oldRoom.ua,
+        session: oldRoom.session,
+        listeners: pushListeners(this.onEvent)
       }
+
+      return
     }
 
     const webSocketUrl = buildWebSocketUrl(
@@ -261,39 +266,53 @@ class Call<AppMsg> implements SipSub<AppMsg> {
     })
 
     ua.on('registered', () => {
-      const session = ua.call(buildUri(this.options.agent, this.options.host), {
-        mediaConstraints: {
-          audio: this.options.withAudio,
-          video: this.options.withVideo
-        },
-        pcConfig: {
-          rtcpMuxPolicy: 'negotiate',
-          iceServers: this.options.iceServers.map(url => ({ urls: url }))
-        }
-      })
+      try {
+        const session = ua.call(
+          buildUri(this.options.agent, this.options.host),
+          {
+            mediaConstraints: {
+              audio: this.options.withAudio,
+              video: this.options.withVideo
+            },
+            pcConfig: {
+              rtcpMuxPolicy: 'negotiate',
+              iceServers: this.options.iceServers.map(url => {
+                return /^turns?:/.test(url)
+                  ? {
+                      urls: url,
+                      username: 'turn',
+                      credential: 'turn'
+                    }
+                  : { urls: url }
+              })
+            }
+          }
+        )
 
-      session.on('failed', event => {
-        router.sendToSelf(new StopUserAgent(key, event.cause))
-      })
+        session.on('failed', event => {
+          router.sendToSelf(new StopUserAgent(key, event.cause))
+        })
 
-      session.on('ended', () => {
-        router.sendToSelf(new TerminateSession(key))
-      })
+        session.on('ended', () => {
+          router.sendToSelf(new TerminateSession(key))
+        })
 
-      session.on('confirmed', () => {
-        router.sendToSelf(new RegisterSession(key, session))
-      })
+        session.on('confirmed', () => {
+          router.sendToSelf(new RegisterSession(key, session))
+        })
+      } catch (error) {
+        router.sendToSelf(
+          new StopUserAgent(key, error?.message ?? 'Unknown error')
+        )
+      }
     })
 
     ua.start()
 
-    return {
-      ...nextState,
-      [key]: {
-        ua,
-        session: null,
-        listeners: pushListeners(this.onEvent)
-      }
+    nextState[key] = {
+      ua,
+      session: null,
+      listeners: pushListeners(this.onEvent)
     }
   }
 }
@@ -318,8 +337,7 @@ const sipManager = registerManager<
       if (!(key in nextState)) {
         const room = prevState[key]
 
-        room?.ua?.stop()
-        room?.session?.terminate()
+        room && closeRoom(room)
       }
     }
 

@@ -53,10 +53,11 @@ export const subscriptions = (state: State): Sub<Action> => {
 
   return callRTC({
     secure: true,
-    server: state.configuration.signallingUri,
+    server: 'rl.arigativa.ru:4443',
+    // server: state.configuration.signallingUri,
     agent: state.configuration.sipAgentName,
     client: state.configuration.sipClientName,
-    withAudio: false,
+    withAudio: true,
     withVideo: true,
     iceServers: [state.configuration.stunUri, state.configuration.turnUri],
     onConnect: Connect,
@@ -67,7 +68,24 @@ export const subscriptions = (state: State): Sub<Action> => {
 
 // V I E W
 
-export const View: React.FC<{ state: State }> = ({ state }) =>
+const ViewSucceed = React.memo<{ stream: MediaStream }>(({ stream }) => {
+  const videoRef = React.useRef<HTMLVideoElement>(null)
+
+  React.useEffect(() => {
+    if (videoRef.current != null) {
+      videoRef.current.srcObject = stream
+    }
+  }, [stream])
+
+  return (
+    <div>
+      IT WORKS!
+      <video ref={videoRef} autoPlay />
+    </div>
+  )
+})
+
+export const View = React.memo<{ state: State }>(({ state }) =>
   state.stream.cata({
     NotAsked: () => <div>Call is ended</div>,
 
@@ -75,10 +93,6 @@ export const View: React.FC<{ state: State }> = ({ state }) =>
 
     Failure: reason => <div>Something went wrong: {reason}</div>,
 
-    Succeed: stream => (
-      <div>
-        IT WORKS!
-        <video autoPlay src={(stream as unknown) as string} />
-      </div>
-    )
+    Succeed: stream => <ViewSucceed stream={stream} />
   })
+)
