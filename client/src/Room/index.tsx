@@ -53,8 +53,7 @@ export const subscriptions = (state: State): Sub<Action> => {
 
   return callRTC({
     secure: true,
-    server: 'rl.arigativa.ru:4443',
-    // server: state.configuration.signallingUri,
+    server: state.configuration.signallingUri,
     agent: state.configuration.sipAgentName,
     client: state.configuration.sipClientName,
     withAudio: true,
