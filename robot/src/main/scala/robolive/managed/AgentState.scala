@@ -135,6 +135,7 @@ object AgentState {
             val sipClientName = sipChannelAllocationResponse.clientName
             val videoSrcFn = settings("videoSrcFn").get
             val signallingUri = settings("signallingUri").get
+            val signallingSecure = settings("signallingSecure").getOrElse("false").toBoolean
             val stunUri = settings("stunUri").get
             val enableUserVideo = settings("enableUserVideo").getOrElse("false").toBoolean
             val servoControllerType = settings("servoControllerType").getOrElse("FAKE")
@@ -161,6 +162,7 @@ object AgentState {
               videoSrc = videoSource,
               sipRobotName = sipAgentName,
               signallingUri = signallingUri,
+              signallingSecure = signallingSecure,
               stunUri = stunUri,
               enableUserVideo = enableUserVideo,
               servoControllerType = servoControllerType,

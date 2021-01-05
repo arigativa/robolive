@@ -23,6 +23,7 @@ object CallPuppetApp extends App {
   }
   val robotName: String = getEnv("ROBOT_NAME", "robomachine")
   val signallingUri: String = getEnv("SIGNALLING_SIP_URI", "rl.arigativa.ru:9031")
+  val signallingSecure: Boolean = getEnv("SIGNALLING_SECURE", "false").toBoolean
   val stunUri: String = getEnv("STUN_URI", "stun://rl.arigativa.ru:8080")
   val enableUserVideo: Boolean = sys.env.contains("ENABLE_USER_VIDEO")
   val servoControllerType: String = getEnv("SERVO_CONTROLLER", default = "PYTHON_SHELL")
@@ -35,6 +36,7 @@ object CallPuppetApp extends App {
     videoSrc = videoSrc,
     sipRobotName = robotName,
     signallingUri = signallingUri,
+    signallingSecure = signallingSecure,
     stunUri = stunUri,
     enableUserVideo = enableUserVideo,
     servoControllerType = servoControllerType,
