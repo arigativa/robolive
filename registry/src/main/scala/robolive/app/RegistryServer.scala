@@ -41,6 +41,8 @@ object RegistryServer extends App {
   val stunUri: String = getEnv("STUN_URI", "stun://rl.arigativa.ru:8080")
 
   val turnUri: String = getEnv("TURN_URI", "turn:rl.arigativa.ru:8080?transport=tcp")
+  val turnUsername: String = getEnv("TURN_USERNAME", "turn")
+  val turnPassword: String = getEnv("TURN_PASSWORD", "turn")
 
   val robotsState = new ConcurrentHashMap[String, server.AgentState]()
 
@@ -74,6 +76,8 @@ object RegistryServer extends App {
       "signallingUri" -> signallingSipEndpointUri,
       "stunUri" -> stunUri,
       "turnUri" -> turnUri,
+      "turnUsername" -> turnUsername,
+      "turnPassword" -> turnPassword,
     )
 
     val storageEndpointHandler = new StorageEndpointHandler(configMap)

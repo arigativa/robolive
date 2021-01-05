@@ -9,8 +9,13 @@ StartLimitIntervalSec=60
 [Service]
 User={{ registry_user }}
 Group={{ registry_group }}
-Environment="SIGNALLING_SIP_URI=rl.arigativa.ru:9031"
+Environment="SIGNALLING_SIP_URI=rl.arigativa.ru:4443"
 Environment="SIGNALLING_HTTP_URI=https://rl.arigativa.ru:4443"
+Environment="STUN_URI=stun://rl.arigativa.ru:8080"
+Environment="TURN_URI=turn:rl.arigativa.ru:8080?transport=tcp"
+Environment="TURN_USERNAME=turn"
+Environment="TURN_PASSWORD=turn"
+
 ExecStart={{ registry_package_dir }}/bin/registry -Dscala.concurrent.context.minThreads=8 -Dscala.concurrent.context.maxThreads=16 -Dscala.concurrent.context.numThreads=8
 Restart=on-failure
 InaccessiblePaths=/home
