@@ -26,6 +26,7 @@ package org.mjsip.sip.provider;
 
 
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.Hashtable;
@@ -51,6 +52,7 @@ import org.zoolu.util.Random;
 import org.zoolu.util.SimpleDigest;
 import org.zoolu.util.VectorUtils;
 
+import javax.net.ssl.SSLContext;
 
 
 /** SipProvider implements the SIP transport layer, that is the layer responsable for
@@ -164,31 +166,6 @@ public class SipProvider implements Configurable, SipTransportListener {
 
 	/** Whether logging all packets (including non-SIP keepalive tokens). */
 	boolean log_all_packets=false;
-
-
-	/** For TLS. Whether all client and server certificates should be considered trusted.
-	  * By default, trust_all={@link #default_tls_trust_all}. */
-	boolean trust_all=SipStack.default_tls_trust_all;
-
-	/** For TLS. names of the files containing trusted certificates.
-	  * The file names include the full path starting from the current working folder.
-	  * By default, trust_all={@link SipStack#default_tls_trusted_certs}. */
-	String[] trusted_certs=SipStack.default_tls_trusted_certs;
-
-	/** For TLS. Path of the folder where trusted certificates are placed.
-	  * All certificates (with file extension ".crt") found in this folder are considered trusted.
-	  * By default, trust_folder={@link SipStack#default_tls_trust_folder}. */
-	String trust_folder=SipStack.default_tls_trust_folder;
-
-	/** For TLS. Absolute file name of the certificate (containing the public key) of the local node.
-	  * The file name includes the full path starting from the current working folder.
-	  * By default, trust_folder={@link SipStack#default_tls_cert_file}. */
-	String cert_file=SipStack.default_tls_cert_file;
-
-	/** For TLS. Absolute file name of the private key of the local node.
-	  * The file name includes the full path starting from the current working folder.
-	  * By default, trust_folder={@link SipStack#default_tls_key_file}. */
-	String key_file=SipStack.default_tls_key_file;
 
 
 	// for backward compatibility:
@@ -312,7 +289,7 @@ public class SipProvider implements Configurable, SipTransportListener {
 	  * @param via_addr SIP local via address
 	  * @param host_port SIP local port 
 	  * @param sip_transports array of active transport services (SipTransport) */ 
-	public SipProvider(String via_addr, int host_port, SipTransport[] sip_transports) {
+	public SipProvider(String via_addr, int host_port, SipTransport[] sip_transports) throws NoSuchAlgorithmException {
 		init(via_addr,host_port);
 		initLog();
 		// init transport
@@ -410,11 +387,7 @@ public class SipProvider implements Configurable, SipTransportListener {
 				else
 				if (proto.equals(PROTO_TLS)) {
 					if (port==0) port=(host_port==SipStack.default_port)? SipStack.default_tls_port : host_port+1;
-					if (trust_all) transp=new TlsTransport(port,binding_ipaddr,nmax_connections,key_file,cert_file,event_logger);
-					else {
-						if (trusted_certs!=null) transp=new TlsTransport(port,binding_ipaddr,nmax_connections,key_file,cert_file,trusted_certs,event_logger);
-						else transp=new TlsTransport(port,binding_ipaddr,nmax_connections,key_file,cert_file,trust_folder,event_logger);
-					}
+					transp=new TlsTransport(port,binding_ipaddr,nmax_connections,SSLContext.getDefault(),event_logger);
 				}
 				else
 				if (proto.equals(PROTO_DTLS)) {
@@ -525,13 +498,6 @@ public class SipProvider implements Configurable, SipTransportListener {
 			return;
 		}
 		if (attribute.equals("log_all_packets")) { log_all_packets=(par.getString().toLowerCase().startsWith("y")); return; }
-
-		// certificates
-		if (attribute.equals("trust_all")){ trust_all=(par.getString().toLowerCase().startsWith("y")); return; }
-		if (attribute.equals("trusted_certs")){ trusted_certs=par.getStringArray(); return; }
-		if (attribute.equals("trust_folder")){ trust_folder=par.getRemainingString().trim(); return; }
-		if (attribute.equals("cert_file")){ cert_file=par.getRemainingString().trim(); return; }
-		if (attribute.equals("key_file")){ key_file=par.getRemainingString().trim(); return; }
 
 		// old parameters
 		if (attribute.equals("host_addr")) System.err.println("WARNING: parameter 'host_addr' is no more supported; use 'via_addr' instead.");

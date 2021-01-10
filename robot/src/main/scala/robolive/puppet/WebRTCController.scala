@@ -66,8 +66,10 @@ final class WebRTCController(
   }
 
   def dispose(): Unit = synchronized {
-    pipeline.stop()
-    pipeline.dispose()
+    if (pipeline != null) {
+      pipeline.stop()
+      pipeline.dispose()
+    }
     webRTCBin = null
     pipeline = null
     logger.debug("State transition to 'WAIT'")

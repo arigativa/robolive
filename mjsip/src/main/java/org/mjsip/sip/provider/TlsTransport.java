@@ -26,6 +26,8 @@ package org.mjsip.sip.provider;
 
 
 import java.io.IOException;
+import java.security.KeyStore;
+import java.security.NoSuchAlgorithmException;
 
 import org.zoolu.net.IpAddress;
 import org.zoolu.net.SocketAddress;
@@ -38,6 +40,8 @@ import org.zoolu.net.TlsSocketFactory;
 import org.zoolu.util.LogLevel;
 import org.zoolu.util.Logger;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
 
 
 /** TlsTransport provides a TLS-based transport service for SIP.
@@ -53,36 +57,6 @@ public class TlsTransport extends SipTransportCO/* implements TcpServerListener*
 	/** TLS socket factory */
 	TlsSocketFactory tls_socket_factory=null;
 
-
-
-	/** Creates a new TLS transport. 
-	  * @param local_port local TLS port
-	  * @param host_ipaddr local ip address/interface the TLS has to be bound to (null for binding to all interfaces)
-	  * @param nmax_connections maximum number of active connections
-	  * @param key_file file containing the node's private key
-	  * @param cert_file file containing the node's certificate
-	  * @param trusted_certs files containing trusted certificates (for verifying server-side certificates)
-	  * @param logger the logger used for event logging */ 
-	public TlsTransport(int local_port, IpAddress host_ipaddr, int nmax_connections, String key_file, String cert_file, String[] trusted_certs, Logger logger)   throws IOException {
-		super(local_port,nmax_connections,logger);
-		init(local_port,host_ipaddr,key_file,cert_file,trusted_certs,null,false);
-	}
-
-
-	/** Creates a new TLS transport. 
-	  * @param local_port local TLS port
-	  * @param host_ipaddr local ip address/interface the TLS has to be bound to (null for binding to all interfaces)
-	  * @param nmax_connections maximum number of active connections
-	  * @param key_file file containing the node's private key
-	  * @param cert_file file containing the node's certificate
-	  * @param trust_folder folder containing all trusted certificates (for verifying server-side certificates)
-	  * @param logger the logger used for event logging */ 
-	public TlsTransport(int local_port, IpAddress host_ipaddr, int nmax_connections, String key_file, String cert_file, String trust_folder, Logger logger)   throws IOException {
-		super(local_port,nmax_connections,logger);
-		init(local_port,host_ipaddr,key_file,cert_file,null,trust_folder,false);
-	}
-
-
 	/** Creates a new TLS transport.
 	  * Server-side certificates are automatically trusted (no verification of server-side certificates is perfomed).
 	  * @param local_port local TLS port
@@ -91,37 +65,23 @@ public class TlsTransport extends SipTransportCO/* implements TcpServerListener*
 	  * @param key_file file containing the node's private key
 	  * @param cert_file file containing the node's certificate
 	  * @param logger the logger used for event logging */ 
-	public TlsTransport(int local_port, IpAddress host_ipaddr, int nmax_connections, String key_file, String cert_file, Logger logger)   throws IOException {
+	public TlsTransport(int local_port, IpAddress host_ipaddr, int nmax_connections, SSLContext sslContext, Logger logger) throws IOException, NoSuchAlgorithmException {
 		super(local_port,nmax_connections,logger);
-		init(local_port,host_ipaddr,key_file,cert_file,null,null,true);
+		init(local_port,host_ipaddr, sslContext);
 	}
 
 
 	/** Initializes the TLS transport.
 	  * @param local_port local TLS port
 	  * @param host_ipaddr local ip address/interface the TLS has to be bound to (null for binding to all interfaces)
-	  * @param key_file file containing the node's private key
-	  * @param cert_file file containing the node's certificate
-	  * @param trusted_certs files containing trusted certificates (for verifying server-side certificates)
-	  * @param trust_folder folder containing all trusted certificates (for verifying server-side certificates)
-	  * @param trust_all if <i>true</i>, all certificates are considered trusted */ 
-	private void init(int local_port, IpAddress host_ipaddr, String key_file, String cert_file, String[] trusted_certs, String trust_folder, boolean trust_all) throws IOException {
+	  * @param ssl_context SSL context
+      */
+	private void init(int local_port, IpAddress host_ipaddr, SSLContext ssl_context) throws IOException {
 		if (tls_server!=null) tls_server.halt();
 		// start tls
 		try {
-			TlsContext tls_context=new TlsContext();
-			tls_context.setKeyCert(key_file,cert_file);
-			if (trust_all) tls_context.setTrustAll(true);
-			else {
-				// load specific trusted certificates
-				if (trusted_certs!=null) {
-					for (int i=0; i<trusted_certs.length; i++) tls_context.addTrustCert(trusted_certs[i]);
-				}
-				// load all trusted certificates from folder
-				if (trust_folder!=null) tls_context.addTrustFolder(trust_folder);
-			}
 			// tls server
-			TlsServerFactory tls_server_factory=new TlsServerFactory(tls_context);
+			TlsServerFactory tls_server_factory=new TlsServerFactory(ssl_context.getServerSocketFactory());
 			TcpServerListener this_tls_server_listener=new TcpServerListener() {
 				public void onIncomingConnection(TcpServer tcp_server, TcpSocket socket) {
 					processIncomingConnection(tcp_server,socket);
@@ -133,12 +93,7 @@ public class TlsTransport extends SipTransportCO/* implements TcpServerListener*
 			if (host_ipaddr==null) tls_server=tls_server_factory.createTlsServer(local_port,this_tls_server_listener);
 			else tls_server=tls_server_factory.createTlsServer(local_port,host_ipaddr,this_tls_server_listener);
 			// tls client
-			tls_socket_factory=new TlsSocketFactory(tls_context);
-			// force the newest TLS version
-			//String[] ep=tls_socket_factory.getEnabledProtocols();
-			//String[] sp={ ep[ep.length-1] };
-			//tls_socket_factory.setEnabledProtocols(sp);
-			//System.err.println("DEBUG: TlsTransport: enabled protocols: "+sp[0]);
+			tls_socket_factory=new TlsSocketFactory(ssl_context.getSocketFactory());
 		}
 		catch (Exception e) {
 			e.printStackTrace();
