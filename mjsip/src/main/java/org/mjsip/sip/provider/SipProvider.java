@@ -956,9 +956,6 @@ public class SipProvider implements Configurable, SipTransportListener {
 			if (nexthop_sip_uri.hasTransport()) proto=nexthop_sip_uri.getTransport();
 			else proto=getDefaultTransport();
 
-			// for TLS and DTLS port=port+1
-			if (dest_port>0 && isSecureTransport(proto)) dest_port++;
-
 			// if not present, add via
 			if (!msg.hasViaHeader()) {
 				ViaHeader via=new ViaHeader(proto,via_addr,host_port);

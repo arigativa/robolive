@@ -36,7 +36,7 @@ object RegistryServer extends App {
   val ClientPort = getEnv("REGISTRY_PORT_FOR_CLIENT", "3478").toInt
   val StoragePort = getEnv("REGISTRY_PORT_FOR_STORAGE", "3479").toInt
   val SipChannelPort = getEnv("REGISTRY_PORT_FOR_SIP_CHANNEL", "3480").toInt
-  val signallingSipEndpointUri: String = getEnv("SIGNALLING_SIP_URI", "localhost:9031")
+  val signallingSipEndpointUri: String = getEnv("SIGNALLING_SIP_URI", "sip:localhost:9031")
   val signallingHttpUri: String = getEnv("SIGNALLING_HTTP_URI", "http://localhost:9031")
   val signallingSecure: String = getEnv("SIGNALLING_SECURE", "false")
   val stunUri: String = getEnv("STUN_URI", "stun://rl.arigativa.ru:8080")

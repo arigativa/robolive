@@ -13,7 +13,6 @@ final class Puppet(
   videoSrc: String,
   sipRobotName: String,
   signallingUri: String,
-  signallingSecure: Boolean,
   stunUri: String,
   enableUserVideo: Boolean,
   servoControllerType: String,
@@ -41,7 +40,6 @@ final class Puppet(
     val sipConfig = SipConfig(
       registrarUri = signallingUri,
       name = sipRobotName,
-      protocol = if (signallingSecure) TlsTransport.PROTO_TLS else TcpTransport.PROTO_TCP,
     )
 
     val sipEventsHandler = new SIPCallEventHandler(controller, () => eventListener.stop())

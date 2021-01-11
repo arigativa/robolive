@@ -62,8 +62,7 @@ public class TlsTransport extends SipTransportCO/* implements TcpServerListener*
 	  * @param local_port local TLS port
 	  * @param host_ipaddr local ip address/interface the TLS has to be bound to (null for binding to all interfaces)
 	  * @param nmax_connections maximum number of active connections
-	  * @param key_file file containing the node's private key
-	  * @param cert_file file containing the node's certificate
+	  * @param sslContext SSL context used to build server socket
 	  * @param logger the logger used for event logging */ 
 	public TlsTransport(int local_port, IpAddress host_ipaddr, int nmax_connections, SSLContext sslContext, Logger logger) throws IOException, NoSuchAlgorithmException {
 		super(local_port,nmax_connections,logger);
