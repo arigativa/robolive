@@ -1,5 +1,4 @@
-import Decode, { Decoder } from 'decode-json'
-import errorToHumanReadable from 'decode-json/error-to-human-readable'
+import Decode, { Decoder, errorToHumanReadable } from 'decode-json'
 import Either from 'frctl/Either'
 
 import { InfoEndpointClient } from './generated/Info_pb_service'
