@@ -27,15 +27,19 @@ const buildWebSocketUrl = (
 }
 
 const extractHost = (server: string): string => {
-  return server.replace(/:\d+$/, '')
+  return server.replace(/(^sips:|:\d+$)/g, '')
 }
 
 const extractPort = (server: string): string | null => {
   return server.replace(/^.+:/, '') || null
 }
 
-const buildUri = (username: string, host: string): string => {
-  return `sip:${username}@${host}`
+const buildUri = (
+  username: string,
+  host: string,
+  port: null | string
+): string => {
+  return `sips:${username}@${host}`
 }
 
 const generateKey = (options: RegisterOptions): string => {
@@ -254,12 +258,56 @@ class Call<AppMsg> implements SipSub<AppMsg> {
       this.options.port
     )
 
-    const ua = new UA({
-      uri: buildUri(this.options.client, this.options.host),
-      sockets: [new WebSocketInterface(webSocketUrl)],
-      display_name: this.options.client,
-      register: true
-    })
+    let ws: null | WebSocketInterface = null
+
+    try {
+      ws = new WebSocketInterface(webSocketUrl)
+    } catch (error) {
+      router.sendToSelf(
+        new StopUserAgent(
+          key,
+          error?.message ?? 'WebSocketInterface initialisation failed'
+        )
+      )
+
+      nextState[key] = {
+        ua: null,
+        session: null,
+        listeners: pushListeners(this.onEvent)
+      }
+
+      return
+    }
+
+    let ua: null | UA = null
+
+    try {
+      ua = new UA({
+        uri: buildUri(
+          this.options.client,
+          this.options.host,
+          this.options.port
+        ),
+        sockets: ws,
+        display_name: this.options.client,
+        register: true
+      })
+    } catch (error) {
+      router.sendToSelf(
+        new StopUserAgent(
+          key,
+          error?.message ?? 'UserAgent initialisation failed'
+        )
+      )
+
+      nextState[key] = {
+        ua: null,
+        session: null,
+        listeners: pushListeners(this.onEvent)
+      }
+
+      return
+    }
 
     ua.on('registrationFailed', ({ response }) => {
       router.sendToSelf(new StopUserAgent(key, response.reason_phrase))
@@ -267,8 +315,8 @@ class Call<AppMsg> implements SipSub<AppMsg> {
 
     ua.on('registered', () => {
       try {
-        const session = ua.call(
-          buildUri(this.options.agent, this.options.host),
+        const session = ua?.call(
+          buildUri(this.options.agent, this.options.host, this.options.port),
           {
             mediaConstraints: {
               audio: this.options.withAudio,
@@ -289,15 +337,15 @@ class Call<AppMsg> implements SipSub<AppMsg> {
           }
         )
 
-        session.on('failed', event => {
+        session?.on('failed', event => {
           router.sendToSelf(new StopUserAgent(key, event.cause))
         })
 
-        session.on('ended', () => {
+        session?.on('ended', () => {
           router.sendToSelf(new TerminateSession(key))
         })
 
-        session.on('confirmed', () => {
+        session?.on('confirmed', () => {
           router.sendToSelf(new RegisterSession(key, session))
         })
       } catch (error) {
@@ -324,9 +372,11 @@ const sipManager = registerManager<
   never,
   SipSub<unknown>
 >({
-  init: () => ({}),
+  init() {
+    return {}
+  },
 
-  onEffects: (router, cmds, subs, prevState) => {
+  onEffects(router, cmds, subs, prevState) {
     const nextState: State<unknown> = {}
 
     for (const sub of subs) {
@@ -344,7 +394,7 @@ const sipManager = registerManager<
     return nextState
   },
 
-  onSelfMsg: (sendToApp, msg, state) => {
+  onSelfMsg(sendToApp, msg, state) {
     return msg.proceed(sendToApp, state)
   }
 })
