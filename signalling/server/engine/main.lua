@@ -90,8 +90,10 @@ function ksr_reply_route()
     roles.nathandle.sip() 
     roles.nathandle.sdp()
     if KSR.is_INVITE() and KSR.pv.get("$rs") == 200 then
-        KSR.info("Createing dialog for "..KSR.kx.get_fuser()..": "..KSR.kx.get_tuser().."\n")
-        roles.dialog.create(KSR.kx.get_fuser(), KSR.kx.get_tuser(), KSR.kx.get_callid(), KSR.pv.get("$tt"), KSR.pv.get("$ft")) 
+        local fromUname = KSR.kx.get_fuser() or "empty"
+        local toUname = KSR.kx.get_tuser() or "empty" 
+        KSR.info("Createing dialog for "..fromUname..": "..toUname.."\n")
+        roles.dialog.create(fromUname, toUname, KSR.kx.get_callid(), KSR.pv.get("$tt"), KSR.pv.get("$ft")) 
     end
 end
 
