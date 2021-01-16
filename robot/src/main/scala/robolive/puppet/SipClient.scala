@@ -261,14 +261,14 @@ final class SipClient(
 
   private val logger = LoggerFactory.getLogger(getClass)
 
-  private val zalupaLogger = new Logger {
+  private val zooluLogger = new Logger {
     override def log(message: String): Unit = logger.info(message)
     override def log(level: LogLevel, message: String): Unit = logger.info(message)
     override def log(level: LogLevel, source_class: Class[_], message: String): Unit = logger.info(message)
   }
 
-  SipStack.message_logger = zalupaLogger
-  SipStack.event_logger = zalupaLogger
+  SipStack.message_logger = zooluLogger
+  SipStack.event_logger = zooluLogger
 
   private val sipProvider = {
     val provider = new SipProvider(null, 0, Array(SipProvider.PROTO_TCP, SipProvider.PROTO_TLS))
