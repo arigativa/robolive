@@ -48,6 +48,18 @@ const buildUri = (
   return `${uri}:${port}`
 }
 
+const compare = <T extends string | number>(left: T, right: T): number => {
+  if (left < right) {
+    return -1
+  }
+
+  if (left > right) {
+    return 1
+  }
+
+  return 0
+}
+
 const generateKey = (options: RegisterOptions): string => {
   return [
     options.protocol,
@@ -57,17 +69,7 @@ const generateKey = (options: RegisterOptions): string => {
     options.client,
     options.withAudio,
     options.withVideo,
-    options.iceServers.sort((a, b) => {
-      if (a < b) {
-        return -1
-      }
-
-      if (a > b) {
-        return 1
-      }
-
-      return 0
-    })
+    options.iceServers.sort(compare)
   ].join('|')
 }
 
