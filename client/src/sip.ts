@@ -39,7 +39,13 @@ const buildUri = (
   host: string,
   port: null | string
 ): string => {
-  return `sips:${username}@${host}`
+  const uri = `${username}@${host}`
+
+  if (port === null) {
+    return uri
+  }
+
+  return `${uri}:${port}`
 }
 
 const generateKey = (options: RegisterOptions): string => {
