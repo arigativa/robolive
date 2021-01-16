@@ -117,7 +117,7 @@ export VIDEO_SRC='nvarguscamerasrc sensor_mode=3 ! video/x-raw(memory:NVMM),widt
 ### Run robot connected to Production using docker
 
 ```shell script
-docker-compose run --no-deps -e REGISTRY_HOST=rl.arigativa.ru -e ROBOT_NAME='FromDevMachine' robot
+docker-compose run --no-deps -e REGISTRY_HOST=rl.arigativa.ru -e INVENTORY_USE_PLAINTEXT=false -e ROBOT_NAME='FromDevMachine' robot
 ```
 
 #### sensor_mode values
