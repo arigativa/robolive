@@ -59,32 +59,8 @@ public class TlsSocketFactory {
 
 
 	/** Creates a new TlsSocketFactory */
-	public TlsSocketFactory(TlsContext tls_context) throws java.security.KeyStoreException, java.security.KeyManagementException, java.security.UnrecoverableKeyException, java.security.NoSuchAlgorithmException {
-		KeyStore ks=tls_context.getKeyStore();
-		// get key managers
-		KeyManagerFactory key_manager_factory=KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-		key_manager_factory.init(ks,TlsContext.DEFAULT_PASSWORD);            
-		KeyManager[] key_managers=key_manager_factory.getKeyManagers();
-		TrustManager[] trust_managers;
-		// get trust managers
-		if (tls_context.isTrustAll()) {
-			X509TrustManager trust_all=new X509TrustManager() {
-				public X509Certificate[] getAcceptedIssuers() {  return new X509Certificate[0];  }
-				public void checkClientTrusted(X509Certificate[] certs, String auth_type) {}
-				public void checkServerTrusted(X509Certificate[] certs, String auth_type) {}
-			};
-			trust_managers=new TrustManager[] { trust_all };  
-		}
-		else {
-			TrustManagerFactory trust_manager_factory=TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-			trust_manager_factory.init(ks);            
-			trust_managers=trust_manager_factory.getTrustManagers();      
-		}
-		// install only the trust managers
-		SSLContext sc=SSLContext.getInstance("SSL");
-		sc.init(key_managers,trust_managers,null/*new java.security.SecureRandom()*/);
-		// get the socket factory
-		ssl_factory=sc.getSocketFactory();
+	public TlsSocketFactory(SSLSocketFactory sslSocketFactory) throws java.security.KeyStoreException, java.security.KeyManagementException, java.security.UnrecoverableKeyException, java.security.NoSuchAlgorithmException {
+		ssl_factory=sslSocketFactory;
 	}
 
 

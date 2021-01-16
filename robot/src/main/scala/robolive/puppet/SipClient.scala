@@ -5,8 +5,9 @@ import java.util
 import org.mjsip.sip.address.{NameAddress, SipURI}
 import org.mjsip.sip.call._
 import org.mjsip.sip.message.SipMessage
-import org.mjsip.sip.provider.{SipProvider, SipProviderListener}
+import org.mjsip.sip.provider.{SipProvider, SipProviderListener, SipStack}
 import org.slf4j.LoggerFactory
+import org.zoolu.util.{LogLevel, Logger}
 import sdp.SdpMessage
 
 import scala.concurrent.ExecutionContext
@@ -247,7 +248,6 @@ final class RegistrationClientHandler(halt: () => ()) extends RegistrationClient
 final case class SipConfig(
   registrarUri: String,
   name: String,
-  protocol: String,
 )
 
 final class SipClient(
@@ -255,12 +255,23 @@ final class SipClient(
   registrationClientHandler: RegistrationClientHandler,
   config: SipConfig,
 ) {
-  private val nameAddress = s"${config.name}@${config.registrarUri}"
+  private val nameAddress = s"${config.name}@${config.registrarUri.replaceFirst("^sip[s]?:", "")}"
   private val sipUser = new SipUser(new NameAddress(nameAddress))
   private val sipTransportHandler = new SipTransportHandler(sipEventHandler, sipUser)
 
+  private val logger = LoggerFactory.getLogger(getClass)
+
+  private val zooluLogger = new Logger {
+    override def log(message: String): Unit = logger.info(message)
+    override def log(level: LogLevel, message: String): Unit = logger.info(message)
+    override def log(level: LogLevel, source_class: Class[_], message: String): Unit = logger.info(message)
+  }
+
+  SipStack.message_logger = zooluLogger
+  SipStack.event_logger = zooluLogger
+
   private val sipProvider = {
-    val provider = new SipProvider(null, 0, Array(config.protocol))
+    val provider = new SipProvider(null, 0, Array(SipProvider.PROTO_TCP, SipProvider.PROTO_TLS))
     provider.addPromiscuousListener(sipTransportHandler)
     provider
   }
@@ -269,11 +280,11 @@ final class SipClient(
     val toAddress = sipUser.getAddress
     val fromAddress = sipUser.getAddress
     val contactAddress = sipUser.getAddress
-    val sipUri = new SipURI(config.registrarUri)
+    val registrarUri = new SipURI(config.registrarUri)
 
     new RegistrationClient(
       sipProvider,
-      sipUri,
+      registrarUri,
       toAddress,
       fromAddress,
       contactAddress,

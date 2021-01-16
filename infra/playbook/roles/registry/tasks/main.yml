@@ -63,3 +63,4 @@
     - Start Registry
   tags:
     - registry
+    - systemd

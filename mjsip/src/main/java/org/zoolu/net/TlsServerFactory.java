@@ -27,14 +27,7 @@ package org.zoolu.net;
 
 import java.security.KeyStore;
 
-import javax.net.ssl.KeyManager;
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLServerSocket;
-import javax.net.ssl.SSLServerSocketFactory;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.TrustManagerFactory;
-
+import javax.net.ssl.*;
 
 
 /** TLS server factory.
@@ -59,21 +52,8 @@ public class TlsServerFactory {
 
 
 	/** Creates a new TlsServerFactory */
-	public TlsServerFactory(TlsContext tls_context) throws java.security.KeyStoreException, java.security.KeyManagementException, java.security.UnrecoverableKeyException, java.security.NoSuchAlgorithmException {
-		KeyStore ks=tls_context.getKeyStore();
-		// get key managers
-		KeyManagerFactory key_manager_factory=KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-		key_manager_factory.init(ks,TlsContext.DEFAULT_PASSWORD);            
-		KeyManager[] key_managers=key_manager_factory.getKeyManagers();
-		// get trust managers
-		TrustManagerFactory trust_manager_factory=TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-		trust_manager_factory.init(ks);            
-		TrustManager[] trust_managers=trust_manager_factory.getTrustManagers();      
-		// install only the key managers
-		SSLContext sc=SSLContext.getInstance("SSL");
-		sc.init(key_managers,trust_managers,null/*new java.security.SecureRandom()*/);
-		// get the socket factory
-		ssl_factory=sc.getServerSocketFactory();
+	public TlsServerFactory(SSLServerSocketFactory sslSocketFactory) throws java.security.KeyStoreException, java.security.KeyManagementException, java.security.UnrecoverableKeyException, java.security.NoSuchAlgorithmException {
+		ssl_factory=sslSocketFactory;
 	}
 
 

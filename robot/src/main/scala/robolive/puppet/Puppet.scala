@@ -1,6 +1,7 @@
 package robolive.puppet
 
 import org.freedesktop.gstreamer.Version
+import org.mjsip.sip.provider.{TcpTransport, TlsTransport}
 import org.slf4j.LoggerFactory
 import robolive.gstreamer.GstManaged
 
@@ -39,7 +40,6 @@ final class Puppet(
     val sipConfig = SipConfig(
       registrarUri = signallingUri,
       name = sipRobotName,
-      protocol = "tcp",
     )
 
     val sipEventsHandler = new SIPCallEventHandler(controller, () => eventListener.stop())

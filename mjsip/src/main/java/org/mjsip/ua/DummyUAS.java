@@ -29,6 +29,7 @@ import org.mjsip.sip.provider.MethodId;
 import org.mjsip.sip.provider.SipProvider;
 import org.mjsip.sip.provider.SipProviderListener;
 
+import java.security.NoSuchAlgorithmException;
 
 
 /** DummyUAS is a very trivial UAS that replies to all incoming SIP requests
@@ -44,7 +45,7 @@ public class DummyUAS implements SipProviderListener {
 
 
 	/** Costructs a new DummyUAS. */
-	public DummyUAS(int port, int code, String reason) {
+	public DummyUAS(int port, int code, String reason) throws NoSuchAlgorithmException {
 		this.code=code;
 		this.reason=reason;
 		SipProvider sip_provider=new SipProvider(null,port);

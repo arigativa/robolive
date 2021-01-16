@@ -22,6 +22,7 @@
 package org.mjsip.server;
 
 
+import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.Vector;
@@ -326,7 +327,7 @@ public class Registrar extends ServerEngine {
 	// ****************************** MAIN *****************************
 
 	/** The main method. */
-	public static void main(String[] args) {
+	public static void main(String[] args) throws NoSuchAlgorithmException {
 		
 		Flags flags=new Flags(args);
 		boolean help=flags.getBoolean("-h","prints this message");

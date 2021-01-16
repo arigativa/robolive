@@ -20,8 +20,8 @@ object ManagedRobotApp extends App {
 
   object RegistryConnection {
     val Host: String = getEnv("REGISTRY_HOST", "localhost")
-    val StoragePort: Int = getEnv("REGISTRY_PORT_FOR_STORAGE", "10479").toInt
     val AgentPort: Int = getEnv("REGISTRY_PORT_FOR_AGENT", "10476").toInt
+    val StoragePort: Int = getEnv("REGISTRY_PORT_FOR_STORAGE", "10479").toInt
     val SipChannelPort = getEnv("REGISTRY_PORT_FOR_SIP_CHANNEL", "10480").toInt
 
     val usePlaintext: Boolean = getEnv("INVENTORY_USE_PLAINTEXT", "true").toBoolean
