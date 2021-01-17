@@ -23,26 +23,20 @@ export const init = (configuration: RoomConfiguration): State => ({
 
 export type Action = ActionOf<[State], State>
 
-const Connect = ActionOf<MediaStream, Action>((stream, state) => {
-  return {
-    ...state,
-    stream: RemoteData.Succeed(stream)
-  }
-})
+const Connect = ActionOf<MediaStream, Action>((stream, state) => ({
+  ...state,
+  stream: RemoteData.Succeed(stream)
+}))
 
-const FailConnection = ActionOf<string, Action>((reason, state) => {
-  return {
-    ...state,
-    stream: RemoteData.Failure(reason)
-  }
-})
+const FailConnection = ActionOf<string, Action>((reason, state) => ({
+  ...state,
+  stream: RemoteData.Failure(reason)
+}))
 
-const EndCall = ActionOf<Action>(state => {
-  return {
-    ...state,
-    stream: RemoteData.NotAsked
-  }
-})()
+const EndCall = ActionOf<Action>(state => ({
+  ...state,
+  stream: RemoteData.NotAsked
+}))()
 
 // S U B S C R I P T I O N S
 
@@ -72,7 +66,7 @@ const ViewSucceed = React.memo<{ stream: MediaStream }>(({ stream }) => {
 
   React.useEffect(() => {
     if (videoRef.current != null) {
-      videoRef.current.srcObject = stream
+      videoRef.current.srcObject = stream.clone()
     }
   }, [stream])
 
