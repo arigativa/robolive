@@ -12,10 +12,15 @@ import * as Main from 'Main'
 
 const init: [Main.State, Cmd<Main.Action>] = [Main.initial, Cmd.none]
 
+const update = (
+  action: Main.Action,
+  state: Main.State
+): [Main.State, Cmd<Main.Action>] => action.update(state)
+
 const Root: React.FC = () => {
   const [state, dispatch] = useStore({
     init,
-    update: Main.update,
+    update,
     subscriptions: Main.subscriptions
   })
 

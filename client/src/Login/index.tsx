@@ -10,8 +10,8 @@ import {
   Button
 } from '@chakra-ui/react'
 
-import { Dispatch, caseOf, match } from 'core'
-import { hasWhitespaces } from 'utils'
+import { Dispatch } from 'core'
+import { ActionOf, CaseCreator, CaseOf, hasWhitespaces } from 'utils'
 
 // S T A T E
 
@@ -27,44 +27,37 @@ export const initial: State = {
 
 // U P D A T E
 
-export type Action = ReturnType<typeof ChangeUsername> | typeof SignIn
+export type Stage = CaseOf<'Updated', State> | CaseOf<'Registered', string>
 
-const SignIn = caseOf('SignIn')()
-const ChangeUsername = caseOf<'ChangeUsername', string>('ChangeUsername')
+const Updated: CaseCreator<Stage> = CaseOf('Updated')
+const Registered: CaseCreator<Stage> = CaseOf('Registered')
 
-export type Stage = ReturnType<typeof Updated> | ReturnType<typeof Registered>
+export type Action = ActionOf<[State], Stage>
 
-const Updated = caseOf<'Updated', State>('Updated')
-const Registered = caseOf<'Registered', string>('Registered')
+const SignIn = ActionOf<Action>(state => {
+  if (hasWhitespaces(state.username)) {
+    return Updated({
+      ...state,
+      error: Maybe.Just('Username must have no white spaces')
+    })
+  }
 
-export const update = (action: Action, state: State): Stage => {
-  return match(action, {
-    ChangeUsername: username => {
-      return Updated({
-        ...state,
-        username
-      })
-    },
+  if (state.username.length === 0) {
+    return Updated({
+      ...state,
+      error: Maybe.Just('Username must be not empty')
+    })
+  }
 
-    SignIn: () => {
-      if (hasWhitespaces(state.username)) {
-        return Updated({
-          ...state,
-          error: Maybe.Just('Username must have no white spaces')
-        })
-      }
+  return Registered(state.username)
+})()
 
-      if (state.username.length === 0) {
-        return Updated({
-          ...state,
-          error: Maybe.Just('Username must be not empty')
-        })
-      }
-
-      return Registered(state.username)
-    }
+const ChangeUsername = ActionOf<string, Action>((username, state) =>
+  Updated({
+    ...state,
+    username
   })
-}
+)
 
 // V I E W
 
