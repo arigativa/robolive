@@ -412,8 +412,8 @@ export const callRTC = <T>(options: {
   server: string
   agent: string
   client: string
-  withAudio: boolean
-  withVideo: boolean
+  withAudio?: boolean
+  withVideo?: boolean
   iceServers: Array<string>
   onFailure(reason: string): T
   onConnect(stream: MediaStream): T
@@ -427,8 +427,8 @@ export const callRTC = <T>(options: {
         port: extractPort(options.server),
         agent: options.agent,
         client: options.client,
-        withAudio: options.withAudio,
-        withVideo: options.withVideo,
+        withAudio: options.withAudio ?? false,
+        withVideo: options.withVideo ?? false,
         iceServers: options.iceServers
       },
       event => {

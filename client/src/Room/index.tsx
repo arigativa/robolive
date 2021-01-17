@@ -50,7 +50,6 @@ export const subscriptions = (state: State): Sub<Action> => {
     server: state.configuration.signallingUri,
     agent: state.configuration.sipAgentName,
     client: state.configuration.sipClientName,
-    withAudio: false,
     withVideo: true,
     iceServers: [state.configuration.stunUri, state.configuration.turnUri],
     onConnect: Connect,
