@@ -3,6 +3,10 @@ name := "robot"
 version := "1.0"
 scalaVersion := "2.13.3"
 
+buildInfoPackage := "robolive"
+buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion)
+buildInfoOptions += BuildInfoOption.BuildTime
+
 libraryDependencies ++= Seq(
   "org.freedesktop.gstreamer" % "gst1-java-core" % "1.1.0",
   "ch.qos.logback" % "logback-classic" % "1.2.3",

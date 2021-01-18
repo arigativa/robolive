@@ -4,7 +4,10 @@ version := "0.1"
 
 scalaVersion := "2.13.1"
 
-lazy val robot = (project in file("robot")) enablePlugins (JavaServerAppPackaging) dependsOn (mjsip, sdp)
+lazy val robot =
+  (project in file("robot"))
+    .enablePlugins(JavaServerAppPackaging, BuildInfoPlugin)
+    .dependsOn(mjsip, sdp)
 lazy val registry =
   (project in file("registry"))
     .enablePlugins(JavaServerAppPackaging, BuildInfoPlugin)

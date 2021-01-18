@@ -5,6 +5,7 @@ import SipChannel.SipChannelEndpointGrpc
 import Storage.StorageEndpointGrpc
 import io.grpc.ManagedChannelBuilder
 import org.slf4j.LoggerFactory
+import robolive.BuildInfo
 import robolive.gstreamer.{SimpleFunctionCalculator, VideoSources}
 import robolive.managed.RunningPuppet
 
@@ -16,7 +17,8 @@ object ManagedRobotApp extends App {
 
   val log = LoggerFactory.getLogger(getClass)
 
-  log.info(s"Managed robot ($getClass) started")
+  log.info(BuildInfo.toString)
+  log.info(s"$getClass started")
 
   object RegistryConnection {
     val Host: String = getEnv("REGISTRY_HOST", "localhost")
