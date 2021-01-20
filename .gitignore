@@ -15,3 +15,7 @@ classes/
 .DS_Store
 
 npm-debug.log*
+
+/signalling/webPhone.tar.gz
+/infra/playbook/inventory_plugins/lib/
+/infra/playbook/inventory_plugins/__pycache__/
