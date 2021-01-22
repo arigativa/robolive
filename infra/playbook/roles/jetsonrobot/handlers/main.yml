@@ -1,0 +1,6 @@
+- name: Start Robot
+  systemd:
+    name: robolive-robot
+    state: restarted
+    daemon_reload: yes
+    enabled: yes

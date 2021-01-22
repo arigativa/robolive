@@ -1,0 +1,22 @@
+[Unit]
+Description=Robolive Robot
+After=syslog.target network.target
+
+# Attempt to start for 10 times during a 60 seconds interval.
+StartLimitBurst=10
+StartLimitIntervalSec=60
+
+[Service]
+User={{ jetson_robot_user }}
+Group={{ jetson_robot_user }}
+Environment="DEFAULT_VIDEO_PIPELINE={{ jetson_robot_video_pipeline }}"
+Environment="INVENTORY_USE_PLAINTEXT=false"
+Environment="ROBOT_NAME={{ jetson_robot_name }}"
+Environment="REGISTRY_HOST={{ jetson_robot_registry_address }}"
+
+ExecStart={{ jetson_robot_dir }}/bin/managed-robot-app
+Restart=on-failure
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
