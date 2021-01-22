@@ -1,0 +1,45 @@
+- name: Ensure package directory
+  file:
+    path: "{{ jetson_robot_dir }}"
+    state: directory
+    mode: '0755'
+    owner: "{{ jetson_robot_user }}"
+    group: "{{ jetson_robot_user }}"
+  tags:
+    - jetsonrobot
+
+- name: Copy registry package
+  copy:
+    src: "{{ jetson_robot_package }}"
+    dest: "{{ jetson_robot_package_remote }}"
+    owner: "{{ jetson_robot_user }}"
+    group: "{{ jetson_robot_user }}"
+  tags:
+    - jetsonrobot
+  register: package_copy_result
+
+- name: Extract registry
+  unarchive:
+    src: "{{ jetson_robot_package_remote }}"
+    dest: "{{ jetson_robot_dir }}"
+    remote_src: yes
+    owner: "{{ jetson_robot_user }}"
+    group: "{{ jetson_robot_user }}"
+  when: package_copy_result.changed and (not ansible_check_mode)
+  notify:
+    - Start Robot
+  tags:
+    - jetsonrobot
+
+# Service definition
+
+- name: Copy systemd service file to robot
+  template:
+    src: robolive-robot.service
+    dest: /etc/systemd/system
+    owner: root
+    group: root
+  notify:
+    - Start Robot
+  tags:
+    - jetsonrobot

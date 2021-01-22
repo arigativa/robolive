@@ -1,4 +1,10 @@
 ---
+- hosts: robots
+  become: yes
+  become_user: root
+  roles:
+    - { role: jetsonrobot, tags: [ jetsonrobot, robots ] }
+
 - hosts: signalling_and_relay
   become: yes
   become_user: root
