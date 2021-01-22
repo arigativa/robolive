@@ -4,7 +4,14 @@ version := "1.0"
 scalaVersion := "2.13.3"
 
 buildInfoPackage := "robolive"
-buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion)
+buildInfoKeys := Seq[BuildInfoKey](
+  name, version, scalaVersion, sbtVersion,
+  git.gitHeadCommit,
+  git.branch,
+  git.gitUncommittedChanges,
+  git.gitHeadMessage,
+  git.gitHeadCommitDate,
+)
 buildInfoOptions += BuildInfoOption.BuildTime
 
 libraryDependencies ++= Seq(

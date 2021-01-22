@@ -15,6 +15,7 @@ static_resources:
                 "@type": type.googleapis.com/envoy.config.filter.network.http_connection_manager.v2.HttpConnectionManager
                 codec_type: auto
                 stat_prefix: ingress_http
+                stream_idle_timeout: 0s
                 route_config:
                   name: local_route
                   virtual_hosts:
@@ -36,7 +37,6 @@ static_resources:
                   - name: envoy.filters.http.cors
                   - name: envoy.filters.http.router
 
-
     - name: registry_info_listener
       address:
         socket_address: { address: 0.0.0.0, port_value: 10477 }
@@ -47,6 +47,7 @@ static_resources:
                 "@type": type.googleapis.com/envoy.config.filter.network.http_connection_manager.v2.HttpConnectionManager
                 codec_type: auto
                 stat_prefix: ingress_http
+                stream_idle_timeout: 0s
                 route_config:
                   name: local_route
                   virtual_hosts:
@@ -79,6 +80,7 @@ static_resources:
                 "@type": type.googleapis.com/envoy.config.filter.network.http_connection_manager.v2.HttpConnectionManager
                 codec_type: auto
                 stat_prefix: ingress_http
+                stream_idle_timeout: 0s
                 route_config:
                   name: local_route
                   virtual_hosts:
@@ -111,6 +113,7 @@ static_resources:
                 "@type": type.googleapis.com/envoy.config.filter.network.http_connection_manager.v2.HttpConnectionManager
                 codec_type: auto
                 stat_prefix: ingress_http
+                stream_idle_timeout: 0s
                 route_config:
                   name: local_route
                   virtual_hosts:
@@ -143,6 +146,7 @@ static_resources:
                 "@type": type.googleapis.com/envoy.config.filter.network.http_connection_manager.v2.HttpConnectionManager
                 codec_type: auto
                 stat_prefix: ingress_http
+                stream_idle_timeout: 0s
                 route_config:
                   name: local_route
                   virtual_hosts:

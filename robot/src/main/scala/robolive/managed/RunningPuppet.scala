@@ -22,22 +22,24 @@ final class RunningPuppet(
   private val logger = LoggerFactory.getLogger(getClass.getName)
 
   private val registryChannel: StreamObserver[AgentMessage] = {
-    val commandReceiver: StreamObserver[RegistryMessage] = new StreamObserver[RegistryMessage] {
-      lazy val actor: RunningPuppet.RunningPuppetActor =
-        new RunningPuppet.RunningPuppetActor(
-          AgentState.Idle,
-          AgentState.Deps(
-            () => actor,
-            logger = logger,
-            agentName = name,
-            videoSources = videoSources,
-            storageEndpointClient = storageEndpointClient,
-            sipChannelEndpointClient = sipChannelEndpointClient,
-            sendMessage = (status: AgentMessage) => registryChannel.onNext(status),
-          )
+    lazy val actor: RunningPuppet.RunningPuppetActor =
+      new RunningPuppet.RunningPuppetActor(
+        AgentState.Idle,
+        AgentState.Deps(
+          () => actor,
+          logger = logger,
+          agentName = name,
+          videoSources = videoSources,
+          storageEndpointClient = storageEndpointClient,
+          sipChannelEndpointClient = sipChannelEndpointClient,
+          sendMessage = (status: AgentMessage) => registryChannel.onNext(status),
         )
+      )
 
-      private val logger = LoggerFactory.getLogger(getClass.getName)
+
+    val commandReceiver: StreamObserver[RegistryMessage] = new StreamObserver[RegistryMessage] {
+
+      private val logger = LoggerFactory.getLogger(getClass)
 
       override def onNext(registryMessage: RegistryMessage): Unit = {
         try {
@@ -48,14 +50,14 @@ final class RunningPuppet(
       }
 
       override def onError(error: Throwable): Unit = {
-        actor.shutdown()
         logger.error("error occured", error)
-        terminatedPromise.success(())
+        actor.shutdown()
+        terminatedPromise.failure(error)
       }
 
       override def onCompleted(): Unit = {
-        actor.shutdown()
         logger.info("Inventory closed the connection")
+        actor.shutdown()
         terminatedPromise.success(())
       }
     }
