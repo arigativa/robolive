@@ -6,8 +6,7 @@ import org.mjsip.sip.address.{NameAddress, SipURI}
 import org.mjsip.sip.call._
 import org.mjsip.sip.message.SipMessage
 import org.mjsip.sip.provider.{SipProvider, SipProviderListener, SipStack}
-import org.slf4j.LoggerFactory
-import org.zoolu.util.{LogLevel, Logger}
+import org.slf4j.{LoggerFactory, LoggerForZoolupa}
 import sdp.SdpMessage
 
 import scala.concurrent.ExecutionContext
@@ -261,14 +260,8 @@ final class SipClient(
 
   private val logger = LoggerFactory.getLogger(getClass)
 
-  private val zooluLogger = new Logger {
-    override def log(message: String): Unit = logger.info(message)
-    override def log(level: LogLevel, message: String): Unit = logger.info(message)
-    override def log(level: LogLevel, source_class: Class[_], message: String): Unit = logger.info(message)
-  }
-
-  SipStack.message_logger = zooluLogger
-  SipStack.event_logger = zooluLogger
+  SipStack.message_logger = new LoggerForZoolupa(logger)
+  SipStack.event_logger = new LoggerForZoolupa(logger)
 
   private val sipProvider = {
     val provider = new SipProvider(null, 0, Array(SipProvider.PROTO_TCP, SipProvider.PROTO_TLS))
