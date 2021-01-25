@@ -176,8 +176,8 @@ public abstract class Dialog extends DialogInfo implements SipProviderListener {
 	}
 
 	/** Verifies the correct status; if not logs the event. */
-	protected final boolean verifyStatus(boolean expression) {
-		return verifyThat(expression,"dialog state mismatching");
+	protected final boolean verifyStatus(boolean expression, String expected) {
+		return verifyThat(expression,"dialog state mismatching - " + getStatus() + ", expected: " + expected);
 	}
 
 	/** Verifies an event; if not logs it. */
