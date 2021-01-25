@@ -100,7 +100,7 @@ public abstract class Dialog extends DialogInfo implements SipProviderListener {
 	/** Changes the internal dialog state */
 	protected void changeStatus(int newstatus) {
 		status=newstatus;
-		log(LogLevel.DEBUG,"changed dialog state: "+getStatus());
+		log(LogLevel.INFO,"changed dialog state: "+getStatus());
 		
 		// remove the sip_provider listener when going to "terminated" state
 		if (isTerminated()) {

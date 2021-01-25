@@ -1,6 +1,7 @@
 package robolive.puppet
 
 import java.util
+import java.util.concurrent.atomic.AtomicReference
 
 import org.mjsip.sip.address.{NameAddress, SipURI}
 import org.mjsip.sip.call._
@@ -18,8 +19,12 @@ final class SipTransportHandler(sipCallToEventAdapter: SIPCallEventHandler, sipU
 
   /** When a new SipMessage is received by the SipProvider. */
   override def onReceivedMessage(sip_provider: SipProvider, message: SipMessage): Unit = {
-    logger.debug(s"Message received: $message")
-    new ExtendedCall(sip_provider, message, sipUser, sipCallToEventAdapter)
+    logger.info(s"Message received: $message")
+
+    if (message.isInvite) {
+      val call = new ExtendedCall(sip_provider, message, sipUser, sipCallToEventAdapter)
+      logger.info(s"Created a new call ${call.getCallId} for a message ${message.getRequestLine}")
+    }
   }
 }
 
@@ -76,7 +81,7 @@ final class SIPCallEventHandler(controller: WebRTCController, halt: () => ())(
     SdpMessage(sdp) match {
       case Right(sdpMessage) =>
         val extendedCall = call.asInstanceOf[ExtendedCall]
-        controller.makeCall(extendedCall, sdpMessage)
+        controller.answerCall(extendedCall, sdpMessage)
       case Left(errors) =>
         logger.error(s"Error can not accept invite, sdp parsing failure: ${errors.mkString(", ")}")
     }

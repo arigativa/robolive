@@ -94,6 +94,7 @@ final class WebRTCController(
   }
 
   private def onIncomingDecodebinStream(pad: Pad) = {
+    logger.info(s"onIncomingDecodebinStream(${pad.getName})")
     if (!pad.hasCurrentCaps) {
       logger.error(s"Error incoming stream ${pad.getName}: pad has no caps")
     } else {
@@ -149,14 +150,14 @@ final class WebRTCController(
       .lineSeparator() // probably should be just "\n", because it shouldn't depend on the system where robot is run
   }
 
-  def makeCall(call: ExtendedCall, remoteSdp: SdpMessage)(
+  def answerCall(call: ExtendedCall, remoteSdp: SdpMessage)(
     implicit ec: ExecutionContext
   ): Future[Unit] = synchronized {
     state match {
       case WebRTCControllerPlayState.Wait | WebRTCControllerPlayState.Failure =>
         logger.info("Processing incoming call")
 
-        getRtpTypeForVP8Media(remoteSdp) match {
+        getRtpTypeForVP8Media(remoteSdp).orElse(Right(96)) match {
           case Right(rtpType) =>
             logger.debug(s"Extracted rtpType: $rtpType")
 
