@@ -85,6 +85,16 @@ interface Room<AppMsg> {
   listeners: Listeners<AppMsg>
 }
 
+const makeFakeVideoStream = (): MediaStream => {
+  const canvas = document.createElement('canvas')
+  canvas.width = 1
+  canvas.height = 1
+  canvas.getContext('2d')?.fillRect(0, 0, 1, 1)
+
+  // @ts-expect-error TS2339 - captureStream
+  return canvas.captureStream()
+}
+
 const closeRoom = <AppMsg>(room: Room<AppMsg>): void => {
   if (room.session?.isEstablished()) {
     room.session.terminate()
@@ -327,9 +337,10 @@ class Call<AppMsg> implements SipSub<AppMsg> {
           buildUri(this.options.agent, this.options.host, this.options.port),
           {
             mediaConstraints: {
-              audio: this.options.withAudio,
-              video: this.options.withVideo
+              audio: false,
+              video: false
             },
+            mediaStream: makeFakeVideoStream(),
             pcConfig: {
               rtcpMuxPolicy: 'negotiate',
               iceServers: this.options.iceServers.map(url => {

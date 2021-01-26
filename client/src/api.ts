@@ -83,9 +83,6 @@ export const joinRoom = (options: {
     const req = new JoinRequest()
     const settings = req.getSettingsMap()
 
-    settings.set('videoSrcFn', 'autovideosrc')
-    settings.set('servoControllerType', 'FAKE')
-
     req.setName(options.username)
     req.setTargetid(options.robotId)
 
