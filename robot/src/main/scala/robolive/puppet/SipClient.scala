@@ -290,9 +290,9 @@ final class SipClient(
     )
   }
 
-  def start(expireTime: Int, renewTime: Int): Unit = {
+  def start(expireTime: Int): Unit = {
     if (rc.isRegistering) rc.halt() // discard default registering loop
-    rc.loopRegister(expireTime, renewTime)
+    rc.loopRegister(expireTime, (expireTime*0.5).toInt)
   }
 
   def stop(): Unit = {
