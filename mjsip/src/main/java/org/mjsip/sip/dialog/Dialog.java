@@ -100,7 +100,7 @@ public abstract class Dialog extends DialogInfo implements SipProviderListener {
 	/** Changes the internal dialog state */
 	protected void changeStatus(int newstatus) {
 		status=newstatus;
-		log(LogLevel.DEBUG,"changed dialog state: "+getStatus());
+		log(LogLevel.INFO,"changed dialog state: "+getStatus());
 		
 		// remove the sip_provider listener when going to "terminated" state
 		if (isTerminated()) {
@@ -176,8 +176,8 @@ public abstract class Dialog extends DialogInfo implements SipProviderListener {
 	}
 
 	/** Verifies the correct status; if not logs the event. */
-	protected final boolean verifyStatus(boolean expression) {
-		return verifyThat(expression,"dialog state mismatching");
+	protected final boolean verifyStatus(boolean expression, String expected) {
+		return verifyThat(expression,"dialog state mismatching - " + getStatus() + ", expected: " + expected);
 	}
 
 	/** Verifies an event; if not logs it. */

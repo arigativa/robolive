@@ -52,7 +52,7 @@ final class Puppet(
     logger.info(s"Hello, I'm $robotName")
     logger.info(s"Trying to connect to signalling `$signallingUri`")
 
-    sipClient.start(30, 30)
+    sipClient.start(30)
 
     this
   }

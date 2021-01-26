@@ -207,7 +207,7 @@ public class ExtendedInviteDialog extends org.mjsip.sip.dialog.InviteDialog {
 	public void respond(SipMessage resp) {
 		log(LogLevel.DEBUG,"inside x-respond(resp)");
 		String method=resp.getCSeqHeader().getMethod();
-		if (method.equals(SipMethods.INVITE) || method.equals(SipMethods.CANCEL) || method.equals(SipMethods.BYE)) {
+		if (method.equals(SipMethods.INVITE) || method.equals(SipMethods.CANCEL) || method.equals(SipMethods.BYE) || method.equals(SipMethods.UPDATE)) {
 			super.respond(resp);
 		}
 		else {
@@ -248,7 +248,7 @@ public class ExtendedInviteDialog extends org.mjsip.sip.dialog.InviteDialog {
 			super.onReceivedMessage(provider,msg);
 		}
 		else
-		if (msg.isInvite() || msg.isAck() || msg.isCancel() || msg.isBye() || msg.isInfo() || msg.isPrack()) {
+		if (msg.isInvite() || msg.isAck() || msg.isCancel() || msg.isBye() || msg.isInfo() || msg.isPrack() || msg.isUpdate()) {
 			super.onReceivedMessage(provider,msg);
 		}
 		else {
@@ -270,7 +270,7 @@ public class ExtendedInviteDialog extends org.mjsip.sip.dialog.InviteDialog {
 				String event=msg.getEventHeader().getValue();
 				String sipfragment=msg.getStringBody();
 				if (ext_listener!=null) ext_listener.onDlgNotify(this,event,sipfragment,msg);
-			} 
+			}
 			else {
 				log(LogLevel.DEBUG,"Received alternative request "+msg.getRequestLine().getMethod());
 				if (ext_listener!=null) ext_listener.onDlgAltRequest(this,msg.getRequestLine().getMethod(),msg.getStringBody(),msg);

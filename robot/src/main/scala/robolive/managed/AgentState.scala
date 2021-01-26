@@ -133,7 +133,7 @@ object AgentState {
 
             val sipAgentName = sipChannelAllocationResponse.agentName
             val sipClientName = sipChannelAllocationResponse.clientName
-            val videoSrcFn = settings("videoSrcFn").get
+            val videoSrcFn = settings("videoSrcFn").getOrElse("unknown")
             val signallingUri = settings("signallingUri").get
             val stunUri = settings("stunUri").get
             val enableUserVideo = settings("enableUserVideo").getOrElse("false").toBoolean

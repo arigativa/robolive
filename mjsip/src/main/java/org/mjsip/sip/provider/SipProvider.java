@@ -1194,7 +1194,7 @@ public class SipProvider implements Configurable, SipTransportListener {
 			
 			// is there any listeners?
 			if (sip_listeners.size()==0 && promiscuous_listeners.size()==0) {
-				log(LogLevel.INFO,"no listener found: meesage discarded.");
+				log(LogLevel.INFO,"no listener found: message discarded.");
 				return;
 			}
 

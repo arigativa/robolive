@@ -1,13 +1,13 @@
 package robolive.puppet
 
 import java.util
+import java.util.concurrent.atomic.AtomicReference
 
 import org.mjsip.sip.address.{NameAddress, SipURI}
 import org.mjsip.sip.call._
 import org.mjsip.sip.message.SipMessage
 import org.mjsip.sip.provider.{SipProvider, SipProviderListener, SipStack}
-import org.slf4j.LoggerFactory
-import org.zoolu.util.{LogLevel, Logger}
+import org.slf4j.{LoggerFactory, LoggerForZoolupa}
 import sdp.SdpMessage
 
 import scala.concurrent.ExecutionContext
@@ -19,8 +19,12 @@ final class SipTransportHandler(sipCallToEventAdapter: SIPCallEventHandler, sipU
 
   /** When a new SipMessage is received by the SipProvider. */
   override def onReceivedMessage(sip_provider: SipProvider, message: SipMessage): Unit = {
-    logger.debug(s"Message received: $message")
-    new ExtendedCall(sip_provider, message, sipUser, sipCallToEventAdapter)
+    logger.info(s"Message received: $message")
+
+    if (message.isInvite) {
+      val call = new ExtendedCall(sip_provider, message, sipUser, sipCallToEventAdapter)
+      logger.info(s"Created a new call ${call.getCallId} for a message ${message.getRequestLine}")
+    }
   }
 }
 
@@ -77,10 +81,16 @@ final class SIPCallEventHandler(controller: WebRTCController, halt: () => ())(
     SdpMessage(sdp) match {
       case Right(sdpMessage) =>
         val extendedCall = call.asInstanceOf[ExtendedCall]
-        controller.makeCall(extendedCall, sdpMessage)
+        controller.answerCall(extendedCall, sdpMessage)
       case Left(errors) =>
         logger.error(s"Error can not accept invite, sdp parsing failure: ${errors.mkString(", ")}")
     }
+  }
+
+  /** Callback function called when arriving a new UPDATE method (update request). */
+  override def onCallUpdate(call: Call, sdp: String, update: SipMessage): Unit = {
+    call.acceptUpdate(sdp)
+    logger.info(s"Accepted call update")
   }
 
   /** Callback function called when arriving a 183 Session Progress */
@@ -175,10 +185,6 @@ final class SIPCallEventHandler(controller: WebRTCController, halt: () => ())(
     halt()
 }
 
-  /** Callback function called when arriving a new UPDATE method (update request). */
-  override def onCallUpdate(call: Call, sdp: String, update: SipMessage): Unit = {
-    logger.debug(s"Ignored onCallUpdate($call, $sdp, $update)")
-  }
 
   /** Callback function called when arriving a 2xx for an UPDATE request */
   override def onCallUpdateAccepted(call: Call, sdp: String, resp: SipMessage): Unit = {
@@ -261,14 +267,8 @@ final class SipClient(
 
   private val logger = LoggerFactory.getLogger(getClass)
 
-  private val zooluLogger = new Logger {
-    override def log(message: String): Unit = logger.info(message)
-    override def log(level: LogLevel, message: String): Unit = logger.info(message)
-    override def log(level: LogLevel, source_class: Class[_], message: String): Unit = logger.info(message)
-  }
-
-  SipStack.message_logger = zooluLogger
-  SipStack.event_logger = zooluLogger
+  SipStack.message_logger = new LoggerForZoolupa(logger)
+  SipStack.event_logger = new LoggerForZoolupa(logger)
 
   private val sipProvider = {
     val provider = new SipProvider(null, 0, Array(SipProvider.PROTO_TCP, SipProvider.PROTO_TLS))
@@ -292,9 +292,9 @@ final class SipClient(
     )
   }
 
-  def start(expireTime: Int, renewTime: Int): Unit = {
+  def start(expireTime: Int): Unit = {
     if (rc.isRegistering) rc.halt() // discard default registering loop
-    rc.loopRegister(expireTime, renewTime)
+    rc.loopRegister(expireTime, (expireTime*0.5).toInt)
   }
 
   def stop(): Unit = {

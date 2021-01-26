@@ -42,7 +42,7 @@ final class AgentEndpointHandler(
               val agentState = new AgentState(
                 name = message.name,
                 statusRef = new AtomicReference[String]("Status unknown"),
-                callback = responseObserver.onNext,
+                sendToAgent = responseObserver.onNext,
                 requests = new ConcurrentHashMap[String, Promise[Map[String, String]]]()
               )
               agentTable.put(agentId, agentState)

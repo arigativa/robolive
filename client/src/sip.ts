@@ -67,8 +67,6 @@ const generateKey = (options: RegisterOptions): string => {
     options.port,
     options.agent,
     options.client,
-    options.withAudio,
-    options.withVideo,
     options.iceServers.sort(compare)
   ].join('|')
 }
@@ -82,16 +80,36 @@ interface Listeners<AppMsg> {
 interface Room<AppMsg> {
   ua: null | UA
   session: null | RTCSession
+  stopFakeStream: null | VoidFunction
   listeners: Listeners<AppMsg>
+}
+
+interface CanvasElement extends HTMLCanvasElement {
+  captureStream(frameRate?: number): MediaStream
+}
+
+const makeFakeVideoStream = (): [MediaStream, VoidFunction] => {
+  const canvas = document.createElement('canvas') as CanvasElement
+  canvas.width = 1
+  canvas.height = 1
+  canvas.getContext('2d')?.fillRect(0, 0, 1, 1)
+
+  return [
+    canvas.captureStream(1), // 1 FPS
+    () => canvas.remove()
+  ]
 }
 
 const closeRoom = <AppMsg>(room: Room<AppMsg>): void => {
   if (room.session?.isEstablished()) {
     room.session.terminate()
   }
+
   if (room.ua?.isConnected()) {
     room.ua.stop()
   }
+
+  room.stopFakeStream?.()
 }
 
 type State<AppMsg> = Record<string, undefined | Room<AppMsg>>
@@ -115,7 +133,8 @@ interface SipSelfMsg<AppMsg> {
 class RegisterSession<AppMsg> implements SipSelfMsg<AppMsg> {
   public constructor(
     private readonly key: string,
-    private readonly session: RTCSession
+    private readonly session: RTCSession,
+    private readonly stopFakeStream: VoidFunction
   ) {}
 
   public proceed(
@@ -138,7 +157,8 @@ class RegisterSession<AppMsg> implements SipSelfMsg<AppMsg> {
       ...state,
       [this.key]: {
         ...room,
-        session: this.session
+        session: this.session,
+        stopFakeStream: this.stopFakeStream
       }
     }
   }
@@ -203,8 +223,6 @@ interface RegisterOptions {
   port: null | string
   agent: string
   client: string
-  withAudio: boolean
-  withVideo: boolean
   iceServers: Array<string>
 }
 
@@ -252,8 +270,7 @@ class Call<AppMsg> implements SipSub<AppMsg> {
 
     if (oldRoom != null) {
       nextState[key] = {
-        ua: oldRoom.ua,
-        session: oldRoom.session,
+        ...oldRoom,
         listeners: pushListeners(this.onEvent)
       }
 
@@ -281,6 +298,7 @@ class Call<AppMsg> implements SipSub<AppMsg> {
       nextState[key] = {
         ua: null,
         session: null,
+        stopFakeStream: null,
         listeners: pushListeners(this.onEvent)
       }
 
@@ -311,6 +329,7 @@ class Call<AppMsg> implements SipSub<AppMsg> {
       nextState[key] = {
         ua: null,
         session: null,
+        stopFakeStream: null,
         listeners: pushListeners(this.onEvent)
       }
 
@@ -323,13 +342,15 @@ class Call<AppMsg> implements SipSub<AppMsg> {
 
     ua.on('registered', () => {
       try {
+        const [fakeVideoStream, stopFakeStream] = makeFakeVideoStream()
         const session = ua?.call(
           buildUri(this.options.agent, this.options.host, this.options.port),
           {
             mediaConstraints: {
-              audio: this.options.withAudio,
-              video: this.options.withVideo
+              audio: false,
+              video: false
             },
+            mediaStream: fakeVideoStream,
             pcConfig: {
               rtcpMuxPolicy: 'negotiate',
               iceServers: this.options.iceServers.map(url => {
@@ -354,7 +375,7 @@ class Call<AppMsg> implements SipSub<AppMsg> {
         })
 
         session?.on('confirmed', () => {
-          router.sendToSelf(new RegisterSession(key, session))
+          router.sendToSelf(new RegisterSession(key, session, stopFakeStream))
         })
       } catch (error) {
         router.sendToSelf(
@@ -368,6 +389,7 @@ class Call<AppMsg> implements SipSub<AppMsg> {
     nextState[key] = {
       ua,
       session: null,
+      stopFakeStream: null,
       listeners: pushListeners(this.onEvent)
     }
   }
@@ -412,8 +434,6 @@ export const callRTC = <T>(options: {
   server: string
   agent: string
   client: string
-  withAudio?: boolean
-  withVideo?: boolean
   iceServers: Array<string>
   onFailure(reason: string): T
   onConnect(stream: MediaStream): T
@@ -427,8 +447,6 @@ export const callRTC = <T>(options: {
         port: extractPort(options.server),
         agent: options.agent,
         client: options.client,
-        withAudio: options.withAudio ?? false,
-        withVideo: options.withVideo ?? false,
         iceServers: options.iceServers
       },
       event => {

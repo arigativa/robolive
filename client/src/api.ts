@@ -81,10 +81,6 @@ export const joinRoom = (options: {
 }): Promise<Either<string, RoomConfiguration>> => {
   return new Promise(done => {
     const req = new JoinRequest()
-    const settings = req.getSettingsMap()
-
-    settings.set('videoSrcFn', 'autovideosrc')
-    settings.set('servoControllerType', 'FAKE')
 
     req.setName(options.username)
     req.setTargetid(options.robotId)
