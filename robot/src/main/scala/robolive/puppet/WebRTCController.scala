@@ -157,7 +157,6 @@ final class WebRTCController(
       case WebRTCControllerPlayState.Wait | WebRTCControllerPlayState.Failure =>
         logger.info("Processing incoming call")
 
-        getRtpTypeForVP8Media(remoteSdp).orElse(Right(96)) match {
           case Right(rtpType) =>
             logger.debug(s"Extracted rtpType: $rtpType")
 
