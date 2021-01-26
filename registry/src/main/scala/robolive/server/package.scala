@@ -8,14 +8,13 @@ import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
 package object server {
-  type AgentChannel = RegistryMessage => Unit
   type Reason = String
 
   // fixme: separate `Client` and `Agent` interfaces
   final class AgentState(
     val name: String,
     private val statusRef: AtomicReference[String],
-    callback: AgentChannel,
+    sendToAgent: RegistryMessage => Unit,
     requests: ConcurrentHashMap[String, Promise[Map[String, String]]],
   ) {
     def updateStatus(status: String): String = {
@@ -30,7 +29,7 @@ package object server {
       val requestId = UUID.randomUUID().toString
       val p = Promise[Map[String, String]]
       requests.put(requestId, p)
-      callback(clientJoinMessage(name, settings, requestId))
+      sendToAgent(clientJoinMessage(name, settings, requestId))
       val f = p.future
       f.foreach(_ => requests.remove(requestId))
       f.recover(_ => requests.remove(requestId))

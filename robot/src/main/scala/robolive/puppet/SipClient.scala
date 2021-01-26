@@ -87,6 +87,12 @@ final class SIPCallEventHandler(controller: WebRTCController, halt: () => ())(
     }
   }
 
+  /** Callback function called when arriving a new UPDATE method (update request). */
+  override def onCallUpdate(call: Call, sdp: String, update: SipMessage): Unit = {
+    call.acceptUpdate(sdp)
+    logger.info(s"Accepted call update")
+  }
+
   /** Callback function called when arriving a 183 Session Progress */
   override def onCallProgress(call: Call, resp: SipMessage): Unit =
     logger.debug(s"IGNORED onCallProgress")
@@ -179,10 +185,6 @@ final class SIPCallEventHandler(controller: WebRTCController, halt: () => ())(
     halt()
 }
 
-  /** Callback function called when arriving a new UPDATE method (update request). */
-  override def onCallUpdate(call: Call, sdp: String, update: SipMessage): Unit = {
-    logger.debug(s"Ignored onCallUpdate($call, $sdp, $update)")
-  }
 
   /** Callback function called when arriving a 2xx for an UPDATE request */
   override def onCallUpdateAccepted(call: Call, sdp: String, resp: SipMessage): Unit = {

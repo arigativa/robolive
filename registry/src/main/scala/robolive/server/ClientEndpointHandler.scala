@@ -13,8 +13,8 @@ final class ClientEndpointHandler(robotTable: ConcurrentHashMap[String, AgentSta
   override def join(
     request: JoinRequest
   ): Future[JoinResponse] = {
-    val state = robotTable.get(request.targetId)
-    val result = state.send(request.name, request.settings)
+    val robotState = robotTable.get(request.targetId)
+    val result = robotState.send(request.name, request.settings)
 
     result.map { settings =>
       clientSuccessResponse(settings)
