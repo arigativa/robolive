@@ -67,8 +67,6 @@ const generateKey = (options: RegisterOptions): string => {
     options.port,
     options.agent,
     options.client,
-    options.withAudio,
-    options.withVideo,
     options.iceServers.sort(compare)
   ].join('|')
 }
@@ -213,8 +211,6 @@ interface RegisterOptions {
   port: null | string
   agent: string
   client: string
-  withAudio: boolean
-  withVideo: boolean
   iceServers: Array<string>
 }
 
@@ -423,8 +419,6 @@ export const callRTC = <T>(options: {
   server: string
   agent: string
   client: string
-  withAudio?: boolean
-  withVideo?: boolean
   iceServers: Array<string>
   onFailure(reason: string): T
   onConnect(stream: MediaStream): T
@@ -438,8 +432,6 @@ export const callRTC = <T>(options: {
         port: extractPort(options.server),
         agent: options.agent,
         client: options.client,
-        withAudio: options.withAudio ?? false,
-        withVideo: options.withVideo ?? false,
         iceServers: options.iceServers
       },
       event => {
