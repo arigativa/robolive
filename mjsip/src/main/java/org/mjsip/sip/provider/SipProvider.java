@@ -205,6 +205,7 @@ public class SipProvider implements Configurable, SipTransportListener {
 	/** Vector of exception listeners (Vector<SipProviderListener>) */
 	Vector exception_listeners=new Vector();
 
+	private boolean isHalted = false;
 
 
 	// *************************** Costructors ***************************
@@ -467,8 +468,12 @@ public class SipProvider implements Configurable, SipTransportListener {
 		sip_listeners=new Hashtable();
 		promiscuous_listeners=new Vector();
 		exception_listeners=new Vector();
+		isHalted = true;
 	}
 
+	public synchronized boolean getIsHalted() {
+		return isHalted;
+	}
 
 	/** From Configurable. Parses a single line (loaded from the config file). */
 	public void parseLine(String line) {

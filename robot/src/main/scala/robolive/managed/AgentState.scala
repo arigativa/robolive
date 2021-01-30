@@ -139,7 +139,6 @@ object AgentState {
             val enableUserVideo = settings("enableUserVideo").getOrElse("false").toBoolean
             val servoControllerType = settings("servoControllerType").getOrElse("FAKE")
 
-            // todo: how is this part working?
             val videoSource = deps.videoSources.getSource(videoSrcFn)
 
             deps.logger.info(s"using video source: $videoSource")
@@ -227,14 +226,14 @@ object AgentState {
               case Failure(exception) =>
                 val errorMessage = s"Can not start-up the puppet: ${exception.getMessage}"
                 deps.logger.error(errorMessage, exception)
-                decline(clientConnectionRequest.requestId, errorMessage)
+                deps.sendMessage(decline(clientConnectionRequest.requestId, errorMessage))
                 this
             }
           }).recover {
             case error =>
               val errorMessage = s"Registry communication error: ${error.getMessage}"
               deps.logger.error(errorMessage, error)
-              decline(clientConnectionRequest.requestId, errorMessage)
+              deps.sendMessage(decline(clientConnectionRequest.requestId, errorMessage))
               this
           }
 
@@ -256,6 +255,13 @@ object AgentState {
           puppet.stop()
           deps.sendMessage(statusUpdate("Registered"))
           Future.successful(AgentState.Registered)
+
+        case other @ Message.Connected(clientConnectionRequest) =>
+          deps.logger.error(s"Unexpected message $other in Busy state")
+          deps.sendMessage(
+            decline(clientConnectionRequest.requestId, "Can not make new connection: `Busy`")
+          )
+          Future.successful(this)
 
         case other =>
           deps.logger.error(s"Unexpected message $other in Busy state")
