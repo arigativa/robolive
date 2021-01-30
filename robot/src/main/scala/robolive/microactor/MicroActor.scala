@@ -33,12 +33,10 @@ abstract class MicroActor[D, E, S <: State[D, E, S]](
         evaluationState
           .apply(deps, event)(ec)
           .recover { case error => onError(error, evaluationState) }
-          .map { newState =>
+          .foreach { newState =>
             this.currentState = Waiting(newState)
             println(s"Finished: $event: $evaluationState -> ${this.currentState}")
             onStateTransitioned(newState)
-          }
-          .foreach { _ =>
             queue.headOption match {
               case Some(event) =>
                 queue = queue.tail
@@ -70,12 +68,19 @@ abstract class MicroActor[D, E, S <: State[D, E, S]](
   }
 }
 
-object MicroActor extends App {
+object MicroActor {
+  private final case class TaskToSchedule(
+    task: () => Unit,
+    delayMillis: Long,
+    repeatEachMillis: Long,
+  )
+
   abstract class TimeredMicroActor[D, E, S <: State[D, E, S]](
     private val initialState: State[D, E, S],
     deps: D
   ) extends MicroActor[D, E, S](initialState, deps) {
     @volatile private var timer = new Timer(s"MicroActor Timer")
+    @volatile private var taskToSchedule: Option[TaskToSchedule] = None
 
     override def shutdown(): Unit = {
       println("Trying to stop TimeredMicroActor")
@@ -85,11 +90,39 @@ object MicroActor extends App {
       println("TimeredMicroActor stopped")
     }
 
+    def onTimerError(error: Throwable): Unit = {
+      println(s"Error occurred in Timer $error")
+      timer.cancel()
+      timer.purge()
+    }
+
     override protected def onStateTransitioning(oldState: State[D, E, S]): Unit = {
-      println("Stopping timers")
+      println(s"Stopping timers while transitioning to new state")
       timer.cancel()
       timer.purge()
       println("Timers stopped")
+    }
+
+    override protected def onStateTransitioned(
+      newState: State[D, E, S]
+    ): Unit = {
+      taskToSchedule match {
+        case Some(task) =>
+          val newTimer = new Timer(s"MicroActor Timer")
+          val timerTask: TimerTask = new TimerTask {
+            def run(): Unit = {
+              try {
+                task.task()
+              } catch {
+                case error: Throwable => onTimerError(error)
+              }
+            }
+          }
+          newTimer.scheduleAtFixedRate(timerTask, task.delayMillis, task.repeatEachMillis)
+          this.timer = newTimer
+
+        case None => ()
+      }
     }
 
     def scheduleTaskWhileInNextState(
@@ -97,24 +130,13 @@ object MicroActor extends App {
       delayMillis: Long,
       repeatEachMillis: Long,
     ): Unit = {
-      val newTimer = new Timer(s"MicroActor Timer")
-      val timerTask: TimerTask = new TimerTask {
-        def run(): Unit = {
-          try {
-            task()
-          } catch {
-            case error: Throwable =>
-              println(s"Error occurred in Timer $error")
-              timer.cancel()
-              timer.purge()
-              timer = null
-              throw error
-          }
-        }
-      }
-
-      newTimer.scheduleAtFixedRate(timerTask, delayMillis, repeatEachMillis)
-      this.timer = newTimer
+      taskToSchedule = Some(
+        TaskToSchedule(
+          task = task,
+          delayMillis = delayMillis,
+          repeatEachMillis = repeatEachMillis,
+        )
+      )
       ()
     }
   }
@@ -122,56 +144,4 @@ object MicroActor extends App {
   trait State[D, E, S <: State[D, E, S]] {
     def apply(deps: D, event: E)(implicit ec: ExecutionContext): Future[S]
   }
-
-  implicit val ec: ExecutionContext = ExecutionContext.global
-
-  final case class Depends(
-    dep1: String,
-    dep2: Int,
-    actor: () => TimeredMicroActor[Depends, TestEvent, TestState]
-  )
-
-  final case class TestEvent(num: Int)
-  final case class TestState() extends State[Depends, TestEvent, TestState] {
-    override def apply(deps: Depends, e: TestEvent)(
-      implicit ec: ExecutionContext
-    ): Future[TestState] = {
-      Future {
-        println(s"Started state transition: ${e.num}")
-        deps
-          .actor()
-          .scheduleTaskWhileInNextState(
-            () => println(s"Started task: ${e.num}"),
-            0,
-            500
-          )
-        if (e.num == 3) deps.actor().shutdown()
-        Thread.sleep(3000)
-        println(s"Finished state transition: ${e.num}")
-        TestState()
-      }
-    }
-  }
-
-  final class TestActor(
-    initialState: State[Depends, TestEvent, TestState],
-    depends: Depends,
-  ) extends TimeredMicroActor[Depends, TestEvent, TestState](initialState, depends) {
-    def onError(
-      error: Throwable,
-      oldState: State[Depends, TestEvent, TestState]
-    ): State[Depends, TestEvent, TestState] = {
-      ???
-    }
-  }
-
-  val agent: TimeredMicroActor[Depends, TestEvent, TestState] =
-    new TestActor(TestState(), Depends("asd", 2, () => agent))
-
-  agent.send(TestEvent(1))
-  agent.send(TestEvent(2))
-  agent.send(TestEvent(3))
-  agent.send(TestEvent(4))
-
-  Thread.sleep(15000)
 }
