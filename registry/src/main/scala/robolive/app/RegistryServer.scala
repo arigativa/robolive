@@ -1,7 +1,6 @@
 package robolive.app
 
 import java.util.concurrent.ConcurrentHashMap
-
 import Agent.AgentEndpointGrpc.AgentEndpoint
 import Client.ClientEndpointGrpc.ClientEndpoint
 import Info.InfoEndpointGrpc.InfoEndpoint
@@ -15,6 +14,7 @@ import robolive.server.{
   AgentEndpointHandler,
   ClientEndpointHandler,
   InfoEndpointHandler,
+  SessionManager,
   SipChannelEndpointHandler,
   StorageEndpointHandler
 }
@@ -88,7 +88,7 @@ object RegistryServer extends App {
   }
 
   val sipChannelEndpoint = {
-    val sipSessionsState = new ConcurrentHashMap[(String, String), Long]()
+    val sipSessionsState = new SessionManager
     val backend: SttpBackend[Future, Nothing, WebSocketHandler] = AsyncHttpClientFutureBackend()
     val sipChannelEndpointHandler = new SipChannelEndpointHandler(
       backend = backend,

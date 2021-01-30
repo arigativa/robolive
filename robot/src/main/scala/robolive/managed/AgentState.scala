@@ -174,33 +174,6 @@ object AgentState {
 
                 val turnUri = settings("turnUri").get
 
-                val timerTask = () => {
-                  println(
-                    s"Trying to allocate SIP channel for: ${sipChannelAllocationResponse.durationSeconds}"
-                  )
-                  deps.sipChannelEndpointClient
-                    .allocate(
-                      AllocateRequest(
-                        Some(sipClientName),
-                        Some(sipAgentName),
-                        Some(sipChannelAllocationResponse.durationSeconds)
-                      )
-                    )
-                    .recover {
-                      case error =>
-                        deps.logger.error("Unable to reschedule SIP session", error)
-                    }
-                  ()
-                }
-
-                deps
-                  .enclosingMicroActor()
-                  .scheduleTaskWhileInNextState(
-                    timerTask,
-                    0,
-                    Math.max(sipChannelAllocationResponse.durationSeconds - 5, 5) * 1000,
-                  )
-
                 deps.sendMessage {
                   accept(
                     clientConnectionRequest.requestId,
