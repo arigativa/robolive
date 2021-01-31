@@ -60,10 +60,11 @@ const RobotsListAction = ActionOf<RobotsList.Action, Action>((action, state) =>
           cmd.map(RobotsListAction)
         ],
 
-        Joined: configuration => [
-          RoomScreen(Room.init(configuration)),
-          Cmd.none
-        ]
+        Joined: configuration => {
+          const [initialRoom, initialCmd] = Room.init(configuration)
+
+          return [RoomScreen(initialRoom), initialCmd.map(RoomAction)]
+        }
       })
     },
 

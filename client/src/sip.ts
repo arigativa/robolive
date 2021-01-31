@@ -1,8 +1,8 @@
 import { WebSocketInterface, UA } from 'jssip/lib/JsSIP'
 import { RTCSession } from 'jssip/lib/RTCSession'
 import { debug } from 'jssip/lib/JsSIP'
-import { Functor, Router, Sub, registerManager } from 'core'
-import { CaseOf, CaseCreator, match } from 'utils'
+import { Functor, Router, Cmd, Sub, registerManager } from 'core'
+import { CaseOf, CaseCreator } from 'utils'
 
 debug.enable('JsSIP:*')
 
@@ -60,7 +60,7 @@ const compare = <T extends string | number>(left: T, right: T): number => {
   return 0
 }
 
-const generateKey = (options: RegisterOptions): string => {
+const generateKey = (options: ConnectionOptions): string => {
   return [
     options.protocol,
     options.host,
@@ -71,17 +71,14 @@ const generateKey = (options: RegisterOptions): string => {
   ].join('|')
 }
 
-interface Listeners<AppMsg> {
-  onFailure: Array<(reason: string) => AppMsg>
-  onTerminate: Array<AppMsg>
-  onConnect: Array<(stream: MediaStream) => AppMsg>
-}
+type Listeners<AppMsg> = Array<(event: ListenEvent) => AppMsg>
 
 interface Room<AppMsg> {
   ua: null | UA
   session: null | RTCSession
   stopFakeStream: null | VoidFunction
-  listeners: Listeners<AppMsg>
+  streamListeners: Array<(stream: MediaStream) => AppMsg>
+  eventListeners: Array<(event: ListenEvent) => AppMsg>
 }
 
 interface CanvasElement extends HTMLCanvasElement {
@@ -114,15 +111,6 @@ const closeRoom = <AppMsg>(room: Room<AppMsg>): void => {
 
 type State<AppMsg> = Record<string, undefined | Room<AppMsg>>
 
-type CallEvent =
-  | CaseOf<'Failure', string>
-  | CaseOf<'Connect', MediaStream>
-  | CaseOf<'Terminate'>
-
-const Failure: CaseCreator<CallEvent> = CaseOf('Failure')
-const Connect: CaseCreator<CallEvent> = CaseOf('Connect')
-const Terminate: CallEvent = CaseOf('Terminate')()
-
 interface SipSelfMsg<AppMsg> {
   proceed(
     sendToApp: (msgs: Array<AppMsg>) => void,
@@ -150,13 +138,14 @@ class RegisterSession<AppMsg> implements SipSelfMsg<AppMsg> {
     const streams = this.session.connection.getRemoteStreams()
 
     if (streams.length > 0) {
-      sendToApp(room.listeners.onConnect.map(letter => letter(streams[0])))
+      sendToApp(room.streamListeners.map(letter => letter(streams[0])))
     }
 
     return {
       ...state,
       [this.key]: {
         ...room,
+        streamListeners: [],
         session: this.session,
         stopFakeStream: this.stopFakeStream
       }
@@ -164,7 +153,7 @@ class RegisterSession<AppMsg> implements SipSelfMsg<AppMsg> {
   }
 }
 
-class StopUserAgent implements SipSelfMsg<never> {
+class FailSession implements SipSelfMsg<never> {
   public constructor(
     private readonly key: string,
     private readonly reason: string
@@ -180,14 +169,14 @@ class StopUserAgent implements SipSelfMsg<never> {
       return state
     }
 
-    sendToApp(room.listeners.onFailure.map(letter => letter(this.reason)))
+    sendToApp(room.eventListeners.map(letter => letter(OnFailure(this.reason))))
     closeRoom(room)
 
     return state
   }
 }
 
-class TerminateSession<AppMsg> implements SipSelfMsg<AppMsg> {
+class EndSession<AppMsg> implements SipSelfMsg<AppMsg> {
   public constructor(private readonly key: string) {}
 
   public proceed(
@@ -200,12 +189,53 @@ class TerminateSession<AppMsg> implements SipSelfMsg<AppMsg> {
       return state
     }
 
-    sendToApp(room.listeners.onTerminate)
+    sendToApp(room.eventListeners.map(letter => letter(OnEnd)))
     closeRoom(room)
 
     const { [this.key]: _, ...nextState } = state
 
     return nextState
+  }
+}
+
+interface SipCmd<AppMsg> extends Functor<AppMsg> {
+  execute(state: State<AppMsg>): State<AppMsg>
+}
+
+class GetStreamCmd<AppMsg> implements SipCmd<AppMsg> {
+  public constructor(
+    private readonly options: ConnectionOptions,
+    private readonly tagger: (stream: MediaStream) => AppMsg
+  ) {}
+
+  public map<R>(fn: (msg: AppMsg) => R): SipCmd<R> {
+    return new GetStreamCmd(this.options, stream => fn(this.tagger(stream)))
+  }
+
+  public execute(state: State<AppMsg>): State<AppMsg> {
+    const key = generateKey(this.options)
+    const room = state[key]
+
+    if (room != null) {
+      return {
+        ...state,
+        [key]: {
+          ...room,
+          streamListeners: [...room.streamListeners, this.tagger]
+        }
+      }
+    }
+
+    return {
+      ...state,
+      [key]: {
+        ua: null,
+        session: null,
+        stopFakeStream: null,
+        eventListeners: [],
+        streamListeners: [this.tagger]
+      }
+    }
   }
 }
 
@@ -217,38 +247,23 @@ interface SipSub<AppMsg> extends Functor<AppMsg> {
   ): void
 }
 
-interface RegisterOptions {
-  protocol: WebSocketProtocol
-  host: string
-  port: null | string
-  agent: string
-  client: string
-  iceServers: Array<string>
-}
-
 const pushListeners = <AppMsg>(
-  onEvent: (event: CallEvent) => AppMsg,
-  listeners: Listeners<AppMsg> = {
-    onConnect: [],
-    onFailure: [],
-    onTerminate: []
-  }
+  onEvent: (event: ListenEvent) => AppMsg,
+  listeners: Listeners<AppMsg> = []
 ): Listeners<AppMsg> => {
-  listeners.onConnect.push(stream => onEvent(Connect(stream)))
-  listeners.onFailure.push(reason => onEvent(Failure(reason)))
-  listeners.onTerminate.push(onEvent(Terminate))
+  listeners.push(onEvent)
 
   return listeners
 }
 
-class Call<AppMsg> implements SipSub<AppMsg> {
+class ListenSub<AppMsg> implements SipSub<AppMsg> {
   public constructor(
-    private readonly options: RegisterOptions,
-    private readonly onEvent: (event: CallEvent) => AppMsg
+    private readonly options: ConnectionOptions,
+    private readonly onEvent: (event: ListenEvent) => AppMsg
   ) {}
 
   public map<R>(fn: (msg: AppMsg) => R): SipSub<R> {
-    return new Call(this.options, event => fn(this.onEvent(event)))
+    return new ListenSub(this.options, event => fn(this.onEvent(event)))
   }
 
   public register(
@@ -260,8 +275,12 @@ class Call<AppMsg> implements SipSub<AppMsg> {
 
     const newRoom = nextState[key]
 
+    // the room has been defined in the current register tick
     if (newRoom != null) {
-      newRoom.listeners = pushListeners(this.onEvent, newRoom.listeners)
+      newRoom.eventListeners = pushListeners(
+        this.onEvent,
+        newRoom.eventListeners
+      )
 
       return
     }
@@ -271,7 +290,7 @@ class Call<AppMsg> implements SipSub<AppMsg> {
     if (oldRoom != null) {
       nextState[key] = {
         ...oldRoom,
-        listeners: pushListeners(this.onEvent)
+        eventListeners: pushListeners(this.onEvent)
       }
 
       return
@@ -289,7 +308,7 @@ class Call<AppMsg> implements SipSub<AppMsg> {
       ws = new WebSocketInterface(webSocketUrl)
     } catch (error) {
       router.sendToSelf(
-        new StopUserAgent(
+        new FailSession(
           key,
           error?.message ?? 'WebSocketInterface initialisation failed'
         )
@@ -299,7 +318,8 @@ class Call<AppMsg> implements SipSub<AppMsg> {
         ua: null,
         session: null,
         stopFakeStream: null,
-        listeners: pushListeners(this.onEvent)
+        eventListeners: pushListeners(this.onEvent),
+        streamListeners: []
       }
 
       return
@@ -320,7 +340,7 @@ class Call<AppMsg> implements SipSub<AppMsg> {
       })
     } catch (error) {
       router.sendToSelf(
-        new StopUserAgent(
+        new FailSession(
           key,
           error?.message ?? 'UserAgent initialisation failed'
         )
@@ -330,14 +350,15 @@ class Call<AppMsg> implements SipSub<AppMsg> {
         ua: null,
         session: null,
         stopFakeStream: null,
-        listeners: pushListeners(this.onEvent)
+        eventListeners: pushListeners(this.onEvent),
+        streamListeners: []
       }
 
       return
     }
 
     ua.on('registrationFailed', ({ response }) => {
-      router.sendToSelf(new StopUserAgent(key, response.reason_phrase))
+      router.sendToSelf(new FailSession(key, response.reason_phrase))
     })
 
     ua.on('registered', () => {
@@ -367,11 +388,11 @@ class Call<AppMsg> implements SipSub<AppMsg> {
         )
 
         session?.on('failed', event => {
-          router.sendToSelf(new StopUserAgent(key, event.cause))
+          router.sendToSelf(new FailSession(key, event.cause))
         })
 
         session?.on('ended', () => {
-          router.sendToSelf(new TerminateSession(key))
+          router.sendToSelf(new EndSession(key))
         })
 
         session?.on('confirmed', () => {
@@ -379,7 +400,7 @@ class Call<AppMsg> implements SipSub<AppMsg> {
         })
       } catch (error) {
         router.sendToSelf(
-          new StopUserAgent(key, error?.message ?? 'Unknown error')
+          new FailSession(key, error?.message ?? 'Unknown error')
         )
       }
     })
@@ -390,7 +411,8 @@ class Call<AppMsg> implements SipSub<AppMsg> {
       ua,
       session: null,
       stopFakeStream: null,
-      listeners: pushListeners(this.onEvent)
+      eventListeners: pushListeners(this.onEvent),
+      streamListeners: []
     }
   }
 }
@@ -399,7 +421,7 @@ const sipManager = registerManager<
   unknown,
   SipSelfMsg<unknown>,
   State<unknown>,
-  never,
+  SipCmd<unknown>,
   SipSub<unknown>
 >({
   init() {
@@ -407,7 +429,7 @@ const sipManager = registerManager<
   },
 
   onEffects(router, cmds, subs, prevState) {
-    const nextState: State<unknown> = {}
+    let nextState: State<unknown> = {}
 
     for (const sub of subs) {
       sub.register(router, prevState, nextState)
@@ -421,6 +443,10 @@ const sipManager = registerManager<
       }
     }
 
+    for (const cmd of cmds) {
+      nextState = cmd.execute(nextState)
+    }
+
     return nextState
   },
 
@@ -429,33 +455,49 @@ const sipManager = registerManager<
   }
 })
 
-export const callRTC = <T>(options: {
+export type ListenEvent = CaseOf<'OnFailure', string> | CaseOf<'OnEnd'>
+
+const OnFailure: CaseCreator<ListenEvent> = CaseOf('OnFailure')
+const OnEnd: ListenEvent = CaseOf('OnEnd')()
+
+export interface Connection {
+  getStream<T>(tagger: (stream: MediaStream) => T): Cmd<T>
+  listen<T>(onEvent: (event: ListenEvent) => T): Sub<T>
+}
+
+interface ConnectionOptions {
+  protocol: WebSocketProtocol
+  host: string
+  port: null | string
+  agent: string
+  client: string
+  iceServers: Array<string>
+}
+class ConnectionImpl implements Connection {
+  public constructor(private readonly options: ConnectionOptions) {}
+
+  public getStream<T>(tagger: (stream: MediaStream) => T): Cmd<T> {
+    return sipManager.createCmd(new GetStreamCmd(this.options, tagger))
+  }
+
+  public listen<T>(onEvent: (event: ListenEvent) => T): Sub<T> {
+    return sipManager.createSub(new ListenSub(this.options, onEvent))
+  }
+}
+
+export const createConnection = (options: {
   secure: boolean
   server: string
   agent: string
   client: string
   iceServers: Array<string>
-  onFailure(reason: string): T
-  onConnect(stream: MediaStream): T
-  onEnd: T
-}): Sub<T> => {
-  return sipManager.createSub(
-    new Call(
-      {
-        protocol: options.secure ? WebSocketProtocol.WSS : WebSocketProtocol.WS,
-        host: extractHost(options.server),
-        port: extractPort(options.server),
-        agent: options.agent,
-        client: options.client,
-        iceServers: options.iceServers
-      },
-      event => {
-        return match(event, {
-          Failure: options.onFailure,
-          Connect: options.onConnect,
-          Terminate: () => options.onEnd
-        })
-      }
-    )
-  )
+}): Connection => {
+  return new ConnectionImpl({
+    protocol: options.secure ? WebSocketProtocol.WSS : WebSocketProtocol.WS,
+    host: extractHost(options.server),
+    port: extractPort(options.server),
+    agent: options.agent,
+    client: options.client,
+    iceServers: options.iceServers
+  })
 }

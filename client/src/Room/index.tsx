@@ -2,22 +2,37 @@ import React from 'react'
 
 import RemoteData from 'frctl/RemoteData/Optional'
 
-import { Sub } from 'core'
+import { Cmd, Sub } from 'core'
 import { RoomConfiguration } from 'api'
-import { callRTC } from 'sip'
-import { ActionOf } from 'utils'
+import { Connection, createConnection } from 'sip'
+import { ActionOf, match } from 'utils'
 
 // S T A T E
 
 export interface State {
-  configuration: RoomConfiguration
+  connection: Connection
   stream: RemoteData<string, MediaStream>
 }
 
-export const init = (configuration: RoomConfiguration): State => ({
-  configuration,
-  stream: RemoteData.Loading
-})
+export const init = (
+  configuration: RoomConfiguration
+): [State, Cmd<Action>] => {
+  const connection = createConnection({
+    secure: true,
+    server: configuration.signallingUri,
+    agent: configuration.sipAgentName,
+    client: configuration.sipClientName,
+    iceServers: [configuration.stunUri, configuration.turnUri]
+  })
+
+  return [
+    {
+      connection,
+      stream: RemoteData.Loading
+    },
+    connection.getStream(Connect)
+  ]
+}
 
 // U P D A T E
 
@@ -45,21 +60,19 @@ export const subscriptions = (state: State): Sub<Action> => {
     return Sub.none
   }
 
-  return callRTC({
-    secure: true,
-    server: state.configuration.signallingUri,
-    agent: state.configuration.sipAgentName,
-    client: state.configuration.sipClientName,
-    iceServers: [state.configuration.stunUri, state.configuration.turnUri],
-    onConnect: Connect,
-    onFailure: FailConnection,
-    onEnd: EndCall
-  })
+  return state.connection.listen(event =>
+    match(event, {
+      OnFailure: FailConnection,
+      OnEnd: () => EndCall
+    })
+  )
 }
 
 // V I E W
 
-const ViewSucceed = React.memo<{ stream: MediaStream }>(({ stream }) => {
+const ViewSucceed = React.memo<{
+  stream: MediaStream
+}>(({ stream }) => {
   const videoRef = React.useRef<HTMLVideoElement>(null)
 
   React.useEffect(() => {
@@ -76,7 +89,9 @@ const ViewSucceed = React.memo<{ stream: MediaStream }>(({ stream }) => {
   )
 })
 
-export const View = React.memo<{ state: State }>(({ state }) =>
+export const View = React.memo<{
+  state: State
+}>(({ state }) =>
   state.stream.cata({
     NotAsked: () => <div>Call is ended</div>,
 
