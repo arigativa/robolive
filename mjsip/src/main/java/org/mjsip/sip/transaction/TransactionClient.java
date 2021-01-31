@@ -134,6 +134,10 @@ public class TransactionClient extends Transaction {
 	/** From TimerListener. It's fired from an active Timer. */
 	public void onTimeout(Timer to) {
 		try {
+			if (sip_provider.getIsHalted()) {
+				log(LogLevel.INFO,"No transmission for halted SipProvider, terminating TransactionClient");
+				doTerminate();
+			}
 			if (to.equals(retransmission_to) && (statusIs(STATE_TRYING) || statusIs(STATE_PROCEEDING))) {
 				log(LogLevel.INFO,"Retransmission timeout expired");
 				// retransmission only for unreliable transport 

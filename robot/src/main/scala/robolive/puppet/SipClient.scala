@@ -1,7 +1,6 @@
 package robolive.puppet
 
 import java.util
-import java.util.concurrent.atomic.AtomicReference
 
 import org.mjsip.sip.address.{NameAddress, SipURI}
 import org.mjsip.sip.call._
@@ -39,7 +38,7 @@ final class SIPCallEventHandler(controller: WebRTCController, halt: () => ())(
     refer_to: NameAddress,
     refered_by: NameAddress,
     refer: SipMessage
-  ): Unit = logger.debug(s"IGNORED onCallTransfer($call $refer_to $refered_by $refer)")
+  ): Unit = logger.debug(s"Ignored: onCallTransfer")
 
   /** Callback function called when arriving a new REFER method (transfer request) with Replaces header, replacing an existing call. */
   override def onCallAttendedTransfer(
@@ -52,21 +51,21 @@ final class SIPCallEventHandler(controller: WebRTCController, halt: () => ())(
 
   /** Callback function called when a call transfer is accepted. */
   override def onCallTransferAccepted(call: ExtendedCall, resp: SipMessage): Unit =
-    logger.debug(s"IGNORED onCallTransferAccepted")
+    logger.debug(s"Ignored: onCallTransferAccepted")
 
   /** Callback function called when a call transfer is refused. */
   override def onCallTransferRefused(call: ExtendedCall, reason: String, resp: SipMessage): Unit = {
-    logger.debug(s"onCallTransferRefused")
+    logger.debug(s"Halt: onCallTransferRefused")
     halt()
   }
 
   /** Callback function called when a call transfer is successfully completed. */
   override def onCallTransferSuccess(call: ExtendedCall, notify: SipMessage): Unit =
-    logger.debug(s"IGNORED onCallTransferSuccess")
+    logger.debug(s"Ignored: onCallTransferSuccess")
 
   /** Callback function called when a call transfer is NOT sucessfully completed. */
   override def onCallTransferFailure(call: ExtendedCall, reason: String, notify: SipMessage): Unit = {
-    logger.debug(s"onCallTransferFailure")
+    logger.debug(s"Halt: onCallTransferFailure")
     halt()
   }
 
@@ -90,32 +89,32 @@ final class SIPCallEventHandler(controller: WebRTCController, halt: () => ())(
   /** Callback function called when arriving a new UPDATE method (update request). */
   override def onCallUpdate(call: Call, sdp: String, update: SipMessage): Unit = {
     call.acceptUpdate(sdp)
-    logger.info(s"Accepted call update")
+    logger.info(s"Accepted: onCallUpdate")
   }
 
   /** Callback function called when arriving a 183 Session Progress */
   override def onCallProgress(call: Call, resp: SipMessage): Unit =
-    logger.debug(s"IGNORED onCallProgress")
+    logger.debug(s"Ignored: onCallProgress")
 
   /** Callback function called when arriving a 180 Ringing */
   override def onCallRinging(call: Call, resp: SipMessage): Unit =
-    logger.debug(s"IGNORED onCallRinging")
+    logger.debug(s"Ignored: onCallRinging")
 
   /** Callback function called when arriving a 1xx response (e.g. 183 Session Progress) that has to be confirmed */
   override def onCallConfirmableProgress(call: Call, resp: SipMessage): Unit =
-    logger.debug(s"IGNORED onCallConfirmableProgress")
+    logger.debug(s"Ignore: onCallConfirmableProgress")
 
   /** Callback function called when arriving a PRACK for a reliable 1xx response, that had to be confirmed */
   override def onCallProgressConfirmed(call: Call, resp: SipMessage, prack: SipMessage): Unit =
-    logger.debug(s"IGNORED onCallProgressConfirmed")
+    logger.debug(s"Ignored: onCallProgressConfirmed")
 
   /** Callback function called when arriving a 2xx (call accepted) */
   override def onCallAccepted(call: Call, sdp: String, resp: SipMessage): Unit =
-    logger.debug(s"IGNORED onCallAccepted")
+    logger.debug(s"Ignored: onCallAccepted")
 
   /** Callback function called when arriving a 4xx (call failure) */
   override def onCallRefused(call: Call, reason: String, resp: SipMessage): Unit = {
-    logger.debug(s"onCallRefused")
+    logger.debug(s"Halt: onCallRefused")
     halt()
   }
 
@@ -126,25 +125,18 @@ final class SIPCallEventHandler(controller: WebRTCController, halt: () => ())(
     contact_list: util.Vector[_],
     resp: SipMessage
   ): Unit = {
-    logger.info(
-      s"""onCallRedirected:
-         |reason: $reason""".stripMargin
-    )
+    logger.info("Halt: onCallRedirected")
     halt()
   }
 
   /** Callback function called when arriving an ACK method (call confirmed) */
   override def onCallConfirmed(call: Call, sdp: String, ack: SipMessage): Unit = {
-    logger.info(
-      s"""onCallConfirmed:
-         |sdp: $sdp
-         |ack: $ack""".stripMargin
-    )
+    logger.info("Ignored: onCallConfirmed")
   }
 
   /** Callback function called when the invite expires */
   override def onCallTimeout(call: Call): Unit = {
-    logger.debug(s"onCallTimeout")
+    logger.debug(s"Halt: onCallTimeout")
     halt()
   }
 
@@ -161,55 +153,51 @@ final class SIPCallEventHandler(controller: WebRTCController, halt: () => ())(
 
   /** Callback function called when arriving a new Re-INVITE method (re-inviting/call modify) */
   override def onCallModify(call: Call, sdp: String, invite: SipMessage): Unit =
-    logger.debug(s"IGNORED onCallModify")
+    logger.debug(s"Ignored: onCallModify")
 
   /** Callback function called when arriving a 2xx (re-invite/modify accepted) */
   override def onCallModifyAccepted(call: Call, sdp: String, resp: SipMessage): Unit =
-    logger.debug(s"IGNORED onCallModifyAccepted")
+    logger.debug(s"Ignored: onCallModifyAccepted")
 
   /** Callback function called when arriving a 4xx (re-invite/modify failure) */
   override def onCallModifyRefused(call: Call, reason: String, resp: SipMessage): Unit ={
-    logger.debug(s"onCallModifyRefused")
+    logger.debug(s"Halt: onCallModifyRefused")
     halt()
 }
 
   /** Callback function called when a re-invite expires */
   override def onCallModifyTimeout(call: Call): Unit = {
-    logger.debug(s"onCallModifyTimeout")
+    logger.debug(s"Halt: onCallModifyTimeout")
     halt()
   }
 
   /** Callback function called when arriving a CANCEL request */
   override def onCallCancel(call: Call, cancel: SipMessage): Unit ={
-    logger.debug(s"onCallCancel")
+    logger.debug(s"Halt: onCallCancel")
     halt()
 }
 
 
   /** Callback function called when arriving a 2xx for an UPDATE request */
   override def onCallUpdateAccepted(call: Call, sdp: String, resp: SipMessage): Unit = {
-    logger.debug(s"Ignored onCallUpdateAccepted($call, $sdp, $resp)")
+    logger.debug(s"Ignored: onCallUpdateAccepted")
   }
 
   /** Callback function called when arriving a non 2xx for an UPDATE request */
   override def onCallUpdateRefused(call: Call, sdp: String, resp: SipMessage): Unit = {
-    logger.debug(s"onCallUpdateRefused($call, $sdp, $resp)")
+    logger.debug(s"Halt: onCallUpdateRefused")
     halt()
   }
 
   /** Callback function called when arriving a BYE request */
   override def onCallBye(call: Call, bye: SipMessage): Unit = {
-    logger.info {
-      s"""onCallBye:
-         |$bye
-         |""".stripMargin
-    }
+    logger.debug("Halt: onCallBye")
     halt()
   }
 
   /** Callback function called when arriving a response for the BYE request (call closed) */
   override def onCallClosed(call: Call, resp: SipMessage): Unit = {
-    logger.debug(s"onCallClosed")
+    logger.debug(s"Halt: onCallClosed")
     halt()
   }
 }
@@ -224,14 +212,7 @@ final class RegistrationClientHandler(halt: () => ()) extends RegistrationClient
     i: Int,
     s: String
   ): Unit = {
-    logger.info {
-      s"""REGISTER OK:
-         |target:  $nameAddress
-         |contact: $nameAddress1
-         |expires: $i
-         |result:  $s
-         |""".stripMargin
-    }
+    logger.info("Ignored: onRegistrationSuccess")
   }
 
   override def onRegistrationFailure(
@@ -240,13 +221,7 @@ final class RegistrationClientHandler(halt: () => ()) extends RegistrationClient
     nameAddress1: NameAddress,
     s: _root_.java.lang.String
   ): Unit = {
-    logger.info {
-      s"""REGISTER FAIL:
-         |target:  $nameAddress
-         |contact: $nameAddress1
-         |result:  $s
-         |""".stripMargin
-    }
+    logger.info("Halt: onRegistrationFailure")
     halt()
   }
 }
