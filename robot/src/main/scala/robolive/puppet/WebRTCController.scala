@@ -244,7 +244,7 @@ final class WebRTCController(
 
   }
 
-  def clientInput(input: String): Unit = synchronized {
+  def clientInput(input: String): String = synchronized {
     import io.circe.generic.semiauto._
     import io.circe.parser._
 
@@ -266,7 +266,7 @@ final class WebRTCController(
       implicit val decoder: Decoder[CommandSequence] = deriveDecoder
     }
 
-    decode[CommandSequence](input) match {
+    val response = decode[CommandSequence](input) match {
       case Right(commandSequence) =>
         val driver = servoController.getDriver(commandSequence.deviceName)
         driver match {
@@ -275,16 +275,23 @@ final class WebRTCController(
               case Command.Reset() => driver.reset()
               case Command.SetPWM(pinIndex, pulseLength) => driver.setPWM(pinIndex, pulseLength)
             }
+            "Ok"
 
           case None =>
-            logger.warn(s"Driver is not found for: $driver")
+            val errorMessage = s"Error: Driver is not found for: $driver"
+            logger.warn(errorMessage)
+            errorMessage
         }
 
       case Left(err: Throwable) =>
-        logger.warn("unexpected user input: $", err)
+        val errorMessage = s"unexpected user input: ${err.getMessage}"
+        logger.warn(errorMessage, err)
+        errorMessage
     }
 
     logger.info(s"Client input received: $input")
+
+    response
   }
 }
 
