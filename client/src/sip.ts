@@ -77,6 +77,7 @@ interface Room<AppMsg> {
   ua: null | UA
   session: null | RTCSession
   stopFakeStream: null | VoidFunction
+  infoToSend: Array<string>
   streamListeners: Array<(stream: MediaStream) => AppMsg>
   eventListeners: Array<(event: ListenEvent) => AppMsg>
 }
@@ -139,6 +140,10 @@ class RegisterSession<AppMsg> implements SipSelfMsg<AppMsg> {
 
     if (streams.length > 0) {
       sendToApp(room.streamListeners.map(letter => letter(streams[0])))
+    }
+
+    for (const info of room.infoToSend) {
+      room.session?.sendInfo('text/plain', info)
     }
 
     return {
@@ -204,36 +209,87 @@ interface SipCmd<AppMsg> extends Functor<AppMsg> {
 
 class GetStreamCmd<AppMsg> implements SipCmd<AppMsg> {
   public constructor(
-    private readonly options: ConnectionOptions,
+    private readonly key: string,
     private readonly tagger: (stream: MediaStream) => AppMsg
   ) {}
 
   public map<R>(fn: (msg: AppMsg) => R): SipCmd<R> {
-    return new GetStreamCmd(this.options, stream => fn(this.tagger(stream)))
+    return new GetStreamCmd(this.key, stream => fn(this.tagger(stream)))
   }
 
   public execute(state: State<AppMsg>): State<AppMsg> {
-    const key = generateKey(this.options)
-    const room = state[key]
+    const room = state[this.key]
 
-    if (room != null) {
+    if (room == null) {
       return {
         ...state,
-        [key]: {
-          ...room,
-          streamListeners: [...room.streamListeners, this.tagger]
+        [this.key]: {
+          ua: null,
+          session: null,
+          stopFakeStream: null,
+          infoToSend: [],
+          eventListeners: [],
+          streamListeners: [this.tagger]
         }
       }
     }
 
+    const streams = room.session?.connection.getRemoteStreams() ?? []
+
+    if (streams.length > 0) {
+      this.tagger(streams[0])
+
+      return state
+    }
+
     return {
       ...state,
-      [key]: {
-        ua: null,
-        session: null,
-        stopFakeStream: null,
-        eventListeners: [],
-        streamListeners: [this.tagger]
+      [this.key]: {
+        ...room,
+        streamListeners: [...room.streamListeners, this.tagger]
+      }
+    }
+  }
+}
+
+class SendInfoCmd implements SipCmd<never> {
+  public constructor(
+    private readonly key: string,
+    private readonly info: string
+  ) {}
+
+  public map(): SipCmd<never> {
+    return this
+  }
+
+  public execute(state: State<never>): State<never> {
+    const room = state[this.key]
+
+    if (room == null) {
+      return {
+        ...state,
+        [this.key]: {
+          ua: null,
+          session: null,
+          stopFakeStream: null,
+          infoToSend: [this.info],
+          eventListeners: [],
+          streamListeners: []
+        }
+      }
+    }
+
+    if (room.session != null) {
+      room.session.sendInfo('text/plain', this.info)
+
+      return state
+    }
+
+    return {
+      ...state,
+      [this.key]: {
+        ...room,
+        infoToSend: [...room.infoToSend, this.info]
       }
     }
   }
@@ -318,6 +374,7 @@ class ListenSub<AppMsg> implements SipSub<AppMsg> {
         ua: null,
         session: null,
         stopFakeStream: null,
+        infoToSend: [],
         eventListeners: pushListeners(this.onEvent),
         streamListeners: []
       }
@@ -350,6 +407,7 @@ class ListenSub<AppMsg> implements SipSub<AppMsg> {
         ua: null,
         session: null,
         stopFakeStream: null,
+        infoToSend: [],
         eventListeners: pushListeners(this.onEvent),
         streamListeners: []
       }
@@ -411,6 +469,7 @@ class ListenSub<AppMsg> implements SipSub<AppMsg> {
       ua,
       session: null,
       stopFakeStream: null,
+      infoToSend: [],
       eventListeners: pushListeners(this.onEvent),
       streamListeners: []
     }
@@ -476,8 +535,16 @@ interface ConnectionOptions {
 class ConnectionImpl implements Connection {
   public constructor(private readonly options: ConnectionOptions) {}
 
+  private get key(): string {
+    return generateKey(this.options)
+  }
+
   public getStream<T>(tagger: (stream: MediaStream) => T): Cmd<T> {
-    return sipManager.createCmd(new GetStreamCmd(this.options, tagger))
+    return sipManager.createCmd(new GetStreamCmd(this.key, tagger))
+  }
+
+  public sendInfo(info: string): Cmd<never> {
+    return sipManager.createCmd(new SendInfoCmd(this.key, info))
   }
 
   public listen<T>(onEvent: (event: ListenEvent) => T): Sub<T> {
