@@ -258,6 +258,10 @@ final class WebRTCController(
       object SetPWM {
         implicit val decoder: Decoder[SetPWM] = deriveDecoder
       }
+      final case class Devices() extends Command
+      object Devices {
+        implicit val decoder: Decoder[Devices] = deriveDecoder
+      }
       implicit val decoder = deriveDecoder[Command]
     }
 
@@ -271,27 +275,34 @@ final class WebRTCController(
         val driver = servoController.getDriver(commandSequence.deviceName)
         driver match {
           case Some(driver) =>
-            commandSequence.commands.foreach {
-              case Command.Reset() => driver.reset()
-              case Command.SetPWM(pinIndex, pulseLength) => driver.setPWM(pinIndex, pulseLength)
+            commandSequence.commands.map {
+              case Command.Reset() =>
+                driver.reset()
+                "Ok"
+
+              case Command.SetPWM(pinIndex, pulseLength) =>
+                driver.setPWM(pinIndex, pulseLength)
+                "Ok"
+
+              case Command.Devices() =>
+                servoController.getDeviceList.mkString("[", ", ", "]")
             }
-            "Ok"
 
           case None =>
             val errorMessage = s"Error: Driver is not found for: $driver"
             logger.warn(errorMessage)
-            errorMessage
+            Seq(errorMessage)
         }
 
       case Left(err: Throwable) =>
         val errorMessage = s"unexpected user input: ${err.getMessage}"
         logger.warn(errorMessage, err)
-        errorMessage
+        Seq(errorMessage)
     }
 
     logger.info(s"Client input received: $input")
 
-    response
+    response.mkString("[", ", ", "]")
   }
 }
 
