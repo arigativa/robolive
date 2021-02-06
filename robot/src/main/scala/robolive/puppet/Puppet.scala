@@ -4,6 +4,7 @@ import org.freedesktop.gstreamer.Version
 import org.mjsip.sip.provider.{TcpTransport, TlsTransport}
 import org.slf4j.LoggerFactory
 import robolive.gstreamer.GstManaged
+import robolive.puppet.driver.PWMController
 
 import scala.concurrent.ExecutionContext
 
@@ -23,9 +24,9 @@ final class Puppet(
   private val controller = {
     implicit val gstInit: GstManaged.GSTInit.type = GstManaged(robotName, new Version(1, 14))
 
-    val servoController: ServoController = servoControllerType match {
-      case "PYTHON_SHELL" => ServoController.makePythonShellServoController
-      case "FAKE" => ServoController.makeFakeServoController
+    val servoController: PWMController = servoControllerType match {
+      case "SERIAL" => new PWMController.PWMControllerImpl(logger)
+      case "FAKE" => new PWMController.FakePWMController
     }
 
     new WebRTCController(

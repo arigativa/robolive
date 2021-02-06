@@ -1,8 +1,8 @@
 package robolive.app
 
 import java.util.concurrent.CountDownLatch
-
 import org.slf4j.LoggerFactory
+import robolive.puppet.driver.PWMController
 import robolive.puppet.{Puppet, ServoController}
 
 import scala.concurrent.ExecutionContext
@@ -25,10 +25,10 @@ object CallPuppetApp extends App {
   val signallingUri: String = getEnv("SIGNALLING_SIP_URI", "sip:rl.arigativa.ru:9031")
   val stunUri: String = getEnv("STUN_URI", "stun://rl.arigativa.ru:8080")
   val enableUserVideo: Boolean = sys.env.contains("ENABLE_USER_VIDEO")
-  val servoControllerType: String = getEnv("SERVO_CONTROLLER", default = "PYTHON_SHELL")
-  val servoController: ServoController = servoControllerType match {
-    case "PYTHON_SHELL" => ServoController.makePythonShellServoController
-    case "FAKE" => ServoController.makeFakeServoController
+  val servoControllerType: String = getEnv("SERVO_CONTROLLER", default = "SERIAL")
+  val servoController: PWMController = servoControllerType match {
+    case "SERIAL" => new PWMController.PWMControllerImpl(logger)
+    case "FAKE" => new PWMController.FakePWMController
   }
 
   val puppet = new Puppet(

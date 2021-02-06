@@ -1,10 +1,12 @@
 package robolive.puppet
 
+import io.circe.Decoder
 import org.freedesktop.gstreamer._
 import org.mjsip.sip.call.ExtendedCall
 import org.slf4j.LoggerFactory
 import robolive.gstreamer.WebRTCBinManaged.IceCandidate
 import robolive.gstreamer.{GstManaged, PipelineManaged, WebRTCBinManaged}
+import robolive.puppet.driver.PWMController
 import sdp.SdpMessage.RawValueAttribute
 import sdp.{Attributes, SdpMessage}
 
@@ -13,7 +15,7 @@ import scala.concurrent.{ExecutionContext, Future}
 final class WebRTCController(
   videoSrc: String,
   stunServerUrl: String,
-  servoController: ServoController,
+  servoController: PWMController,
   enableUserVideo: Boolean,
 )(implicit gst: GstManaged.GSTInit.type) {
   import WebRTCController._
@@ -242,54 +244,42 @@ final class WebRTCController(
 
   }
 
-  object Keys {
-    val ArrowUp = 38
-    val ArrowDown = 40
-    val ArrowLeft = 37
-    val ArrowRight = 39
-  }
-
-  case class ServosState(servos: Map[Int, Int]) {
-    def move(servoId: Int, angleDiff: Int): ServosState = {
-      val result = ServosState(servos.updatedWith(servoId) {
-        case None => Some(90 + angleDiff)
-        case Some(angle) =>
-          val newAngle = angle + angleDiff
-          val limitedAngle =
-            if (newAngle < 0) 0
-            else if (newAngle > 180) 180
-            else newAngle
-          Some(limitedAngle)
-      })
-
-      servoController.servoProxy(servoId, result.servos.getOrElse(servoId, 0))
-
-      result
-    }
-
-    def set(servoId: Int, angle: Int): ServosState = {
-      val result = servos.updated(servoId, angle)
-      servoController.servoProxy(servoId, angle)
-      this.copy(servos = result)
-    }
-  }
-
-  var servosState = ServosState(Map.empty)
-
-  def updateServoState(f: ServosState => ServosState) = {
-    servosState = f(servosState)
-  }
-
-  def clientInput(input: String): Unit = {
-    import io.circe.generic.auto._
+  def clientInput(input: String): Unit = synchronized {
+    import io.circe.generic.semiauto._
     import io.circe.parser._
 
-    sealed trait ClientInput
-    final case class KeyPressed(index: Int, angle: Int) extends ClientInput
+    sealed trait Command
+    object Command {
+      final case class Reset() extends Command
+      object Reset {
+        implicit val decoder: Decoder[Reset] = deriveDecoder
+      }
+      final case class SetPWM(pinIndex: Int, pulseLength: Int) extends Command
+      object SetPWM {
+        implicit val decoder: Decoder[SetPWM] = deriveDecoder
+      }
+      implicit val decoder = deriveDecoder[Command]
+    }
 
-    decode[KeyPressed](input) match {
-      case Right(KeyPressed(index, angle)) =>
-        updateServoState(_.set(index, angle))
+    final case class CommandSequence(commands: Seq[Command], deviceName: String)
+    object CommandSequence {
+      implicit val decoder: Decoder[CommandSequence] = deriveDecoder
+    }
+
+    decode[CommandSequence](input) match {
+      case Right(commandSequence) =>
+        val driver = servoController.getDriver(commandSequence.deviceName)
+        driver match {
+          case Some(driver) =>
+            commandSequence.commands.foreach {
+              case Command.Reset() => driver.reset()
+              case Command.SetPWM(pinIndex, pulseLength) => driver.setPWM(pinIndex, pulseLength)
+            }
+
+          case None =>
+            logger.warn(s"Driver is not found for: $driver")
+        }
+
       case Left(err: Throwable) =>
         logger.warn("unexpected user input: $", err)
     }
