@@ -30,7 +30,7 @@ const NotJoin: Join = CaseOf('NotJoin')()
 const Joining: CaseCreator<Join> = CaseOf('Joining')
 const JoinFail: CaseCreator<Join> = CaseOf('JoinFail')
 
-export type State = {
+export interface State {
   robots: RemoteData<string, Array<Agent>>
   join: Join
 }
@@ -40,9 +40,7 @@ export const init: [State, Cmd<Action>] = [
     robots: RemoteData.Loading,
     join: NotJoin
   },
-  Cmd.create<Action>(done => {
-    getAgentList().then(result => done(LoadRobots(result)))
-  })
+  Cmd.create<Action>(done => getAgentList().then(LoadRobots).then(done))
 ]
 
 // U P D A T E

@@ -12,7 +12,11 @@
     "project": ["./cypress/tsconfig.json", "./tsconfig.json"]
   },
 
-  "extends": ["eslint:recommended", "react-app"],
+  "extends": [
+    "eslint:recommended",
+    "react-app",
+    "plugin:react-hooks/recommended"
+  ],
 
   "globals": {},
 
@@ -184,7 +188,11 @@
           {
             "allow": ["ViewMap", "StyledMap", "Map"]
           }
-        ]
+        ],
+
+        // React-Hooks Eslint
+        "react-hooks/rules-of-hooks": "error",
+        "react-hooks/exhaustive-deps": "warn"
       }
     }
   ]

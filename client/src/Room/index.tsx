@@ -1,42 +1,88 @@
 import React from 'react'
-
 import RemoteData from 'frctl/RemoteData/Optional'
+import {
+  Box,
+  FormControl,
+  FormLabel,
+  FormHelperText,
+  Button,
+  Textarea
+} from '@chakra-ui/react'
 
-import { Sub } from 'core'
+import { Dispatch, Cmd, Sub } from 'core'
 import { RoomConfiguration } from 'api'
-import { callRTC } from 'sip'
-import { ActionOf } from 'utils'
+import { Connection, createConnection } from 'sip'
+import { ActionOf, match } from 'utils'
 
 // S T A T E
 
 export interface State {
-  configuration: RoomConfiguration
+  connection: Connection
   stream: RemoteData<string, MediaStream>
+  info: string
 }
 
-export const init = (configuration: RoomConfiguration): State => ({
-  configuration,
-  stream: RemoteData.Loading
-})
+export const init = (
+  configuration: RoomConfiguration
+): [State, Cmd<Action>] => {
+  const connection = createConnection({
+    secure: true,
+    server: configuration.signallingUri,
+    agent: configuration.sipAgentName,
+    client: configuration.sipClientName,
+    iceServers: [configuration.stunUri, configuration.turnUri]
+  })
+
+  return [
+    {
+      connection,
+      stream: RemoteData.Loading,
+      info: ''
+    },
+    connection.getStream(Connect)
+  ]
+}
 
 // U P D A T E
 
-export type Action = ActionOf<[State], State>
+export type Action = ActionOf<[State], [State, Cmd<Action>]>
 
-const Connect = ActionOf<MediaStream, Action>((stream, state) => ({
-  ...state,
-  stream: RemoteData.Succeed(stream)
-}))
+const Connect = ActionOf<MediaStream, Action>((stream, state) => [
+  {
+    ...state,
+    stream: RemoteData.Succeed(stream)
+  },
+  Cmd.none
+])
 
-const FailConnection = ActionOf<string, Action>((reason, state) => ({
-  ...state,
-  stream: RemoteData.Failure(reason)
-}))
+const FailConnection = ActionOf<string, Action>((reason, state) => [
+  {
+    ...state,
+    stream: RemoteData.Failure(reason)
+  },
+  Cmd.none
+])
 
-const EndCall = ActionOf<Action>(state => ({
-  ...state,
-  stream: RemoteData.NotAsked
-}))()
+const EndCall = ActionOf<Action>(state => [
+  {
+    ...state,
+    stream: RemoteData.NotAsked
+  },
+  Cmd.none
+])()
+
+const ChangeInfo = ActionOf<string, Action>((info, state) => [
+  { ...state, info },
+  Cmd.none
+])
+
+const SendInfo = ActionOf<Action>(state => [
+  {
+    ...state,
+    info: ''
+  },
+  state.connection.sendInfo(state.info)
+])()
 
 // S U B S C R I P T I O N S
 
@@ -45,21 +91,51 @@ export const subscriptions = (state: State): Sub<Action> => {
     return Sub.none
   }
 
-  return callRTC({
-    secure: true,
-    server: state.configuration.signallingUri,
-    agent: state.configuration.sipAgentName,
-    client: state.configuration.sipClientName,
-    iceServers: [state.configuration.stunUri, state.configuration.turnUri],
-    onConnect: Connect,
-    onFailure: FailConnection,
-    onEnd: EndCall
-  })
+  return state.connection.listen(event =>
+    match(event, {
+      OnFailure: FailConnection,
+      OnEnd: () => EndCall
+    })
+  )
 }
 
 // V I E W
 
-const ViewSucceed = React.memo<{ stream: MediaStream }>(({ stream }) => {
+const ViewSendInfo = React.memo<{
+  info: string
+  dispatch: Dispatch<Action>
+}>(({ info, dispatch }) => (
+  <form
+    onSubmit={event => {
+      dispatch(SendInfo)
+      event.preventDefault()
+    }}
+  >
+    <FormControl>
+      <FormLabel>Send Info</FormLabel>
+
+      <Textarea
+        rows={10}
+        resize="vertical"
+        value={info}
+        placeholder="Put info right here"
+        onChange={event => dispatch(ChangeInfo(event.target.value))}
+      />
+
+      <FormHelperText>You can submit both plain text and JSON</FormHelperText>
+    </FormControl>
+
+    <Button mt="4" type="submit" colorScheme="blue">
+      Submit
+    </Button>
+  </form>
+))
+
+const ViewSucceed = React.memo<{
+  info: string
+  stream: MediaStream
+  dispatch: Dispatch<Action>
+}>(({ info, stream, dispatch }) => {
   const videoRef = React.useRef<HTMLVideoElement>(null)
 
   React.useEffect(() => {
@@ -69,14 +145,18 @@ const ViewSucceed = React.memo<{ stream: MediaStream }>(({ stream }) => {
   }, [stream])
 
   return (
-    <div>
-      IT WORKS!
+    <Box p="4">
       <video ref={videoRef} autoPlay />
-    </div>
+
+      <ViewSendInfo info={info} dispatch={dispatch} />
+    </Box>
   )
 })
 
-export const View = React.memo<{ state: State }>(({ state }) =>
+export const View = React.memo<{
+  state: State
+  dispatch: Dispatch<Action>
+}>(({ state, dispatch }) =>
   state.stream.cata({
     NotAsked: () => <div>Call is ended</div>,
 
@@ -84,6 +164,8 @@ export const View = React.memo<{ state: State }>(({ state }) =>
 
     Failure: reason => <div>Something went wrong: {reason}</div>,
 
-    Succeed: stream => <ViewSucceed stream={stream} />
+    Succeed: stream => (
+      <ViewSucceed info={state.info} stream={stream} dispatch={dispatch} />
+    )
   })
 )
