@@ -1,4 +1,4 @@
-local function closed()
+local function closed(reason)
 
     local ip = KSR.pv.get("$si")
     local port = KSR.pv.get("$sp")
@@ -8,5 +8,7 @@ local function closed()
 end
 
 return {
-    closed = closed
+    closed = closed,
+    reset = closed,
+    timeout = closed
 }

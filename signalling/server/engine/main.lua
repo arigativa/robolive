@@ -114,9 +114,17 @@ function ksr_xhttp_wrapper()
 
 end
 
-function ksr_websocket_event_wrapper(evname)
+function ksr_socket_event_wrapper(evname)
     
-    local event = string.match(evname,".*:(.*)")
-    sockets.websocket[event]()
+    local proto, event = string.match(evname,"(.*):(.*)")
+    
+    if proto == "ws" then
+        sockets.websocket[event]()
+    end
+
+    if proto == "tcp" then
+        sockets.tcpsocket[event]()
+    end
 
 end
+
