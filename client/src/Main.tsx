@@ -132,10 +132,10 @@ const ViewRoom = React.memo<{
   return <Room.View state={room} dispatch={roomDispatch} />
 })
 
-export const View: React.FC<{
+export const View = React.memo<{
   state: State
   dispatch: Dispatch<Action>
-}> = ({ state, dispatch }) => {
+}>(({ state, dispatch }) => {
   return match(state, {
     LoginScreen: login => <ViewLogin login={login} dispatch={dispatch} />,
 
@@ -145,4 +145,4 @@ export const View: React.FC<{
 
     RoomScreen: room => <ViewRoom room={room} dispatch={dispatch} />
   })
-}
+})

@@ -61,10 +61,10 @@ const ChangeUsername = ActionOf<string, Action>((username, state) =>
 
 // V I E W
 
-export const View: React.FC<{
+export const View = React.memo<{
   dispatch: Dispatch<Action>
   state: State
-}> = ({ dispatch, state }) => (
+}>(({ dispatch, state }) => (
   <Box p={4}>
     <Heading>Registration</Heading>
 
@@ -103,4 +103,4 @@ export const View: React.FC<{
       </Button>
     </form>
   </Box>
-)
+))
