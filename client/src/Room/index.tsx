@@ -115,6 +115,7 @@ const ViewSendInfo = React.memo<{
       <FormLabel>Send Info</FormLabel>
 
       <Textarea
+        rows={10}
         resize="vertical"
         value={info}
         placeholder="Put info right here"
