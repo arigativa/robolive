@@ -17,7 +17,7 @@ const update = (
   state: Main.State
 ): [Main.State, Cmd<Main.Action>] => action.update(state)
 
-const Root: React.FC = () => {
+const Root = React.memo(() => {
   const [state, dispatch] = useStore({
     init,
     update,
@@ -33,7 +33,7 @@ const Root: React.FC = () => {
       </ThemeProvider>
     </React.StrictMode>
   )
-}
+})
 
 ReactDOM.render(<Root />, document.getElementById('root'))
 

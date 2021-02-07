@@ -77,10 +77,7 @@ const ChangeInfo = ActionOf<string, Action>((info, state) => [
 ])
 
 const SendInfo = ActionOf<Action>(state => [
-  {
-    ...state,
-    info: ''
-  },
+  { ...state, info: '' },
   state.connection.sendInfo(state.info)
 ])()
 

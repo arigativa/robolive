@@ -132,9 +132,9 @@ const ViewAgentList: React.FC = ({ children }) => (
   <VStack align="start">{children}</VStack>
 )
 
-const EmptyAgentList: React.FC<{
+const EmptyAgentList = React.memo<{
   dispatch: Dispatch<Action>
-}> = React.memo(({ dispatch }) => (
+}>(({ dispatch }) => (
   <AlertPanel status="info">
     No agents found. Please try later or{' '}
     <Button
@@ -148,11 +148,10 @@ const EmptyAgentList: React.FC<{
   </AlertPanel>
 ))
 
-const AlertPanel: React.FC<{ status: AlertStatus; title?: string }> = ({
-  status,
-  title,
-  children
-}) => (
+const AlertPanel: React.FC<{
+  status: AlertStatus
+  title?: string
+}> = ({ status, title, children }) => (
   <Alert status={status}>
     <AlertIcon />
     {title && <AlertTitle>{title}</AlertTitle>}
@@ -160,11 +159,11 @@ const AlertPanel: React.FC<{ status: AlertStatus; title?: string }> = ({
   </Alert>
 )
 
-const AgentItem: React.FC<{
+const AgentItem = React.memo<{
   join: Join
   agent: Agent
   dispatch: Dispatch<Action>
-}> = React.memo(({ join, agent, dispatch }) => {
+}>(({ join, agent, dispatch }) => {
   const [disabled, loading, error]: [boolean, boolean, null | string] = match(
     join,
     {
@@ -201,11 +200,11 @@ const AgentItem: React.FC<{
   )
 })
 
-const AgentList: React.FC<{
+const AgentList = React.memo<{
   join: Join
   agentList: Array<Agent>
   dispatch: Dispatch<Action>
-}> = React.memo(({ join, agentList, dispatch }) => (
+}>(({ join, agentList, dispatch }) => (
   <ViewAgentList>
     {agentList.map(agent => (
       <AgentItem key={agent.id} join={join} agent={agent} dispatch={dispatch} />
@@ -213,10 +212,10 @@ const AgentList: React.FC<{
   </ViewAgentList>
 ))
 
-export const View: React.FC<{
+export const View = React.memo<{
   state: State
   dispatch: Dispatch<Action>
-}> = React.memo(({ state, dispatch }) => (
+}>(({ state, dispatch }) => (
   <Box p="4">
     {state.robots.cata({
       Loading: () => <SkeletonAgentList />,
@@ -243,15 +242,15 @@ export const View: React.FC<{
 
 // S K E L E T O N
 
-const SkeletonAgentItem: React.FC = React.memo(() => (
+const SkeletonAgentItem = React.memo(() => (
   <ViewAgentItem name={<SkeletonText />} status={<SkeletonText />}>
     <SkeletonRect width="66px" height="32px" rounded="6px" />
   </ViewAgentItem>
 ))
 
-const SkeletonAgentList: React.FC<{
+const SkeletonAgentList = React.memo<{
   count?: number
-}> = React.memo(({ count = 3 }) => (
+}>(({ count = 3 }) => (
   <ViewAgentList>
     {range(count).map(index => (
       <SkeletonAgentItem key={index} />

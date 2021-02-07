@@ -50,9 +50,9 @@ const cssText = css`
  *
  * @param [count=1] optional count of text rows
  */
-export const SkeletonText: React.FC<{
+export const SkeletonText = React.memo<{
   count?: number
-}> = ({ count = 1 }) => {
+}>(({ count = 1 }) => {
   if (count <= 0) {
     return null
   }
@@ -66,7 +66,7 @@ export const SkeletonText: React.FC<{
       ))}
     </>
   )
-}
+})
 
 type CssBlockProps = {
   inline?: boolean
@@ -95,13 +95,13 @@ const cssBlock = ({
  * @param width px in number or any other value via string
  * @param height px in number or any other value via string
  */
-export const SkeletonRect: React.FC<{
+export const SkeletonRect = React.memo<{
   className?: string
   inline?: boolean
   width: number | string
   height: number | string
   rounded?: number | string
-}> = ({ className, inline, width, height, rounded }) => (
+}>(({ className, inline, width, height, rounded }) => (
   <div
     className={cx(background, cssBlock({ inline, rounded }), className)}
     style={{
@@ -109,7 +109,7 @@ export const SkeletonRect: React.FC<{
       height: pxOrLen(height)
     }}
   />
-)
+))
 
 /**
  * Circle shape skeleton
@@ -118,11 +118,11 @@ export const SkeletonRect: React.FC<{
  * @param [inline] use display 'inline' instead of 'block'
  * @param size px in number or any other value via string
  */
-export const SkeletonCircle: React.FC<{
+export const SkeletonCircle = React.memo<{
   className?: string
   inline?: boolean
   size: number | string
-}> = ({ className, inline, size }) => (
+}>(({ className, inline, size }) => (
   <div
     className={cx(background, cssBlock({ inline, circle: true }), className)}
     style={{
@@ -130,4 +130,4 @@ export const SkeletonCircle: React.FC<{
       height: pxOrLen(size)
     }}
   />
-)
+))
