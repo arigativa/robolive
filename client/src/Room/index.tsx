@@ -100,6 +100,15 @@ export const subscriptions = (state: State): Sub<Action> => {
 
 // V I E W
 
+const ViewCallOver = React.memo(() => (
+  <>
+    Call is ended.{' '}
+    <Button variant="link" colorScheme="blue">
+      Go back to Robots List
+    </Button>
+  </>
+))
+
 const ViewSendInfo = React.memo<{
   info: string
   dispatch: Dispatch<Action>
@@ -111,6 +120,12 @@ const ViewSendInfo = React.memo<{
       event.preventDefault()
     }}
   >
+    <StackItem>
+      <Button variant="link" colorScheme="blue">
+        Back to Robots List
+      </Button>
+    </StackItem>
+
     <StackItem>
       <FormControl>
         <FormLabel>Send Info</FormLabel>
@@ -167,7 +182,7 @@ export const View = React.memo<{
 }>(({ state, dispatch }) => (
   <Container>
     {state.stream.cata({
-      NotAsked: () => <div>Call is ended</div>,
+      NotAsked: () => <ViewCallOver />,
 
       Loading: () => <div>Loading...</div>,
 
