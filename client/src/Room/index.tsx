@@ -158,6 +158,26 @@ const ViewCallOver = React.memo<{
   </>
 ))
 
+const ViewFailure = React.memo<{
+  reason: string
+  dispatch: Dispatch<Action>
+}>(({ reason, dispatch }) => (
+  <Stack>
+    <StackItem>Something went wrong: {reason}</StackItem>
+
+    <StackItem>
+      <Button
+        ml="2"
+        variant="link"
+        colorScheme="teal"
+        onClick={() => dispatch(GoToRobotsList)}
+      >
+        Go back to Robots List
+      </Button>
+    </StackItem>
+  </Stack>
+))
+
 const ViewSendInfo = React.memo<{
   info: string
   dispatch: Dispatch<Action>
@@ -241,7 +261,7 @@ export const View = React.memo<{
 
       Loading: () => <div>Loading...</div>,
 
-      Failure: reason => <div>Something went wrong: {reason}</div>,
+      Failure: reason => <ViewFailure reason={reason} dispatch={dispatch} />,
 
       Succeed: stream => (
         <ViewSucceed
