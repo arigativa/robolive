@@ -1,7 +1,9 @@
 import React from 'react'
 import RemoteData from 'frctl/RemoteData/Optional'
 import {
-  Box,
+  Container,
+  Stack,
+  StackItem,
   FormControl,
   FormLabel,
   FormHelperText,
@@ -102,30 +104,35 @@ const ViewSendInfo = React.memo<{
   info: string
   dispatch: Dispatch<Action>
 }>(({ info, dispatch }) => (
-  <form
+  <Stack
+    as="form"
     onSubmit={event => {
       dispatch(SendInfo)
       event.preventDefault()
     }}
   >
-    <FormControl>
-      <FormLabel>Send Info</FormLabel>
+    <StackItem>
+      <FormControl>
+        <FormLabel>Send Info</FormLabel>
 
-      <Textarea
-        rows={10}
-        resize="vertical"
-        value={info}
-        placeholder="Put info right here"
-        onChange={event => dispatch(ChangeInfo(event.target.value))}
-      />
+        <Textarea
+          rows={10}
+          resize="vertical"
+          value={info}
+          placeholder="Put info right here"
+          onChange={event => dispatch(ChangeInfo(event.target.value))}
+        />
 
-      <FormHelperText>You can submit both plain text and JSON</FormHelperText>
-    </FormControl>
+        <FormHelperText>You can submit both plain text and JSON</FormHelperText>
+      </FormControl>
+    </StackItem>
 
-    <Button mt="4" type="submit" colorScheme="blue">
-      Submit
-    </Button>
-  </form>
+    <StackItem>
+      <Button type="submit" colorScheme="blue">
+        Submit
+      </Button>
+    </StackItem>
+  </Stack>
 ))
 
 const ViewSucceed = React.memo<{
@@ -142,27 +149,33 @@ const ViewSucceed = React.memo<{
   }, [stream])
 
   return (
-    <Box p="4">
-      <video ref={videoRef} autoPlay />
+    <Stack>
+      <StackItem>
+        <video ref={videoRef} autoPlay />
+      </StackItem>
 
-      <ViewSendInfo info={info} dispatch={dispatch} />
-    </Box>
+      <StackItem>
+        <ViewSendInfo info={info} dispatch={dispatch} />
+      </StackItem>
+    </Stack>
   )
 })
 
 export const View = React.memo<{
   state: State
   dispatch: Dispatch<Action>
-}>(({ state, dispatch }) =>
-  state.stream.cata({
-    NotAsked: () => <div>Call is ended</div>,
+}>(({ state, dispatch }) => (
+  <Container>
+    {state.stream.cata({
+      NotAsked: () => <div>Call is ended</div>,
 
-    Loading: () => <div>Loading...</div>,
+      Loading: () => <div>Loading...</div>,
 
-    Failure: reason => <div>Something went wrong: {reason}</div>,
+      Failure: reason => <div>Something went wrong: {reason}</div>,
 
-    Succeed: stream => (
-      <ViewSucceed info={state.info} stream={stream} dispatch={dispatch} />
-    )
-  })
-)
+      Succeed: stream => (
+        <ViewSucceed info={state.info} stream={stream} dispatch={dispatch} />
+      )
+    })}
+  </Container>
+))

@@ -1,5 +1,6 @@
 import React, { ReactNode } from 'react'
 import {
+  Container,
   Heading,
   Text,
   Box,
@@ -216,7 +217,7 @@ export const View = React.memo<{
   state: State
   dispatch: Dispatch<Action>
 }>(({ state, dispatch }) => (
-  <Box p="4">
+  <Container>
     {state.robots.cata({
       Loading: () => <SkeletonAgentList />,
 
@@ -237,7 +238,7 @@ export const View = React.memo<{
           />
         )
     })}
-  </Box>
+  </Container>
 ))
 
 // S K E L E T O N
