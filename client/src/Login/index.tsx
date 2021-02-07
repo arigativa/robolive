@@ -1,7 +1,7 @@
 import React from 'react'
 import Maybe from 'frctl/Maybe'
 import {
-  Box,
+  Container,
   FormControl,
   FormLabel,
   FormHelperText,
@@ -65,7 +65,7 @@ export const View = React.memo<{
   dispatch: Dispatch<Action>
   state: State
 }>(({ dispatch, state }) => (
-  <Box p={4}>
+  <Container>
     <Heading>Registration</Heading>
 
     <form
@@ -102,5 +102,5 @@ export const View = React.memo<{
         Sign In
       </Button>
     </form>
-  </Box>
+  </Container>
 ))

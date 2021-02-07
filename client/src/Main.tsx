@@ -14,7 +14,7 @@ export type State =
       'RobotsListScreen',
       ScreenWithUsername<{ robotsList: RobotsList.State }>
     >
-  | CaseOf<'RoomScreen', Room.State>
+  | CaseOf<'RoomScreen', ScreenWithUsername<{ room: Room.State }>>
 
 type ScreenWithUsername<T> = T & { username: string }
 
@@ -28,20 +28,22 @@ export const initial: State = LoginScreen(Login.initial)
 
 export type Action = ActionOf<[State], [State, Cmd<Action>]>
 
+const initRobotsList = (username: string): [State, Cmd<Action>] => {
+  const [initialRobotsList, initialCmd] = RobotsList.init
+
+  return [
+    RobotsListScreen({ username, robotsList: initialRobotsList }),
+    initialCmd.map(RobotsListAction)
+  ]
+}
+
 const LoginAction = ActionOf<Login.Action, Action>((action, state) =>
   match<State, [State, Cmd<Action>]>(state, {
     LoginScreen: login =>
       match(action.update(login), {
         Updated: nextLogin => [LoginScreen(nextLogin), Cmd.none],
 
-        Registered: username => {
-          const [robotsList, cmd] = RobotsList.init
-
-          return [
-            RobotsListScreen({ username, robotsList }),
-            cmd.map(RobotsListAction)
-          ]
-        }
+        Registered: initRobotsList
       }),
 
     _: () => [state, Cmd.none]
@@ -53,17 +55,17 @@ const RobotsListAction = ActionOf<RobotsList.Action, Action>((action, state) =>
     RobotsListScreen: ({ username, robotsList }): [State, Cmd<Action>] => {
       return match(action.update(username, robotsList), {
         Updated: ([nextRobotsList, cmd]) => [
-          RobotsListScreen({
-            username,
-            robotsList: nextRobotsList
-          }),
+          RobotsListScreen({ username, robotsList: nextRobotsList }),
           cmd.map(RobotsListAction)
         ],
 
         Joined: configuration => {
           const [initialRoom, initialCmd] = Room.init(configuration)
 
-          return [RoomScreen(initialRoom), initialCmd.map(RoomAction)]
+          return [
+            RoomScreen({ username, room: initialRoom }),
+            initialCmd.map(RoomAction)
+          ]
         }
       })
     },
@@ -74,10 +76,15 @@ const RobotsListAction = ActionOf<RobotsList.Action, Action>((action, state) =>
 
 const RoomAction = ActionOf<Room.Action, Action>((action, state) =>
   match<State, [State, Cmd<Action>]>(state, {
-    RoomScreen: (room): [State, Cmd<Action>] => {
-      const [nextRoom, cmd] = action.update(room)
+    RoomScreen: ({ username, room }): [State, Cmd<Action>] => {
+      return match(action.update(room), {
+        Updated: ([nextRoom, cmd]) => [
+          RoomScreen({ username, room: nextRoom }),
+          cmd.map(RoomAction)
+        ],
 
-      return [RoomScreen(nextRoom), cmd.map(RoomAction)]
+        BackToList: () => initRobotsList(username)
+      })
     },
 
     _: () => [state, Cmd.none]
@@ -88,7 +95,7 @@ const RoomAction = ActionOf<Room.Action, Action>((action, state) =>
 
 export const subscriptions = (state: State): Sub<Action> => {
   return match<State, Sub<Action>>(state, {
-    RoomScreen: room => Room.subscriptions(room).map(RoomAction),
+    RoomScreen: ({ room }) => Room.subscriptions(room).map(RoomAction),
 
     _: () => Sub.none
   })
@@ -143,6 +150,6 @@ export const View = React.memo<{
       <ViewRobotsList robotsList={robotsList} dispatch={dispatch} />
     ),
 
-    RoomScreen: room => <ViewRoom room={room} dispatch={dispatch} />
+    RoomScreen: ({ room }) => <ViewRoom room={room} dispatch={dispatch} />
   })
 })

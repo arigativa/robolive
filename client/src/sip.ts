@@ -174,10 +174,12 @@ class FailSession implements SipSelfMsg<never> {
       return state
     }
 
-    sendToApp(room.eventListeners.map(letter => letter(OnFailure(this.reason))))
     closeRoom(room)
+    sendToApp(room.eventListeners.map(letter => letter(OnFailure(this.reason))))
 
-    return state
+    const { [this.key]: _, ...nextState } = state
+
+    return nextState
   }
 }
 
@@ -194,8 +196,8 @@ class EndSession<AppMsg> implements SipSelfMsg<AppMsg> {
       return state
     }
 
-    sendToApp(room.eventListeners.map(letter => letter(OnEnd)))
     closeRoom(room)
+    sendToApp(room.eventListeners.map(letter => letter(OnEnd)))
 
     const { [this.key]: _, ...nextState } = state
 
@@ -292,6 +294,24 @@ class SendInfoCmd implements SipCmd<never> {
         infoToSend: [...room.infoToSend, this.info]
       }
     }
+  }
+}
+
+class TerminateCmd implements SipCmd<never> {
+  public constructor(private readonly key: string) {}
+
+  public map(): SipCmd<never> {
+    return this
+  }
+
+  public execute(state: State<never>): State<never> {
+    const room = state[this.key]
+
+    if (room?.session?.isEstablished()) {
+      room.session.terminate()
+    }
+
+    return state
   }
 }
 
@@ -445,15 +465,15 @@ class ListenSub<AppMsg> implements SipSub<AppMsg> {
           }
         )
 
-        session?.on('failed', event => {
+        session?.once('failed', event => {
           router.sendToSelf(new FailSession(key, event.cause))
         })
 
-        session?.on('ended', () => {
+        session?.once('ended', () => {
           router.sendToSelf(new EndSession(key))
         })
 
-        session?.on('confirmed', () => {
+        session?.once('confirmed', () => {
           router.sendToSelf(new RegisterSession(key, session, stopFakeStream))
         })
       } catch (error) {
@@ -522,6 +542,7 @@ const OnEnd: ListenEvent = CaseOf('OnEnd')()
 export interface Connection {
   getStream<T>(tagger: (stream: MediaStream) => T): Cmd<T>
   sendInfo(info: string): Cmd<never>
+  terminate: Cmd<never>
   listen<T>(onEvent: (event: ListenEvent) => T): Sub<T>
 }
 
@@ -546,6 +567,10 @@ class ConnectionImpl implements Connection {
 
   public sendInfo(info: string): Cmd<never> {
     return sipManager.createCmd(new SendInfoCmd(this.key, info))
+  }
+
+  public get terminate(): Cmd<never> {
+    return sipManager.createCmd(new TerminateCmd(this.key))
   }
 
   public listen<T>(onEvent: (event: ListenEvent) => T): Sub<T> {

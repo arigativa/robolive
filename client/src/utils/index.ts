@@ -46,12 +46,12 @@ export interface CaseOf<T extends string = string, P = never> {
   payload: P
 }
 
-export interface CreateCaseWithoutPayload<T extends string = string> {
+interface CreateCaseWithoutPayload<T extends string = string> {
   type: T
   (): CaseOf<T>
 }
 
-export interface CreateCaseWithPayload<T extends string = string, P = never> {
+interface CreateCaseWithPayload<T extends string = string, P = never> {
   type: T
   (payload: P): CaseOf<T, P>
 }
