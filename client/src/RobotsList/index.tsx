@@ -22,24 +22,24 @@ import { ActionOf, CaseOf, CaseCreator, range, match } from 'utils'
 
 // S T A T E
 
-type Join =
+type JoinStatus =
   | CaseOf<'NotJoin'>
   | CaseOf<'Joining', string>
   | CaseOf<'JoinFail', { robotId: string; message: string }>
 
-const NotJoin: Join = CaseOf('NotJoin')()
-const Joining: CaseCreator<Join> = CaseOf('Joining')
-const JoinFail: CaseCreator<Join> = CaseOf('JoinFail')
+const NotJoin: JoinStatus = CaseOf('NotJoin')()
+const Joining: CaseCreator<JoinStatus> = CaseOf('Joining')
+const JoinFail: CaseCreator<JoinStatus> = CaseOf('JoinFail')
 
 export interface State {
   robots: RemoteData<string, Array<Agent>>
-  join: Join
+  joinStatus: JoinStatus
 }
 
 export const init: [State, Cmd<Action>] = [
   {
     robots: RemoteData.Loading,
-    join: NotJoin
+    joinStatus: NotJoin
   },
   Cmd.create<Action>(done => getAgentList().then(LoadRobots).then(done))
 ]
@@ -72,7 +72,7 @@ const SelectRobot = ActionOf<string, Action>((robotId, username, state) =>
   Updated([
     {
       ...state,
-      join: Joining(robotId)
+      joinStatus: Joining(robotId)
     },
     Cmd.create<Action>(done => {
       joinRoom({ username, robotId }).then(result =>
@@ -97,7 +97,7 @@ const SelectRobotDone = ActionOf<
       Updated([
         {
           ...state,
-          join: JoinFail(error)
+          joinStatus: JoinFail(error)
         },
         Cmd.none
       ]),
@@ -161,12 +161,12 @@ const AlertPanel: React.FC<{
 )
 
 const AgentItem = React.memo<{
-  join: Join
+  joinStatus: JoinStatus
   agent: Agent
   dispatch: Dispatch<Action>
-}>(({ join, agent, dispatch }) => {
+}>(({ joinStatus, agent, dispatch }) => {
   const [disabled, loading, error]: [boolean, boolean, null | string] = match(
-    join,
+    joinStatus,
     {
       NotJoin: () => [false, false, null],
       Joining: robotId => [true, agent.id === robotId, null],
@@ -202,13 +202,18 @@ const AgentItem = React.memo<{
 })
 
 const AgentList = React.memo<{
-  join: Join
+  joinStatus: JoinStatus
   agentList: Array<Agent>
   dispatch: Dispatch<Action>
-}>(({ join, agentList, dispatch }) => (
+}>(({ joinStatus, agentList, dispatch }) => (
   <ViewAgentList>
     {agentList.map(agent => (
-      <AgentItem key={agent.id} join={join} agent={agent} dispatch={dispatch} />
+      <AgentItem
+        key={agent.id}
+        joinStatus={joinStatus}
+        agent={agent}
+        dispatch={dispatch}
+      />
     ))}
   </ViewAgentList>
 ))
@@ -232,7 +237,7 @@ export const View = React.memo<{
           <EmptyAgentList dispatch={dispatch} />
         ) : (
           <AgentList
-            join={state.join}
+            joinStatus={state.joinStatus}
             agentList={agentList}
             dispatch={dispatch}
           />

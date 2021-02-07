@@ -64,7 +64,7 @@ export const AgentList: React.FC = () => {
     <RobotsList.View
       state={{
         ...initialState,
-        robots: RemoteData.Succeed(range(N).map(index => createAgent(index)))
+        robots: RemoteData.Succeed(range(N).map(createAgent))
       }}
       dispatch={action('dispatch')}
     />
@@ -92,8 +92,8 @@ export const Joining: React.FC = () => {
     <RobotsList.View
       state={{
         ...initialState,
-        join: { type: 'Joining', payload: robotId },
-        robots: RemoteData.Succeed(range(3).map(index => createAgent(index)))
+        joinStatus: { type: 'Joining', payload: robotId },
+        robots: RemoteData.Succeed(range(3).map(createAgent))
       }}
       dispatch={action('dispatch')}
     />
@@ -111,11 +111,11 @@ export const JoinFail: React.FC = () => {
     <RobotsList.View
       state={{
         ...initialState,
-        join: {
+        joinStatus: {
           type: 'JoinFail',
           payload: { robotId, message }
         },
-        robots: RemoteData.Succeed(range(3).map(index => createAgent(index)))
+        robots: RemoteData.Succeed(range(3).map(createAgent))
       }}
       dispatch={action('dispatch')}
     />
