@@ -151,7 +151,9 @@ export const createStoreWithEffects = <S, A, Ext, StateExt>(
   }
 
   const dispatchBatch = (actions: Array<A>): void => {
-    store.dispatch(BatchAction(actions))
+    setTimeout(() => {
+      store.dispatch(BatchAction(actions))
+    })
   }
 
   executeEffects(dispatchBatch, initialCmd, subscriptions(initialState), office)

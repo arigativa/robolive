@@ -1,6 +1,6 @@
 import React from 'react'
 import { action } from '@storybook/addon-actions'
-import { text } from '@storybook/addon-knobs'
+import { text, boolean } from '@storybook/addon-knobs'
 import RemoteData from 'frctl/RemoteData/Optional'
 
 import * as Room from '.'
@@ -96,6 +96,26 @@ export const SendInfoText: React.FC = () => {
       state={{
         ...initialState,
         info,
+        stream: RemoteData.Succeed(stream)
+      }}
+      dispatch={action('dispatch')}
+    />
+  )
+}
+
+export const Terminating: React.FC = () => {
+  const terminating = boolean('Terminating', true)
+  const stream = useFakeStream()
+
+  if (!stream) {
+    return null
+  }
+
+  return (
+    <Room.View
+      state={{
+        ...initialState,
+        terminating,
         stream: RemoteData.Succeed(stream)
       }}
       dispatch={action('dispatch')}

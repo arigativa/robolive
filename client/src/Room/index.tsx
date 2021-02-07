@@ -22,6 +22,7 @@ export interface State {
   connection: Connection
   stream: RemoteData<string, MediaStream>
   info: string
+  terminating: boolean
 }
 
 export const init = (
@@ -39,7 +40,8 @@ export const init = (
     {
       connection,
       stream: RemoteData.Loading,
-      info: ''
+      info: '',
+      terminating: false
     },
     connection.getStream(Connect)
   ]
@@ -76,15 +78,20 @@ const FailConnection = ActionOf<string, Action>((reason, state) =>
   ])
 )
 
-const EndCall = ActionOf<Action>(state =>
-  Updated([
+const EndCall = ActionOf<Action>(state => {
+  return Updated([
     {
       ...state,
       stream: RemoteData.NotAsked
     },
-    Cmd.none
+    state.terminating
+      ? Cmd.create<Action>(done => {
+          // gives some time for robot to change status
+          setTimeout(() => done(GoToRobotsList), 100)
+        })
+      : Cmd.none
   ])
-)()
+})()
 
 const ChangeInfo = ActionOf<string, Action>((info, state) =>
   Updated([
@@ -103,6 +110,16 @@ const SendInfo = ActionOf<Action>(state =>
       info: ''
     },
     state.connection.sendInfo(state.info)
+  ])
+)()
+
+const Terminate = ActionOf<Action>(state =>
+  Updated([
+    {
+      ...state,
+      terminating: true
+    },
+    state.connection.terminate
   ])
 )()
 
@@ -129,10 +146,11 @@ const ViewCallOver = React.memo<{
   dispatch: Dispatch<Action>
 }>(({ dispatch }) => (
   <>
-    Call is ended.{' '}
+    Call is ended.
     <Button
+      ml="2"
       variant="link"
-      colorScheme="blue"
+      colorScheme="teal"
       onClick={() => dispatch(GoToRobotsList)}
     >
       Go back to Robots List
@@ -168,7 +186,7 @@ const ViewSendInfo = React.memo<{
     </StackItem>
 
     <StackItem>
-      <Button type="submit" colorScheme="blue">
+      <Button type="submit" colorScheme="teal">
         Submit
       </Button>
     </StackItem>
@@ -177,9 +195,10 @@ const ViewSendInfo = React.memo<{
 
 const ViewSucceed = React.memo<{
   info: string
+  terminating: boolean
   stream: MediaStream
   dispatch: Dispatch<Action>
-}>(({ info, stream, dispatch }) => {
+}>(({ info, terminating, stream, dispatch }) => {
   const videoRef = React.useRef<HTMLVideoElement>(null)
 
   React.useEffect(() => {
@@ -193,8 +212,9 @@ const ViewSucceed = React.memo<{
       <StackItem>
         <Button
           variant="link"
-          colorScheme="blue"
-          onClick={() => dispatch(GoToRobotsList)}
+          colorScheme="teal"
+          isDisabled={terminating}
+          onClick={() => dispatch(Terminate)}
         >
           Back to Robots List
         </Button>
@@ -224,7 +244,12 @@ export const View = React.memo<{
       Failure: reason => <div>Something went wrong: {reason}</div>,
 
       Succeed: stream => (
-        <ViewSucceed info={state.info} stream={stream} dispatch={dispatch} />
+        <ViewSucceed
+          info={state.info}
+          terminating={state.terminating}
+          stream={stream}
+          dispatch={dispatch}
+        />
       )
     })}
   </Container>
