@@ -14,7 +14,7 @@ import {
 import { Dispatch, Cmd, Sub } from 'core'
 import { RoomConfiguration } from 'api'
 import { Connection, createConnection } from 'sip'
-import { ActionOf, match } from 'utils'
+import { ActionOf, CaseOf, CaseCreator, match } from 'utils'
 
 // S T A T E
 
@@ -47,41 +47,66 @@ export const init = (
 
 // U P D A T E
 
-export type Action = ActionOf<[State], [State, Cmd<Action>]>
+export type Action = ActionOf<[State], Stage>
 
-const Connect = ActionOf<MediaStream, Action>((stream, state) => [
-  {
-    ...state,
-    stream: RemoteData.Succeed(stream)
-  },
-  Cmd.none
-])
+export type Stage =
+  | CaseOf<'Updated', [State, Cmd<Action>]>
+  | CaseOf<'BackToList'>
 
-const FailConnection = ActionOf<string, Action>((reason, state) => [
-  {
-    ...state,
-    stream: RemoteData.Failure(reason)
-  },
-  Cmd.none
-])
+const Updated: CaseCreator<Stage> = CaseOf('Updated')
+const BackToList: Stage = CaseOf('BackToList')()
 
-const EndCall = ActionOf<Action>(state => [
-  {
-    ...state,
-    stream: RemoteData.NotAsked
-  },
-  Cmd.none
-])()
+const Connect = ActionOf<MediaStream, Action>((stream, state) =>
+  Updated([
+    {
+      ...state,
+      stream: RemoteData.Succeed(stream)
+    },
+    Cmd.none
+  ])
+)
 
-const ChangeInfo = ActionOf<string, Action>((info, state) => [
-  { ...state, info },
-  Cmd.none
-])
+const FailConnection = ActionOf<string, Action>((reason, state) =>
+  Updated([
+    {
+      ...state,
+      stream: RemoteData.Failure(reason)
+    },
+    Cmd.none
+  ])
+)
 
-const SendInfo = ActionOf<Action>(state => [
-  { ...state, info: '' },
-  state.connection.sendInfo(state.info)
-])()
+const EndCall = ActionOf<Action>(state =>
+  Updated([
+    {
+      ...state,
+      stream: RemoteData.NotAsked
+    },
+    Cmd.none
+  ])
+)()
+
+const ChangeInfo = ActionOf<string, Action>((info, state) =>
+  Updated([
+    {
+      ...state,
+      info
+    },
+    Cmd.none
+  ])
+)
+
+const SendInfo = ActionOf<Action>(state =>
+  Updated([
+    {
+      ...state,
+      info: ''
+    },
+    state.connection.sendInfo(state.info)
+  ])
+)()
+
+const GoToRobotsList = ActionOf<Action>(() => BackToList)()
 
 // S U B S C R I P T I O N S
 
@@ -100,10 +125,16 @@ export const subscriptions = (state: State): Sub<Action> => {
 
 // V I E W
 
-const ViewCallOver = React.memo(() => (
+const ViewCallOver = React.memo<{
+  dispatch: Dispatch<Action>
+}>(({ dispatch }) => (
   <>
     Call is ended.{' '}
-    <Button variant="link" colorScheme="blue">
+    <Button
+      variant="link"
+      colorScheme="blue"
+      onClick={() => dispatch(GoToRobotsList)}
+    >
       Go back to Robots List
     </Button>
   </>
@@ -120,12 +151,6 @@ const ViewSendInfo = React.memo<{
       event.preventDefault()
     }}
   >
-    <StackItem>
-      <Button variant="link" colorScheme="blue">
-        Back to Robots List
-      </Button>
-    </StackItem>
-
     <StackItem>
       <FormControl>
         <FormLabel>Send Info</FormLabel>
@@ -166,6 +191,16 @@ const ViewSucceed = React.memo<{
   return (
     <Stack>
       <StackItem>
+        <Button
+          variant="link"
+          colorScheme="blue"
+          onClick={() => dispatch(GoToRobotsList)}
+        >
+          Back to Robots List
+        </Button>
+      </StackItem>
+
+      <StackItem>
         <video ref={videoRef} autoPlay />
       </StackItem>
 
@@ -182,7 +217,7 @@ export const View = React.memo<{
 }>(({ state, dispatch }) => (
   <Container>
     {state.stream.cata({
-      NotAsked: () => <ViewCallOver />,
+      NotAsked: () => <ViewCallOver dispatch={dispatch} />,
 
       Loading: () => <div>Loading...</div>,
 
