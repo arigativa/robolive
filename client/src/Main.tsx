@@ -74,7 +74,11 @@ const RobotsListAction = ActionOf<RobotsList.Action, Action>((action, state) =>
 
 const RoomAction = ActionOf<Room.Action, Action>((action, state) =>
   match<State, [State, Cmd<Action>]>(state, {
-    RoomScreen: room => [RoomScreen(action.update(room)), Cmd.none],
+    RoomScreen: (room): [State, Cmd<Action>] => {
+      const [nextRoom, cmd] = action.update(room)
+
+      return [RoomScreen(nextRoom), cmd.map(RoomAction)]
+    },
 
     _: () => [state, Cmd.none]
   })
@@ -92,29 +96,40 @@ export const subscriptions = (state: State): Sub<Action> => {
 
 // V I E W
 
-const ViewLogin: React.FC<{
+const ViewLogin = React.memo<{
   login: Login.State
   dispatch: Dispatch<Action>
-}> = ({ login, dispatch }) => {
+}>(({ login, dispatch }) => {
   const loginDispatch = React.useCallback(
     (action: Login.Action) => dispatch(LoginAction(action)),
     [dispatch]
   )
 
   return <Login.View state={login} dispatch={loginDispatch} />
-}
+})
 
-const ViewRobotsList: React.FC<{
+const ViewRobotsList = React.memo<{
   robotsList: RobotsList.State
   dispatch: Dispatch<Action>
-  mapAction(action: RobotsList.Action): Action
-}> = React.memo(({ robotsList, dispatch, mapAction }) => {
+}>(({ robotsList, dispatch }) => {
   const robotsListDispatch = React.useCallback(
-    (action: RobotsList.Action) => dispatch(mapAction(action)),
-    [dispatch, mapAction]
+    (action: RobotsList.Action) => dispatch(RobotsListAction(action)),
+    [dispatch]
   )
 
   return <RobotsList.View state={robotsList} dispatch={robotsListDispatch} />
+})
+
+const ViewRoom = React.memo<{
+  room: Room.State
+  dispatch: Dispatch<Action>
+}>(({ room, dispatch }) => {
+  const roomDispatch = React.useCallback(
+    (action: Room.Action) => dispatch(RoomAction(action)),
+    [dispatch]
+  )
+
+  return <Room.View state={room} dispatch={roomDispatch} />
 })
 
 export const View: React.FC<{
@@ -125,13 +140,9 @@ export const View: React.FC<{
     LoginScreen: login => <ViewLogin login={login} dispatch={dispatch} />,
 
     RobotsListScreen: ({ robotsList }) => (
-      <ViewRobotsList
-        robotsList={robotsList}
-        mapAction={RobotsListAction}
-        dispatch={dispatch}
-      />
+      <ViewRobotsList robotsList={robotsList} dispatch={dispatch} />
     ),
 
-    RoomScreen: room => <Room.View state={room} />
+    RoomScreen: room => <ViewRoom room={room} dispatch={dispatch} />
   })
 }

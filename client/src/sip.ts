@@ -521,6 +521,7 @@ const OnEnd: ListenEvent = CaseOf('OnEnd')()
 
 export interface Connection {
   getStream<T>(tagger: (stream: MediaStream) => T): Cmd<T>
+  sendInfo(info: string): Cmd<never>
   listen<T>(onEvent: (event: ListenEvent) => T): Sub<T>
 }
 

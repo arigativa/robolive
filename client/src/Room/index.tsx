@@ -1,8 +1,15 @@
 import React from 'react'
-
 import RemoteData from 'frctl/RemoteData/Optional'
+import {
+  Box,
+  FormControl,
+  FormLabel,
+  FormHelperText,
+  Button,
+  Textarea
+} from '@chakra-ui/react'
 
-import { Cmd, Sub } from 'core'
+import { Dispatch, Cmd, Sub } from 'core'
 import { RoomConfiguration } from 'api'
 import { Connection, createConnection } from 'sip'
 import { ActionOf, match } from 'utils'
@@ -12,6 +19,7 @@ import { ActionOf, match } from 'utils'
 export interface State {
   connection: Connection
   stream: RemoteData<string, MediaStream>
+  info: string
 }
 
 export const init = (
@@ -28,7 +36,8 @@ export const init = (
   return [
     {
       connection,
-      stream: RemoteData.Loading
+      stream: RemoteData.Loading,
+      info: ''
     },
     connection.getStream(Connect)
   ]
@@ -36,22 +45,44 @@ export const init = (
 
 // U P D A T E
 
-export type Action = ActionOf<[State], State>
+export type Action = ActionOf<[State], [State, Cmd<Action>]>
 
-const Connect = ActionOf<MediaStream, Action>((stream, state) => ({
-  ...state,
-  stream: RemoteData.Succeed(stream)
-}))
+const Connect = ActionOf<MediaStream, Action>((stream, state) => [
+  {
+    ...state,
+    stream: RemoteData.Succeed(stream)
+  },
+  Cmd.none
+])
 
-const FailConnection = ActionOf<string, Action>((reason, state) => ({
-  ...state,
-  stream: RemoteData.Failure(reason)
-}))
+const FailConnection = ActionOf<string, Action>((reason, state) => [
+  {
+    ...state,
+    stream: RemoteData.Failure(reason)
+  },
+  Cmd.none
+])
 
-const EndCall = ActionOf<Action>(state => ({
-  ...state,
-  stream: RemoteData.NotAsked
-}))()
+const EndCall = ActionOf<Action>(state => [
+  {
+    ...state,
+    stream: RemoteData.NotAsked
+  },
+  Cmd.none
+])()
+
+const ChangeInfo = ActionOf<string, Action>((info, state) => [
+  { ...state, info },
+  Cmd.none
+])
+
+const SendInfo = ActionOf<Action>(state => [
+  {
+    ...state,
+    info: ''
+  },
+  state.connection.sendInfo(state.info)
+])()
 
 // S U B S C R I P T I O N S
 
@@ -70,9 +101,40 @@ export const subscriptions = (state: State): Sub<Action> => {
 
 // V I E W
 
+const ViewSendInfo = React.memo<{
+  info: string
+  dispatch: Dispatch<Action>
+}>(({ info, dispatch }) => (
+  <form
+    onSubmit={event => {
+      dispatch(SendInfo)
+      event.preventDefault()
+    }}
+  >
+    <FormControl>
+      <FormLabel>Send Info</FormLabel>
+
+      <Textarea
+        resize="vertical"
+        value={info}
+        placeholder="Put info right here"
+        onChange={event => dispatch(ChangeInfo(event.target.value))}
+      />
+
+      <FormHelperText>You can submit both plain text and JSON</FormHelperText>
+    </FormControl>
+
+    <Button mt="4" type="submit" colorScheme="blue">
+      Submit
+    </Button>
+  </form>
+))
+
 const ViewSucceed = React.memo<{
+  info: string
   stream: MediaStream
-}>(({ stream }) => {
+  dispatch: Dispatch<Action>
+}>(({ info, stream, dispatch }) => {
   const videoRef = React.useRef<HTMLVideoElement>(null)
 
   React.useEffect(() => {
@@ -82,16 +144,18 @@ const ViewSucceed = React.memo<{
   }, [stream])
 
   return (
-    <div>
-      IT WORKS!
+    <Box p="4">
       <video ref={videoRef} autoPlay />
-    </div>
+
+      <ViewSendInfo info={info} dispatch={dispatch} />
+    </Box>
   )
 })
 
 export const View = React.memo<{
   state: State
-}>(({ state }) =>
+  dispatch: Dispatch<Action>
+}>(({ state, dispatch }) =>
   state.stream.cata({
     NotAsked: () => <div>Call is ended</div>,
 
@@ -99,6 +163,8 @@ export const View = React.memo<{
 
     Failure: reason => <div>Something went wrong: {reason}</div>,
 
-    Succeed: stream => <ViewSucceed stream={stream} />
+    Succeed: stream => (
+      <ViewSucceed info={state.info} stream={stream} dispatch={dispatch} />
+    )
   })
 )
