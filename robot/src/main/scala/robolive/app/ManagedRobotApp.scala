@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory
 import robolive.BuildInfo
 import robolive.gstreamer.{SimpleFunctionCalculator, VideoSources}
 import robolive.managed.RunningPuppet
+import robolive.puppet.driver.PWMController
 import robolive.registry.Clients
 
 import scala.concurrent.Await
@@ -49,6 +50,14 @@ object ManagedRobotApp extends App {
     defaultVideoSource
   )
 
+  val servoController: PWMController = getEnv("SERVO_CONTROLLER_TYPE", "FAKE") match {
+    case "SERIAL" =>
+      val controller = new PWMController.PWMControllerImpl(log)
+      controller.init()
+      controller
+    case "FAKE" => new PWMController.FakePWMController(log)
+  }
+
   implicit object PuppetReleasable extends Using.Releasable[RunningPuppet] {
     override def release(resource: RunningPuppet): Unit = {
       resource.stop("releasing resources")
@@ -73,6 +82,7 @@ object ManagedRobotApp extends App {
             agentEndpointClient = AgentEndpointGrpc.stub(agentChannel),
             storageEndpointClient = StorageEndpointGrpc.stub(storageChannel),
             sipChannelEndpointClient = SipChannelEndpointGrpc.stub(sipChannel),
+            servoController = servoController,
           )) { runningPuppet =>
             runningPuppet.register()
 
