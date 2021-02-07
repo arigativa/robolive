@@ -28,7 +28,7 @@ object CallPuppetApp extends App {
   val servoControllerType: String = getEnv("SERVO_CONTROLLER", default = "FAKE")
   val servoController: PWMController = servoControllerType match {
     case "SERIAL" => new PWMController.PWMControllerImpl(logger)
-    case "FAKE" => new PWMController.FakePWMController
+    case "FAKE" => new PWMController.FakePWMController(logger)
   }
 
   val puppet = new Puppet(
@@ -37,7 +37,7 @@ object CallPuppetApp extends App {
     signallingUri = signallingUri,
     stunUri = stunUri,
     enableUserVideo = enableUserVideo,
-    servoControllerType = servoControllerType,
+    servoController = servoController,
     robotName = robotName,
     eventListener = () => ()
   )

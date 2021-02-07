@@ -1,6 +1,7 @@
 package robolive.puppet
 
 import io.circe.Decoder
+import io.circe.generic.extras.Configuration
 import org.freedesktop.gstreamer._
 import org.mjsip.sip.call.ExtendedCall
 import org.slf4j.LoggerFactory
@@ -244,30 +245,32 @@ final class WebRTCController(
 
   }
 
+  implicit val genDevConfig: Configuration = Configuration.default.withDiscriminator("@type")
+
   def clientInput(input: String): String = synchronized {
-    import io.circe.generic.semiauto._
+    import io.circe.generic.extras.semiauto._
     import io.circe.parser._
 
     sealed trait Command
     object Command {
       final case class Reset() extends Command
       object Reset {
-        implicit val decoder: Decoder[Reset] = deriveDecoder
+        implicit val decoder: Decoder[Reset] = deriveConfiguredDecoder
       }
       final case class SetPWM(pinIndex: Int, pulseLength: Int) extends Command
       object SetPWM {
-        implicit val decoder: Decoder[SetPWM] = deriveDecoder
+        implicit val decoder: Decoder[SetPWM] = deriveConfiguredDecoder
       }
       final case class Devices() extends Command
       object Devices {
-        implicit val decoder: Decoder[Devices] = deriveDecoder
+        implicit val decoder: Decoder[Devices] = deriveConfiguredDecoder
       }
-      implicit val decoder = deriveDecoder[Command]
+      implicit val decoder = deriveConfiguredDecoder[Command]
     }
 
     final case class CommandSequence(commands: Seq[Command], deviceName: String)
     object CommandSequence {
-      implicit val decoder: Decoder[CommandSequence] = deriveDecoder
+      implicit val decoder: Decoder[CommandSequence] = deriveConfiguredDecoder
     }
 
     val response = decode[CommandSequence](input) match {

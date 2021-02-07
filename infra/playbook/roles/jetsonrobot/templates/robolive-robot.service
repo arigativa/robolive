@@ -11,6 +11,7 @@ User={{ jetson_robot_user }}
 Group={{ jetson_robot_user }}
 Environment="DEFAULT_VIDEO_PIPELINE={{ jetson_robot_video_pipeline }}"
 Environment="INVENTORY_USE_PLAINTEXT=false"
+Environment="SERVO_CONTROLLER_TYPE=SERIAL"
 Environment="ROBOT_NAME={{ jetson_robot_name }}"
 Environment="REGISTRY_HOST={{ jetson_robot_registry_address }}"
 
