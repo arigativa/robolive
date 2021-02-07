@@ -148,7 +148,8 @@ final class SIPCallEventHandler(controller: WebRTCController, halt: () => ())(
     body: Array[Byte],
     msg: SipMessage
   ): Unit = {
-    controller.clientInput(msg.getStringBody)
+    val result = controller.clientInput(msg.getStringBody)
+    call.info("text/plain", result)
   }
 
   /** Callback function called when arriving a new Re-INVITE method (re-inviting/call modify) */
