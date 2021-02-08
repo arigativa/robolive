@@ -7,12 +7,11 @@ import robolive.microactor.MicroActor
 import SipChannel.{AllocateRequest, SipChannelEndpointGrpc}
 import Storage.{ReadRequest, StorageEndpointGrpc}
 import org.slf4j.Logger
-import robolive.managed.AgentState.Registered.statusUpdate
 import robolive.microactor.MicroActor.TimeredMicroActor
 import robolive.puppet.Puppet
 
-import java.util.Timer
-import java.util.concurrent.atomic.AtomicReference
+import robolive.puppet.driver.PWMController
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
@@ -67,6 +66,7 @@ object AgentState {
     logger: Logger,
     agentName: String,
     videoSources: VideoSources,
+    servoController: PWMController,
     storageEndpointClient: StorageEndpointGrpc.StorageEndpointStub,
     sipChannelEndpointClient: SipChannelEndpointGrpc.SipChannelEndpointStub,
     sendMessage: AgentMessage => Unit,
@@ -162,7 +162,7 @@ object AgentState {
               signallingUri = signallingUri,
               stunUri = stunUri,
               enableUserVideo = enableUserVideo,
-              servoControllerType = servoControllerType,
+              servoController = deps.servoController,
               eventListener = freeRunningPuppet
             )
 

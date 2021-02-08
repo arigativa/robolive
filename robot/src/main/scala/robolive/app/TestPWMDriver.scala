@@ -12,7 +12,7 @@ object TestPWMDriver extends App {
 
   val arduinoComPort: SerialPort =
     SerialPort.getCommPorts
-      .find(_.getDescriptivePortName.contains("NANO"))
+      .find(_.getDescriptivePortName.contains(getEnv("PWM_DRIVER_NAME", "NANO")))
       .get
 
   log.info(

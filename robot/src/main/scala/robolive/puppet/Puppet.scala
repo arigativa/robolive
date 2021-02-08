@@ -16,18 +16,13 @@ final class Puppet(
   signallingUri: String,
   stunUri: String,
   enableUserVideo: Boolean,
-  servoControllerType: String,
+  servoController: PWMController,
   eventListener: Puppet.PuppetEventListener,
 )(implicit ec: ExecutionContext) {
   private val logger = LoggerFactory.getLogger(getClass.getName)
 
   private val controller = {
     implicit val gstInit: GstManaged.GSTInit.type = GstManaged(robotName, new Version(1, 14))
-
-    val servoController: PWMController = servoControllerType match {
-      case "SERIAL" => new PWMController.PWMControllerImpl(logger)
-      case "FAKE" => new PWMController.FakePWMController
-    }
 
     new WebRTCController(
       videoSrc = videoSrc,
@@ -53,7 +48,7 @@ final class Puppet(
     logger.info(s"Hello, I'm $robotName")
     logger.info(s"Trying to connect to signalling `$signallingUri`")
 
-    sipClient.start(30)
+    sipClient.start(60)
 
     this
   }
