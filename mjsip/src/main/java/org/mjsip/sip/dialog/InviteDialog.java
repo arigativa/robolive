@@ -735,6 +735,24 @@ public class InviteDialog extends Dialog implements TransactionClientListener, I
 		}      
 	}
 
+	public void respondSuccess(SipMessage request, String content_type, byte[] body) {
+		log(LogLevel.DEBUG,"inside respondSuccess");
+		if (statusIs(D_CALL)) {
+			TransactionServer ts=new TransactionServer(sip_provider,request,null);
+			SipMessage resp=SipMessageFactory.createResponse(request,200,null,null);
+
+			// ALLOWED METHODS
+			if (allowed_methods!=null && allowed_methods.length>0) {
+				resp.setAllowHeader(new AllowHeader(allowed_methods));
+			}
+
+			resp.setBody(content_type,body);
+			ts.respondWith(resp);
+		}
+		else {
+			log(LogLevel.WARNING,"Dialog isn't in \"call\" state: cannot respond ("+getStatus()+"/"+getDialogID()+")");
+		}
+	}
 
 	/** Sends info. */
 	public void info(String content_type, byte[] body) {
@@ -920,8 +938,8 @@ public class InviteDialog extends Dialog implements TransactionClientListener, I
 			else
 			// if info
 			if (msg.isInfo()) {
-				TransactionServer ts=new TransactionServer(sip_provider,msg,null);
-				ts.respondWith(SipMessageFactory.createResponse(msg,200,null,null));
+//				TransactionServer ts=new TransactionServer(sip_provider,msg,null);
+//				ts.respondWith(SipMessageFactory.createResponse(msg,200,null,null));
 				String info_package=(msg.hasInfoPackageHeader())? info_package=msg.getInfoPackageHeader().getPackage() : null;
 				if (listener!=null) listener.onDlgInfo(this,info_package,msg.getContentTypeHeader().getContentType(),msg.getBody(),msg);
 			}

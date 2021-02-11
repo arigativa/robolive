@@ -806,7 +806,7 @@ public class SipProvider implements Configurable, SipTransportListener {
 	}
 
   
-	/** Adds a SipProvider listener for caputering any message in promiscuous mode.
+	/** Adds a SipProvider listener for capturing any message in promiscuous mode.
 	  * <p>
 	  * When a SipProviderListener captures messages in promiscuous mode
 	  * messages are passed to this listener before passing them to other specific listener.
