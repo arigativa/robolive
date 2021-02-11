@@ -329,10 +329,14 @@ public class Call/* extends org.zoolu.util.MonitoredObject*/ {
 		dialog.acceptUpdate(local_sdp);
 	}
 
+	/** sends info package. */
+	public void info(String contentType, String info) {
+		dialog.info(contentType, info.getBytes());
+	}
+
 	public void respondSuccess(SipMessage request, String contentType, String info) {
 		dialog.respondSuccess(request, contentType, info.getBytes());
 	}
-
 
 	/** Refuses an update request. */
 	public void refuseUpdate() {
