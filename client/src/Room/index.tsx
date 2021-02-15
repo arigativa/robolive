@@ -1,4 +1,5 @@
 import React from 'react'
+import styled from '@emotion/styled'
 import RemoteData from 'frctl/RemoteData/Optional'
 import {
   Container,
@@ -178,6 +179,10 @@ const ViewFailure = React.memo<{
   </Stack>
 ))
 
+const StyledTextarea = styled(Textarea)`
+  font-family: 'Open sans', monospace;
+`
+
 const ViewSendInfo = React.memo<{
   info: string
   dispatch: Dispatch<Action>
@@ -193,7 +198,7 @@ const ViewSendInfo = React.memo<{
       <FormControl>
         <FormLabel>Send Info</FormLabel>
 
-        <Textarea
+        <StyledTextarea
           rows={10}
           resize="vertical"
           value={info}
