@@ -8,6 +8,7 @@ import {
   FormControl,
   FormLabel,
   FormHelperText,
+  Checkbox,
   Button,
   Textarea
 } from '@chakra-ui/react'
@@ -24,6 +25,7 @@ export interface State {
   stream: RemoteData<string, MediaStream>
   info: string
   terminating: boolean
+  saveOnSubmit: boolean
 }
 
 export const init = (
@@ -42,7 +44,8 @@ export const init = (
       connection,
       stream: RemoteData.Loading,
       info: '',
-      terminating: false
+      terminating: false,
+      saveOnSubmit: true
     },
     connection.getStream(Connect)
   ]
@@ -108,7 +111,7 @@ const SendInfo = ActionOf<Action>(state =>
   Updated([
     {
       ...state,
-      info: ''
+      info: state.saveOnSubmit ? state.info : ''
     },
     state.connection.sendInfo(state.info)
   ])
@@ -125,6 +128,16 @@ const Terminate = ActionOf<Action>(state =>
 )()
 
 const GoToRobotsList = ActionOf<Action>(() => BackToList)()
+
+const SetSaveOnSubmit = ActionOf<boolean, Action>((saveOnSubmit, state) =>
+  Updated([
+    {
+      ...state,
+      saveOnSubmit
+    },
+    Cmd.none
+  ])
+)
 
 // S U B S C R I P T I O N S
 
@@ -185,8 +198,9 @@ const StyledTextarea = styled(Textarea)`
 
 const ViewSendInfo = React.memo<{
   info: string
+  saveOnSubmit: boolean
   dispatch: Dispatch<Action>
-}>(({ info, dispatch }) => (
+}>(({ info, saveOnSubmit, dispatch }) => (
   <Stack
     as="form"
     onSubmit={event => {
@@ -211,9 +225,23 @@ const ViewSendInfo = React.memo<{
     </StackItem>
 
     <StackItem>
-      <Button type="submit" colorScheme="teal">
-        Submit
-      </Button>
+      <Stack direction="row" align="center" spacing="4">
+        <StackItem>
+          <Button type="submit" colorScheme="teal">
+            Submit
+          </Button>
+        </StackItem>
+
+        <StackItem>
+          <Checkbox
+            colorScheme="teal"
+            isChecked={saveOnSubmit}
+            onChange={event => dispatch(SetSaveOnSubmit(event.target.checked))}
+          >
+            Save on submit
+          </Checkbox>
+        </StackItem>
+      </Stack>
     </StackItem>
   </Stack>
 ))
@@ -221,9 +249,10 @@ const ViewSendInfo = React.memo<{
 const ViewSucceed = React.memo<{
   info: string
   terminating: boolean
+  saveOnSubmit: boolean
   stream: MediaStream
   dispatch: Dispatch<Action>
-}>(({ info, terminating, stream, dispatch }) => {
+}>(({ info, terminating, saveOnSubmit, stream, dispatch }) => {
   const videoRef = React.useRef<HTMLVideoElement>(null)
 
   React.useEffect(() => {
@@ -250,7 +279,11 @@ const ViewSucceed = React.memo<{
       </StackItem>
 
       <StackItem>
-        <ViewSendInfo info={info} dispatch={dispatch} />
+        <ViewSendInfo
+          info={info}
+          saveOnSubmit={saveOnSubmit}
+          dispatch={dispatch}
+        />
       </StackItem>
     </Stack>
   )
@@ -272,6 +305,7 @@ export const View = React.memo<{
         <ViewSucceed
           info={state.info}
           terminating={state.terminating}
+          saveOnSubmit={state.saveOnSubmit}
           stream={stream}
           dispatch={dispatch}
         />
