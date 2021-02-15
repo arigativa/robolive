@@ -1,4 +1,5 @@
 import React from 'react'
+import styled from '@emotion/styled'
 import RemoteData from 'frctl/RemoteData/Optional'
 import {
   Container,
@@ -7,6 +8,7 @@ import {
   FormControl,
   FormLabel,
   FormHelperText,
+  Checkbox,
   Button,
   Textarea
 } from '@chakra-ui/react'
@@ -23,6 +25,7 @@ export interface State {
   stream: RemoteData<string, MediaStream>
   info: string
   terminating: boolean
+  saveOnSubmit: boolean
 }
 
 export const init = (
@@ -41,7 +44,8 @@ export const init = (
       connection,
       stream: RemoteData.Loading,
       info: '',
-      terminating: false
+      terminating: false,
+      saveOnSubmit: true
     },
     connection.getStream(Connect)
   ]
@@ -107,7 +111,7 @@ const SendInfo = ActionOf<Action>(state =>
   Updated([
     {
       ...state,
-      info: ''
+      info: state.saveOnSubmit ? state.info : ''
     },
     state.connection.sendInfo(state.info)
   ])
@@ -124,6 +128,16 @@ const Terminate = ActionOf<Action>(state =>
 )()
 
 const GoToRobotsList = ActionOf<Action>(() => BackToList)()
+
+const SetSaveOnSubmit = ActionOf<boolean, Action>((saveOnSubmit, state) =>
+  Updated([
+    {
+      ...state,
+      saveOnSubmit
+    },
+    Cmd.none
+  ])
+)
 
 // S U B S C R I P T I O N S
 
@@ -178,47 +192,95 @@ const ViewFailure = React.memo<{
   </Stack>
 ))
 
+const StyledTextarea = styled(Textarea)`
+  font-family: 'Open sans', monospace;
+`
+
+const useFakeSubmitting = (ms: number): [boolean, VoidFunction] => {
+  const [submitting, setSubmitting] = React.useState(false)
+  const fakeSubmitting = React.useCallback(() => setSubmitting(true), [])
+
+  React.useEffect(() => {
+    if (submitting) {
+      const timeoutId = setTimeout(() => {
+        setSubmitting(false)
+      }, ms)
+
+      return () => clearTimeout(timeoutId)
+    }
+  }, [ms, submitting])
+
+  return [submitting, fakeSubmitting]
+}
+
 const ViewSendInfo = React.memo<{
   info: string
+  saveOnSubmit: boolean
   dispatch: Dispatch<Action>
-}>(({ info, dispatch }) => (
-  <Stack
-    as="form"
-    onSubmit={event => {
-      dispatch(SendInfo)
-      event.preventDefault()
-    }}
-  >
-    <StackItem>
-      <FormControl>
-        <FormLabel>Send Info</FormLabel>
+}>(({ info, saveOnSubmit, dispatch }) => {
+  const [submitting, fakeSubmitting] = useFakeSubmitting(400)
 
-        <Textarea
-          rows={10}
-          resize="vertical"
-          value={info}
-          placeholder="Put info right here"
-          onChange={event => dispatch(ChangeInfo(event.target.value))}
-        />
+  return (
+    <Stack
+      as="form"
+      onSubmit={event => {
+        fakeSubmitting()
+        dispatch(SendInfo)
 
-        <FormHelperText>You can submit both plain text and JSON</FormHelperText>
-      </FormControl>
-    </StackItem>
+        event.preventDefault()
+      }}
+    >
+      <StackItem>
+        <FormControl>
+          <FormLabel>Send Info</FormLabel>
 
-    <StackItem>
-      <Button type="submit" colorScheme="teal">
-        Submit
-      </Button>
-    </StackItem>
-  </Stack>
-))
+          <StyledTextarea
+            rows={10}
+            resize="vertical"
+            value={info}
+            placeholder="Put info right here"
+            onChange={event => dispatch(ChangeInfo(event.target.value))}
+          />
+
+          <FormHelperText>
+            You can submit both plain text and JSON
+          </FormHelperText>
+        </FormControl>
+      </StackItem>
+
+      <StackItem>
+        <Stack direction="row" align="center" spacing="4">
+          <StackItem>
+            <Button type="submit" colorScheme="teal" isLoading={submitting}>
+              Submit
+            </Button>
+          </StackItem>
+
+          <StackItem>
+            <Checkbox
+              colorScheme="teal"
+              isChecked={saveOnSubmit}
+              isReadOnly={submitting}
+              onChange={event =>
+                dispatch(SetSaveOnSubmit(event.target.checked))
+              }
+            >
+              Save on submit
+            </Checkbox>
+          </StackItem>
+        </Stack>
+      </StackItem>
+    </Stack>
+  )
+})
 
 const ViewSucceed = React.memo<{
   info: string
   terminating: boolean
+  saveOnSubmit: boolean
   stream: MediaStream
   dispatch: Dispatch<Action>
-}>(({ info, terminating, stream, dispatch }) => {
+}>(({ info, terminating, saveOnSubmit, stream, dispatch }) => {
   const videoRef = React.useRef<HTMLVideoElement>(null)
 
   React.useEffect(() => {
@@ -245,7 +307,11 @@ const ViewSucceed = React.memo<{
       </StackItem>
 
       <StackItem>
-        <ViewSendInfo info={info} dispatch={dispatch} />
+        <ViewSendInfo
+          info={info}
+          saveOnSubmit={saveOnSubmit}
+          dispatch={dispatch}
+        />
       </StackItem>
     </Stack>
   )
@@ -267,6 +333,7 @@ export const View = React.memo<{
         <ViewSucceed
           info={state.info}
           terminating={state.terminating}
+          saveOnSubmit={state.saveOnSubmit}
           stream={stream}
           dispatch={dispatch}
         />
