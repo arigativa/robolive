@@ -15,10 +15,10 @@ import {
 import Either from 'frctl/Either'
 import RemoteData from 'frctl/RemoteData'
 
-import { Cmd, Dispatch } from 'core'
+import { Cmd, Sub, Dispatch } from 'core'
 import { Agent, RoomConfiguration, getAgentList, joinRoom } from 'api'
 import { SkeletonText, SkeletonRect } from 'Skeleton'
-import { ActionOf, CaseOf, CaseCreator, range, match } from 'utils'
+import { ActionOf, CaseOf, CaseCreator, range, match, every } from 'utils'
 
 // S T A T E
 
@@ -31,15 +31,24 @@ const NotJoin: JoinStatus = CaseOf('NotJoin')()
 const Joining: CaseCreator<JoinStatus> = CaseOf('Joining')
 const JoinFail: CaseCreator<JoinStatus> = CaseOf('JoinFail')
 
+const isJoining = (joinStatus: JoinStatus): boolean => {
+  return match(joinStatus, {
+    Joining: () => true,
+    _: () => false
+  })
+}
+
 export interface State {
   robots: RemoteData<string, Array<Agent>>
   joinStatus: JoinStatus
+  polling: boolean
 }
 
 export const init: [State, Cmd<Action>] = [
   {
     robots: RemoteData.Loading,
-    joinStatus: NotJoin
+    joinStatus: NotJoin,
+    polling: false
   },
   Cmd.create<Action>(done => getAgentList().then(LoadRobots).then(done))
 ]
@@ -62,7 +71,11 @@ const LoadRobots = ActionOf<Either<string, Array<Agent>>, Action>(
     Updated([
       {
         ...state,
-        robots: RemoteData.fromEither(result)
+        polling: false,
+        robots:
+          state.polling && result.isLeft()
+            ? state.robots
+            : RemoteData.fromEither(result)
       },
       Cmd.none
     ])
@@ -104,6 +117,27 @@ const SelectRobotDone = ActionOf<
     Joined
   )
 })
+
+const RunPolling = ActionOf<Action>((_, state) =>
+  Updated([
+    { ...state, polling: true },
+    Cmd.create<Action>(done => getAgentList().then(LoadRobots).then(done))
+  ])
+)()
+
+// S U B S C R I P T I O N S
+
+export const subscriptions = (state: State): Sub<Action> => {
+  if (
+    state.polling ||
+    isJoining(state.joinStatus) ||
+    state.robots.getOrElse([]).length === 0
+  ) {
+    return Sub.none
+  }
+
+  return every(2000, () => RunPolling)
+}
 
 // V I E W
 

@@ -95,7 +95,13 @@ const RoomAction = ActionOf<Room.Action, Action>((action, state) =>
 
 export const subscriptions = (state: State): Sub<Action> => {
   return match<State, Sub<Action>>(state, {
-    RoomScreen: ({ room }) => Room.subscriptions(room).map(RoomAction),
+    RoomScreen: ({ room }) => {
+      return Room.subscriptions(room).map(RoomAction)
+    },
+
+    RobotsListScreen: ({ robotsList }) => {
+      return RobotsList.subscriptions(robotsList).map(RobotsListAction)
+    },
 
     _: () => Sub.none
   })
