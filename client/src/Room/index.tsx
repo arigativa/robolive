@@ -82,21 +82,6 @@ const FailConnection = ActionOf<string, Action>((reason, state) =>
   ])
 )
 
-const EndCall = ActionOf<Action>(state => {
-  return Updated([
-    {
-      ...state,
-      stream: RemoteData.NotAsked
-    },
-    state.terminating
-      ? Cmd.create<Action>(done => {
-          // gives some time for robot to change status
-          setTimeout(() => done(GoToRobotsList), 100)
-        })
-      : Cmd.none
-  ])
-})()
-
 const ChangeInfo = ActionOf<string, Action>((info, state) =>
   Updated([
     {
@@ -149,7 +134,7 @@ export const subscriptions = (state: State): Sub<Action> => {
   return state.connection.listen(event =>
     match(event, {
       OnFailure: FailConnection,
-      OnEnd: () => EndCall
+      OnEnd: () => GoToRobotsList
     })
   )
 }
