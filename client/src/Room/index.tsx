@@ -196,55 +196,83 @@ const StyledTextarea = styled(Textarea)`
   font-family: 'Open sans', monospace;
 `
 
+const useFakeSubmitting = (ms: number): [boolean, VoidFunction] => {
+  const [submitting, setSubmitting] = React.useState(false)
+  const fakeSubmitting = React.useCallback(() => setSubmitting(true), [])
+
+  React.useEffect(() => {
+    if (submitting) {
+      const timeoutId = setTimeout(() => {
+        setSubmitting(false)
+      }, ms)
+
+      return () => clearTimeout(timeoutId)
+    }
+  }, [ms, submitting])
+
+  return [submitting, fakeSubmitting]
+}
+
 const ViewSendInfo = React.memo<{
   info: string
   saveOnSubmit: boolean
   dispatch: Dispatch<Action>
-}>(({ info, saveOnSubmit, dispatch }) => (
-  <Stack
-    as="form"
-    onSubmit={event => {
-      dispatch(SendInfo)
-      event.preventDefault()
-    }}
-  >
-    <StackItem>
-      <FormControl>
-        <FormLabel>Send Info</FormLabel>
+}>(({ info, saveOnSubmit, dispatch }) => {
+  const [submitting, fakeSubmitting] = useFakeSubmitting(400)
 
-        <StyledTextarea
-          rows={10}
-          resize="vertical"
-          value={info}
-          placeholder="Put info right here"
-          onChange={event => dispatch(ChangeInfo(event.target.value))}
-        />
+  return (
+    <Stack
+      as="form"
+      onSubmit={event => {
+        fakeSubmitting()
+        dispatch(SendInfo)
 
-        <FormHelperText>You can submit both plain text and JSON</FormHelperText>
-      </FormControl>
-    </StackItem>
+        event.preventDefault()
+      }}
+    >
+      <StackItem>
+        <FormControl>
+          <FormLabel>Send Info</FormLabel>
 
-    <StackItem>
-      <Stack direction="row" align="center" spacing="4">
-        <StackItem>
-          <Button type="submit" colorScheme="teal">
-            Submit
-          </Button>
-        </StackItem>
+          <StyledTextarea
+            rows={10}
+            resize="vertical"
+            value={info}
+            placeholder="Put info right here"
+            onChange={event => dispatch(ChangeInfo(event.target.value))}
+          />
 
-        <StackItem>
-          <Checkbox
-            colorScheme="teal"
-            isChecked={saveOnSubmit}
-            onChange={event => dispatch(SetSaveOnSubmit(event.target.checked))}
-          >
-            Save on submit
-          </Checkbox>
-        </StackItem>
-      </Stack>
-    </StackItem>
-  </Stack>
-))
+          <FormHelperText>
+            You can submit both plain text and JSON
+          </FormHelperText>
+        </FormControl>
+      </StackItem>
+
+      <StackItem>
+        <Stack direction="row" align="center" spacing="4">
+          <StackItem>
+            <Button type="submit" colorScheme="teal" isLoading={submitting}>
+              Submit
+            </Button>
+          </StackItem>
+
+          <StackItem>
+            <Checkbox
+              colorScheme="teal"
+              isChecked={saveOnSubmit}
+              isReadOnly={submitting}
+              onChange={event =>
+                dispatch(SetSaveOnSubmit(event.target.checked))
+              }
+            >
+              Save on submit
+            </Checkbox>
+          </StackItem>
+        </Stack>
+      </StackItem>
+    </Stack>
+  )
+})
 
 const ViewSucceed = React.memo<{
   info: string
