@@ -31,6 +31,13 @@ const NotJoin: JoinStatus = CaseOf('NotJoin')()
 const Joining: CaseCreator<JoinStatus> = CaseOf('Joining')
 const JoinFail: CaseCreator<JoinStatus> = CaseOf('JoinFail')
 
+const isJoining = (joinStatus: JoinStatus): boolean => {
+  return match(joinStatus, {
+    Joining: () => true,
+    _: () => false
+  })
+}
+
 export interface State {
   robots: RemoteData<string, Array<Agent>>
   joinStatus: JoinStatus
@@ -121,11 +128,15 @@ const RunPolling = ActionOf<Action>((_, state) =>
 // S U B S C R I P T I O N S
 
 export const subscriptions = (state: State): Sub<Action> => {
-  if (!state.polling && state.robots.isSucceed()) {
-    return every(2000, () => RunPolling)
+  if (
+    state.polling ||
+    isJoining(state.joinStatus) ||
+    state.robots.getOrElse([]).length === 0
+  ) {
+    return Sub.none
   }
 
-  return Sub.none
+  return every(2000, () => RunPolling)
 }
 
 // V I E W
