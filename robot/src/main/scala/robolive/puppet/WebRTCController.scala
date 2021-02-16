@@ -261,10 +261,17 @@ final class WebRTCController(
       object SetPWM {
         implicit val decoder: Decoder[SetPWM] = deriveConfiguredDecoder
       }
+
+      final case class Sleep(millis: Long) extends Command
+      object Sleep {
+        implicit val decoder: Decoder[Sleep] = deriveConfiguredDecoder
+      }
+
       final case class Devices() extends Command
       object Devices {
         implicit val decoder: Decoder[Devices] = deriveConfiguredDecoder
       }
+
       implicit val decoder = deriveConfiguredDecoder[Command]
     }
 
@@ -278,16 +285,21 @@ final class WebRTCController(
         val driver = servoController.getDriver(commandSequence.deviceName)
         driver match {
           case Some(driver) =>
+            import Command._
             commandSequence.commands.map {
-              case Command.Reset() =>
+              case Reset() =>
                 driver.reset()
                 "Ok"
 
-              case Command.SetPWM(pinIndex, pulseLength) =>
+              case SetPWM(pinIndex, pulseLength) =>
                 driver.setPWM(pinIndex, pulseLength)
                 "Ok"
 
-              case Command.Devices() =>
+              case Sleep(millis) =>
+                Thread.sleep(millis)
+                "Ok"
+
+              case Devices() =>
                 servoController.getDeviceList.mkString("[", ", ", "]")
             }
 
