@@ -1,7 +1,6 @@
 package robolive.puppet.driver
 
 import com.fazecast.jSerialComm.SerialPort
-
 import java.io.{BufferedReader, InputStreamReader}
 
 final class SerialDriver private (serialPort: SerialPort) {
@@ -21,8 +20,17 @@ final class SerialDriver private (serialPort: SerialPort) {
     serialPort.writeBytes(bytes, bytes.length)
   }
 
+  def write(bytes: Array[Byte]): Int = {
+    serialPort.writeBytes(bytes, bytes.length)
+  }
+
   def readline(): String = {
     reader.readLine()
+  }
+
+  def read(n: Int) = {
+    val buf = Array.fill(n)(0.toChar)
+    reader.read(buf)
   }
 }
 

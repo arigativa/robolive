@@ -53,6 +53,10 @@ object PWMController {
         override def setPWM(id: Int, pulseLength: Int): Unit = {
           logger.info(s"$deviceName requested to set pwm $id to $pulseLength")
         }
+
+        override def sendToSerial(bytes: Array[Byte]): Unit = {
+          logger.info(s"$deviceName requested to send ${bytes.length} bytes to serial")
+        }
       })
     }
   }

@@ -4,6 +4,7 @@ import org.slf4j.Logger
 trait PWMDriver {
   def reset(): Unit
   def setPWM(id: Int, pulseLength: Int): Unit
+  def sendToSerial(bytes: Array[Byte]): Unit
 }
 
 object PWMDriver {
@@ -19,6 +20,13 @@ object PWMDriver {
       sendCommand(command)
     }
 
+    def sendToSerial(bytes: Array[Byte]): Unit = {
+      log.info(s"Writing to serial $bytes")
+      serialDriver.write(s"serial:${bytes.length}\n")
+      serialDriver.write(bytes)
+      log.info(s"Read back: ${serialDriver.read(bytes.length)}")
+    }
+
     private def sendCommand(command: String): Unit = {
       val bytesWritten = serialDriver.write(command)
       val response = serialDriver.readline()
@@ -29,5 +37,6 @@ object PWMDriver {
   final class FakePWMDriver extends PWMDriver {
     def reset(): Unit = ()
     def setPWM(id: Int, pulseLength: Int): Unit = ()
+    def sendToSerial(bytes: Array[Byte]): Unit = ()
   }
 }

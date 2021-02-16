@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory
 import robolive.gstreamer.WebRTCBinManaged.IceCandidate
 import robolive.gstreamer.{GstManaged, PipelineManaged, WebRTCBinManaged}
 import robolive.puppet.driver.PWMController
+import robolive.utils.Hex
 import sdp.SdpMessage.RawValueAttribute
 import sdp.{Attributes, SdpMessage}
 
@@ -261,6 +262,10 @@ final class WebRTCController(
       object SetPWM {
         implicit val decoder: Decoder[SetPWM] = deriveConfiguredDecoder
       }
+      final case class SendToSerial(hexString: String) extends Command
+      object SendToSerial {
+        implicit val decoder: Decoder[SendToSerial] = deriveConfiguredDecoder
+      }
       final case class Devices() extends Command
       object Devices {
         implicit val decoder: Decoder[Devices] = deriveConfiguredDecoder
@@ -285,6 +290,10 @@ final class WebRTCController(
 
               case Command.SetPWM(pinIndex, pulseLength) =>
                 driver.setPWM(pinIndex, pulseLength)
+                "Ok"
+
+              case Command.SendToSerial(hexString) =>
+                driver.sendToSerial(Hex.decodeBytes(hexString))
                 "Ok"
 
               case Command.Devices() =>
