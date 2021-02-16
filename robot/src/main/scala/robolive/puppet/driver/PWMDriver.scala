@@ -24,6 +24,7 @@ object PWMDriver {
       log.info(s"Writing to serial $bytes")
       serialDriver.write(s"serial:${bytes.length}\n")
       serialDriver.write(bytes)
+      log.info("Reading back")
       log.info(s"Read back: ${serialDriver.read(bytes.length)}")
     }
 
