@@ -1,5 +1,8 @@
 #include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
+#include <SoftwareSerial.h>
+
+SoftwareSerial mySerial(2, 3);
 
 // default address 0x40
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
@@ -11,22 +14,42 @@ const int PIN_INDEX_MAX = 16;
 const int SERVO_FREQ = 50; // Analog servos run at ~50 Hz updates
 
 
-struct Command {
-    int pinIndex;
-    int pulseLength;
+struct PWMCommand {
+    const int pinIndex;
+    const int pulseLength;
 };
 
-Command parseSetPWMCommand(const String& rawInput) {
+struct SerialCommand {
+    const int bytesToRead;
+};
+
+PWMCommand parseSetPWMCommand(const String& rawInput) {
     const int delimPos = rawInput.indexOf(' ');
     if (delimPos > 0) {
         const int pinIndex = rawInput.substring(0, delimPos).toInt();
         const int pulseLen = rawInput.substring(delimPos + 1).toInt();
-        const Command command = {pinIndex, pulseLen};
+        const PWMCommand command = {pinIndex, pulseLen};
         return command;
     } else {
-        const Command command = {-1, -1};
+        const PWMCommand command = {-1, -1};
         return command;
     }
+}
+
+SerialCommand parseSerialInputCommand(const String& rawInput) {
+    const int delimPos = rawInput.indexOf(':');
+    if (delimPos > 0) {
+        const auto bytesToRead = rawInput.substring(delimPos + 1).toInt();
+        const SerialCommand command = { bytesToRead };
+        return command;
+    } else {
+        const SerialCommand command = { 0 };
+        return command;
+    }
+}
+
+boolean isSerial(const String& rawInput) {
+    return rawInput.startsWith("serial");
 }
 
 boolean isReset(const String& rawInput) {
@@ -35,10 +58,16 @@ boolean isReset(const String& rawInput) {
 
 void setup() {
     Serial.begin(9600);
+    while (!Serial) {
+        ; // wait for serial port to connect. Needed for Native USB only
+    }
+    mySerial.begin(19200);
+
     pwm.begin();
     pwm.setOscillatorFrequency(27000000);
     pwm.setPWMFreq(SERVO_FREQ);  // Analog servos run at ~50 Hz updates
     delay(10);
+
 }
 
 void reset() {
@@ -62,6 +91,16 @@ void loop() {
         if (isReset(rawInput)) {
             reset();
             Serial.println("pwm driver has been reset");
+        } else if (isSerial(rawInput)) {
+            const auto command = parseSerialInputCommand(rawInput);
+            char *buffer = (char*) malloc(command.bytesToRead);
+            int bytesCounter = 0;
+            do {
+                bytesCounter += Serial.readBytes(buffer + bytesCounter, command.bytesToRead - bytesCounter);
+            } while (bytesCounter < command.bytesToRead);
+            mySerial.write(buffer, command.bytesToRead);
+            mySerial.flush();
+            free(buffer);
         } else {
             const auto command = parseSetPWMCommand(rawInput);
             const boolean isPWMSet = setPWM(command.pinIndex, command.pulseLength);
