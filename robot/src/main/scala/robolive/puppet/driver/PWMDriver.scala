@@ -21,11 +21,12 @@ object PWMDriver {
     }
 
     def sendToSerial(bytes: Array[Byte]): Unit = {
-      log.info(s"Writing to serial $bytes")
+      log.info(s"Writing to serial ${bytes.mkString("[", ",", "]")}")
       serialDriver.write(s"serial:${bytes.length}\n")
       serialDriver.write(bytes)
       log.info("Reading back")
-      log.info(s"Read back: ${serialDriver.read(bytes.length)}")
+      val response = serialDriver.read(bytes.length)
+      log.info(s"Read back: ${response.mkString("[", ",", "]")}")
     }
 
     private def sendCommand(command: String): Unit = {

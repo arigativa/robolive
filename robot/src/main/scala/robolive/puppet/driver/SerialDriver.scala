@@ -28,9 +28,10 @@ final class SerialDriver private (serialPort: SerialPort) {
     reader.readLine()
   }
 
-  def read(n: Int) = {
+  def read(n: Int): Array[Char] = {
     val buf = Array.fill(n)(0.toChar)
     reader.read(buf)
+    buf
   }
 }
 
