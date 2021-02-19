@@ -278,26 +278,34 @@ final class WebRTCController(
       implicit val decoder: Decoder[CommandSequence] = deriveConfiguredDecoder
     }
 
+    logger.info(s"Client input received: $input")
+
     val response = decode[CommandSequence](input) match {
       case Right(commandSequence) =>
         val driver = servoController.getDriver(commandSequence.deviceName)
         driver match {
           case Some(driver) =>
-            commandSequence.commands.map {
-              case Command.Reset() =>
-                driver.reset()
-                "Ok"
+            try {
+              commandSequence.commands.map {
+                case Command.Reset() =>
+                  driver.reset()
+                  "Ok"
 
-              case Command.SetPWM(pinIndex, pulseLength) =>
-                driver.setPWM(pinIndex, pulseLength)
-                "Ok"
+                case Command.SetPWM(pinIndex, pulseLength) =>
+                  driver.setPWM(pinIndex, pulseLength)
+                  "Ok"
 
-              case Command.SendToSerial(hexString) =>
-                driver.sendToSerial(Hex.decodeBytes(hexString))
-                "Ok"
+                case Command.SendToSerial(hexString) =>
+                  driver.sendToSerial(Hex.decodeBytes(hexString))
+                  "Ok"
 
-              case Command.Devices() =>
-                servoController.getDeviceList.mkString("[", ", ", "]")
+                case Command.Devices() =>
+                  servoController.getDeviceList.mkString("[", ", ", "]")
+              }
+            } catch {
+              case err: Throwable =>
+                logger.error(s"PWM driver failed to execute $commandSequence", err)
+                Seq(err.getMessage)
             }
 
           case None =>
@@ -311,8 +319,6 @@ final class WebRTCController(
         logger.warn(errorMessage, err)
         Seq(errorMessage)
     }
-
-    logger.info(s"Client input received: $input")
 
     response.mkString("[", ", ", "]")
   }

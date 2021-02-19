@@ -32,7 +32,7 @@ object PWMDriver {
     private def sendCommand(command: String): Unit = {
       val bytesWritten = serialDriver.write(command)
       val response = serialDriver.readline()
-      log.trace(s"Command sent: `$command`; bytes written: `$bytesWritten`; result: $response")
+      log.info(s"Command sent: `$command`; bytes written: `$bytesWritten`; result: $response")
     }
   }
 
