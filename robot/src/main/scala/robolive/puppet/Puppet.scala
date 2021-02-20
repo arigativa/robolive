@@ -1,10 +1,8 @@
 package robolive.puppet
 
 import org.freedesktop.gstreamer.Version
-import org.mjsip.sip.provider.{TcpTransport, TlsTransport}
 import org.slf4j.LoggerFactory
 import robolive.gstreamer.GstManaged
-import robolive.puppet.driver.PWMController
 
 import scala.concurrent.ExecutionContext
 
@@ -16,7 +14,7 @@ final class Puppet(
   signallingUri: String,
   stunUri: String,
   enableUserVideo: Boolean,
-  servoController: PWMController,
+  clientInputInterpreter: ClientInputInterpreter,
   eventListener: Puppet.PuppetEventListener,
 )(implicit ec: ExecutionContext) {
   private val logger = LoggerFactory.getLogger(getClass.getName)
@@ -27,7 +25,6 @@ final class Puppet(
     new WebRTCController(
       videoSrc = videoSrc,
       stunServerUrl = stunUri,
-      servoController = servoController,
       enableUserVideo = enableUserVideo,
     )
   }
@@ -38,7 +35,8 @@ final class Puppet(
       name = sipRobotName,
     )
 
-    val sipEventsHandler = new SIPCallEventHandler(controller, () => eventListener.stop())
+    val sipEventsHandler =
+      new SIPCallEventHandler(controller, clientInputInterpreter, () => eventListener.stop())
     val registrationClientHandler = new RegistrationClientHandler(() => eventListener.stop())
     new SipClient(sipEventsHandler, registrationClientHandler, sipConfig)
   }

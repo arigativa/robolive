@@ -1,20 +1,23 @@
 package robolive.puppet.driver
 
 import com.fazecast.jSerialComm.SerialPort
+
 import java.io.{BufferedReader, InputStreamReader}
+import scala.util.Using
 
-final class SerialDriver private (serialPort: SerialPort) {
-
+final class SerialDriver(serialPort: SerialPort) {
   private val reader =
     new BufferedReader(new InputStreamReader(serialPort.getInputStream))
 
-  private def start(baudRate: Int = 9600): Unit = {
+  def start(baudRate: Int = 9600): Unit = {
     serialPort.setComPortParameters(baudRate, 8, SerialPort.ONE_STOP_BIT, SerialPort.NO_PARITY)
     serialPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_BLOCKING, 3000, 3000)
     if (!serialPort.openPort()) {
       throw new RuntimeException("Can't open serial port for some reason ¯\\_(ツ)_/¯")
     }
   }
+
+  def close(): Unit = serialPort.closePort()
 
   def write(s: String): Int = {
     val bytes = s.getBytes("ASCII")
@@ -37,9 +40,23 @@ final class SerialDriver private (serialPort: SerialPort) {
 }
 
 object SerialDriver {
-  def start(serialPort: SerialPort): SerialDriver = {
-    val driver = new SerialDriver(serialPort)
-    driver.start()
-    driver
+
+  implicit val releasable = new Using.Releasable[SerialDriver] {
+    def release(resource: SerialDriver): Unit = resource.close()
+  }
+
+  def getPorts: Array[SerialPort] = SerialPort.getCommPorts
+
+  def withSerial[T](systemPortName: String)(f: SerialDriver => T): scala.util.Try[T] = {
+    scala.util.Try {
+      SerialPort.getCommPorts
+        .find(_.getSystemPortName.contains(systemPortName))
+        .getOrElse(throw new RuntimeException(s"Error: Port `$systemPortName` is not found"))
+    }.flatMap { port =>
+      Using(new SerialDriver(port)) { driver =>
+        driver.start()
+        f(driver)
+      }
+    }
   }
 }

@@ -27,7 +27,7 @@ final class SipTransportHandler(sipCallToEventAdapter: SIPCallEventHandler, sipU
   }
 }
 
-final class SIPCallEventHandler(controller: WebRTCController, halt: () => ())(
+final class SIPCallEventHandler(controller: WebRTCController, clientInputInterpreter: ClientInputInterpreter, halt: () => ())(
   implicit ec: ExecutionContext
 ) extends ExtendedCallListener {
   private val logger = LoggerFactory.getLogger(getClass.getName)
@@ -148,7 +148,7 @@ final class SIPCallEventHandler(controller: WebRTCController, halt: () => ())(
     body: Array[Byte],
     msg: SipMessage
   ): Unit = {
-    val result = controller.clientInput(msg.getStringBody)
+    val result = clientInputInterpreter.clientInput(msg.getStringBody)
     call.respondSuccess(msg, "text/plain", result)
   }
 
