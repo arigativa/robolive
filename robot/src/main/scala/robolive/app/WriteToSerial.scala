@@ -40,18 +40,20 @@ object WriteToSerial extends App {
           throw new RuntimeException("Device not found")
       }
 
-    case Array("-s", systemPortName, "-c", command, "-b", bytes, "-r", read) =>
+    case Array("-s", systemPortName, "-c", command, "-b", hexString, "-r", read) =>
       serialPorts.find(_.getSystemPortName.contains(systemPortName)) match {
         case Some(port) =>
           try {
             val serialDriver = SerialDriver.start(port)
 
-            val writtenCommand = serialDriver.write(s"$command\n")
-            println(s"$writtenCommand < $command\n")
+            val bytes = Hex.decodeBytes(hexString)
+            val commandWithBodySize = s"$command:${bytes.length}\n"
 
-            val byteString = Hex.decodeBytes(bytes)
-            val writtenBytes = serialDriver.write(byteString)
-            println(s"$writtenBytes < ${byteString.mkString}")
+            val writtenCommand = serialDriver.write(commandWithBodySize)
+            println(s"$writtenCommand < $commandWithBodySize")
+
+            val writtenBytes = serialDriver.write(bytes)
+            println(s"$writtenBytes < ${bytes.mkString}")
 
             val response = serialDriver.read(read.toInt)
             println(s"> ${response.mkString}")
@@ -68,7 +70,7 @@ object WriteToSerial extends App {
     case _ => println("""Unknown options, try:
         | -l
         | -s ttyACM1 -c reset
-        | -s ttyACM1 -c serial:5 -b FFFFFFFFFF -r 5
+        | -s ttyACM1 -c serial -b FFFFFFFFFF -r 5
         | """.stripMargin)
 
   }
