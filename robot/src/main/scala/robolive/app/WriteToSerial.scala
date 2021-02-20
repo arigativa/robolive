@@ -24,10 +24,9 @@ object WriteToSerial extends App {
       serialPorts.find(_.getSystemPortName.contains(systemPortName)) match {
         case Some(port) =>
           try {
-            port.setBaudRate(9600)
             val serialDriver = SerialDriver.start(port)
 
-            val writtenCommand = serialDriver.write(command + "\n")
+            val writtenCommand = serialDriver.write(s"$command\n")
             println(s"$writtenCommand < $command\n")
 
             val response = serialDriver.readline()
@@ -45,10 +44,9 @@ object WriteToSerial extends App {
       serialPorts.find(_.getSystemPortName.contains(systemPortName)) match {
         case Some(port) =>
           try {
-            port.setBaudRate(9600)
             val serialDriver = SerialDriver.start(port)
 
-            val writtenCommand = serialDriver.write(command + "\n")
+            val writtenCommand = serialDriver.write(s"$command\n")
             println(s"$writtenCommand < $command\n")
 
             val byteString = Hex.decodeBytes(bytes)

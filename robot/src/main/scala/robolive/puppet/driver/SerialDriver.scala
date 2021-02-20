@@ -8,8 +8,9 @@ final class SerialDriver private (serialPort: SerialPort) {
   private val reader =
     new BufferedReader(new InputStreamReader(serialPort.getInputStream))
 
-  private def start(): Unit = {
-    serialPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, 3000, 3000)
+  private def start(baudRate: Int = 9600): Unit = {
+    serialPort.setComPortParameters(baudRate, 8, SerialPort.ONE_STOP_BIT, SerialPort.NO_PARITY)
+    serialPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_BLOCKING, 3000, 3000)
     if (!serialPort.openPort()) {
       throw new RuntimeException("Can't open serial port for some reason ¯\\_(ツ)_/¯")
     }
