@@ -3,16 +3,14 @@ import robolive.puppet.driver.{PWMDriver, SerialDriver}
 
 object TestPWMDriver extends App {
 
-  import java.io.{BufferedReader, InputStreamReader}
-
   import com.fazecast.jSerialComm.SerialPort
-  import org.slf4j.{Logger, LoggerFactory}
+  import org.slf4j.LoggerFactory
 
   val log = LoggerFactory.getLogger("PWMDRIVERTEST")
 
   val arduinoComPort: SerialPort =
     SerialPort.getCommPorts
-      .find(_.getDescriptivePortName.contains(getEnv("PWM_DRIVER_NAME", "NANO")))
+      .find(_.getSystemPortName.contains(getEnv("SYSTEM_PORT", "NANO")))
       .get
 
   log.info(
@@ -21,26 +19,27 @@ object TestPWMDriver extends App {
 
   arduinoComPort.setBaudRate(9600)
 
-  val serialDriver = SerialDriver.start(arduinoComPort)
-  val pwmDriver = new PWMDriver.PWMDriverImpl(serialDriver, log)
+  SerialDriver.withSerial(getEnv("SYSTEM_PORT", "NANO")) { serialDriver =>
+    val pwmDriver = new PWMDriver.PWMDriverImpl(serialDriver, log)
 
-  log.info(s"isOpen ${arduinoComPort.isOpen}")
+    log.info(s"isOpen ${arduinoComPort.isOpen}")
 
-  //driver.reset()
+    //driver.reset()
 
-  (50 to 500 by 10).foreach { pw =>
-    pwmDriver.setPWM(0, pw)
-    pwmDriver.setPWM(1, pw)
-    pwmDriver.setPWM(2, pw)
-    pwmDriver.setPWM(3, pw)
+    (50 to 500 by 10).foreach { pw =>
+      pwmDriver.setPWM(0, pw)
+      pwmDriver.setPWM(1, pw)
+      pwmDriver.setPWM(2, pw)
+      pwmDriver.setPWM(3, pw)
+    }
+
+    log.info(s"isOpen ${arduinoComPort.isOpen}")
+    log.info("finished, waiting for someone or something to show you the way")
+
+    log.info(s"bytesAvail ${arduinoComPort.bytesAvailable()}")
+    Thread.sleep(10000)
+    log.info(s"bytesAvail ${arduinoComPort.bytesAvailable()}")
+    log.info(s"isOpen ${arduinoComPort.isOpen}")
+    log.info("exit")
   }
-
-  log.info(s"isOpen ${arduinoComPort.isOpen}")
-  log.info("finished, waiting for someone or something to show you the way")
-
-  log.info(s"bytesAvail ${arduinoComPort.bytesAvailable()}")
-  Thread.sleep(10000)
-  log.info(s"bytesAvail ${arduinoComPort.bytesAvailable()}")
-  log.info(s"isOpen ${arduinoComPort.isOpen}")
-  log.info("exit")
 }

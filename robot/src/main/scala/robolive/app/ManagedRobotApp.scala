@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory
 import robolive.BuildInfo
 import robolive.gstreamer.{SimpleFunctionCalculator, VideoSources}
 import robolive.managed.RunningPuppet
-import robolive.puppet.driver.PWMController
+import robolive.puppet.ClientInputInterpreter
 import robolive.registry.Clients
 
 import scala.concurrent.Await
@@ -31,7 +31,8 @@ object ManagedRobotApp extends App {
     val usePlaintext: Boolean = getEnv("INVENTORY_USE_PLAINTEXT", "true").toBoolean
   }
 
-  val defaultVideoSource: String = getEnv("DEFAULT_VIDEO_PIPELINE", "videotestsrc is-live=true pattern=ball ! videoconvert")
+  val defaultVideoSource: String =
+    getEnv("DEFAULT_VIDEO_PIPELINE", "videotestsrc is-live=true pattern=ball ! videoconvert")
 
   val robotName = getEnv(
     name = "ROBOT_NAME",
@@ -42,7 +43,7 @@ object ManagedRobotApp extends App {
     new SimpleFunctionCalculator(
       Map(
         "jetson_camera_scaled(sensor_id,sensor_mode,height)" -> "nvarguscamerasrc sensor_id=$$sensor_id$$ sensor_mode=$$sensor_mode$$ ! video/x-raw(memory:NVMM),width=1280, height=720, framerate=60/1, format=NV12 ! nvvidconv flip-method=0 ! videoconvert ! videoscale ! video/x-raw,height=$$height$$",
-        "jetson_camera(sensor_id,sensor_mode)" ->               "nvarguscamerasrc sensor_id=$$sensor_id$$ sensor_mode=$$sensor_mode$$ ! video/x-raw(memory:NVMM),width=1280, height=720, framerate=60/1, format=NV12 ! nvvidconv flip-method=0 ! videoconvert",
+        "jetson_camera(sensor_id,sensor_mode)" -> "nvarguscamerasrc sensor_id=$$sensor_id$$ sensor_mode=$$sensor_mode$$ ! video/x-raw(memory:NVMM),width=1280, height=720, framerate=60/1, format=NV12 ! nvvidconv flip-method=0 ! videoconvert",
         "circles" -> "videotestsrc is-live=true pattern=ball ! videoconvert",
         "autovideosrc" -> "autovideosrc ! videoconvert"
       )
@@ -50,12 +51,10 @@ object ManagedRobotApp extends App {
     defaultVideoSource
   )
 
-  val servoController: PWMController = getEnv("SERVO_CONTROLLER_TYPE", "FAKE") match {
+  val servoController = getEnv("SERVO_CONTROLLER_TYPE", "FAKE") match {
     case "SERIAL" =>
-      val controller = new PWMController.PWMControllerImpl(log)
-      controller.init()
-      controller
-    case "FAKE" => new PWMController.FakePWMController(log)
+      new ClientInputInterpreter.ClientInputInterpreterImpl(log)
+    case "FAKE" => new ClientInputInterpreter.FakeClientInputInterpreter(log)
   }
 
   implicit object PuppetReleasable extends Using.Releasable[RunningPuppet] {
@@ -65,28 +64,43 @@ object ManagedRobotApp extends App {
     }
   }
 
-
   var gracefulQuit = false
 
   while (!gracefulQuit) {
     Thread.sleep(1000)
     log.info("connecting to registry")
 
-    Clients.grpcChannel(RegistryConnection.Host, RegistryConnection.AgentPort, RegistryConnection.usePlaintext) { agentChannel =>
-      Clients.grpcChannel(RegistryConnection.Host, RegistryConnection.StoragePort, RegistryConnection.usePlaintext) { storageChannel =>
-        Clients.grpcChannel(RegistryConnection.Host, RegistryConnection.SipChannelPort, RegistryConnection.usePlaintext) { sipChannel =>
-
-          Using.resource(new RunningPuppet(
-            name = robotName,
-            videoSources = videoSources,
-            agentEndpointClient = AgentEndpointGrpc.stub(agentChannel),
-            storageEndpointClient = StorageEndpointGrpc.stub(storageChannel),
-            sipChannelEndpointClient = SipChannelEndpointGrpc.stub(sipChannel),
-            servoController = servoController,
-          )) { runningPuppet =>
+    Clients.grpcChannel(
+      RegistryConnection.Host,
+      RegistryConnection.AgentPort,
+      RegistryConnection.usePlaintext
+    ) { agentChannel =>
+      Clients.grpcChannel(
+        RegistryConnection.Host,
+        RegistryConnection.StoragePort,
+        RegistryConnection.usePlaintext
+      ) { storageChannel =>
+        Clients.grpcChannel(
+          RegistryConnection.Host,
+          RegistryConnection.SipChannelPort,
+          RegistryConnection.usePlaintext
+        ) { sipChannel =>
+          Using.resource(
+            new RunningPuppet(
+              name = robotName,
+              videoSources = videoSources,
+              agentEndpointClient = AgentEndpointGrpc.stub(agentChannel),
+              storageEndpointClient = StorageEndpointGrpc.stub(storageChannel),
+              sipChannelEndpointClient = SipChannelEndpointGrpc.stub(sipChannel),
+              servoController = servoController,
+            )
+          ) { runningPuppet =>
             runningPuppet.register()
 
-            Await.result(runningPuppet.terminated.map(_ => None).recover { case th => Some(th) }, Duration.Inf) match {
+            Await.result(
+              runningPuppet.terminated.map(_ => None).recover { case th => Some(th) },
+              Duration.Inf
+            ) match {
               case Some(error) =>
                 log.warn("RunningPuppet failed", error)
                 log.info("restarting the robot, after a 1 second nap")

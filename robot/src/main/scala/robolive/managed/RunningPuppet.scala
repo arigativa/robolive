@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory
 import robolive.gstreamer.VideoSources
 import robolive.microactor.MicroActor
 import robolive.microactor.MicroActor.TimeredMicroActor
-import robolive.puppet.driver.PWMController
+import robolive.puppet.ClientInputInterpreter
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.control.NonFatal
@@ -16,7 +16,7 @@ import scala.util.control.NonFatal
 final class RunningPuppet(
   name: String,
   videoSources: VideoSources,
-  servoController: PWMController,
+  servoController: ClientInputInterpreter,
   agentEndpointClient: Agent.AgentEndpointGrpc.AgentEndpointStub,
   storageEndpointClient: StorageEndpointGrpc.StorageEndpointStub,
   sipChannelEndpointClient: SipChannelEndpointGrpc.SipChannelEndpointStub,
@@ -38,7 +38,6 @@ final class RunningPuppet(
           sendMessage = (status: AgentMessage) => registryChannel.onNext(status),
         )
       )
-
 
     val commandReceiver: StreamObserver[RegistryMessage] = new StreamObserver[RegistryMessage] {
 

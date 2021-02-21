@@ -1,14 +1,10 @@
 package robolive.puppet
 
-import io.circe.Decoder
-import io.circe.generic.extras.Configuration
 import org.freedesktop.gstreamer._
 import org.mjsip.sip.call.ExtendedCall
 import org.slf4j.LoggerFactory
 import robolive.gstreamer.WebRTCBinManaged.IceCandidate
 import robolive.gstreamer.{GstManaged, PipelineManaged, WebRTCBinManaged}
-import robolive.puppet.driver.PWMController
-import robolive.utils.Hex
 import sdp.SdpMessage.RawValueAttribute
 import sdp.{Attributes, SdpMessage}
 
@@ -17,7 +13,6 @@ import scala.concurrent.{ExecutionContext, Future}
 final class WebRTCController(
   videoSrc: String,
   stunServerUrl: String,
-  servoController: PWMController,
   enableUserVideo: Boolean,
 )(implicit gst: GstManaged.GSTInit.type) {
   import WebRTCController._
@@ -244,83 +239,6 @@ final class WebRTCController(
         Future.successful(call.hangup())
     }
 
-  }
-
-  implicit val genDevConfig: Configuration = Configuration.default.withDiscriminator("@type")
-
-  def clientInput(input: String): String = synchronized {
-    import io.circe.generic.extras.semiauto._
-    import io.circe.parser._
-
-    sealed trait Command
-    object Command {
-      final case class Reset() extends Command
-      object Reset {
-        implicit val decoder: Decoder[Reset] = deriveConfiguredDecoder
-      }
-      final case class SetPWM(pinIndex: Int, pulseLength: Int) extends Command
-      object SetPWM {
-        implicit val decoder: Decoder[SetPWM] = deriveConfiguredDecoder
-      }
-      final case class SendToSerial(hexString: String) extends Command
-      object SendToSerial {
-        implicit val decoder: Decoder[SendToSerial] = deriveConfiguredDecoder
-      }
-      final case class Devices() extends Command
-      object Devices {
-        implicit val decoder: Decoder[Devices] = deriveConfiguredDecoder
-      }
-      implicit val decoder = deriveConfiguredDecoder[Command]
-    }
-
-    final case class CommandSequence(commands: Seq[Command], deviceName: String)
-    object CommandSequence {
-      implicit val decoder: Decoder[CommandSequence] = deriveConfiguredDecoder
-    }
-
-    logger.info(s"Client input received: $input")
-
-    val response = decode[CommandSequence](input) match {
-      case Right(commandSequence) =>
-        val driver = servoController.getDriver(commandSequence.deviceName)
-        driver match {
-          case Some(driver) =>
-            try {
-              commandSequence.commands.map {
-                case Command.Reset() =>
-                  driver.reset()
-                  "Ok"
-
-                case Command.SetPWM(pinIndex, pulseLength) =>
-                  driver.setPWM(pinIndex, pulseLength)
-                  "Ok"
-
-                case Command.SendToSerial(hexString) =>
-                  driver.sendToSerial(Hex.decodeBytes(hexString))
-                  "Ok"
-
-                case Command.Devices() =>
-                  servoController.getDeviceList.mkString("[", ", ", "]")
-              }
-            } catch {
-              case err: Throwable =>
-                logger.error(s"PWM driver failed to execute $commandSequence", err)
-                Seq(err.getMessage)
-            }
-
-          case None =>
-            val errorMessage = s"Error: Driver is not found for: $driver"
-            logger.warn(errorMessage)
-            Seq(errorMessage)
-        }
-
-      case Left(err: Throwable) =>
-        val errorMessage = s"unexpected user input: ${err.getMessage}"
-        logger.warn(errorMessage, err)
-        Seq(errorMessage)
-    }
-
-    response.mkString("[", ", ", "]")
   }
 }
 
