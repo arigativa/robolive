@@ -5,6 +5,7 @@ import robolive.puppet.driver.SerialDriver
 import robolive.utils.Hex
 
 import scala.io.Source
+import scala.util.{Failure, Success, Try}
 
 object WriteToSerial extends App {
 
@@ -31,12 +32,29 @@ object WriteToSerial extends App {
     case "-s" :: systemPortName :: rest =>
       SerialDriver.withSerial(systemPortName) { serialDriver =>
         rest match {
-          case "-c" :: command :: Nil =>
-            val writtenCommand = serialDriver.write(s"$command\n")
-            println(s"$writtenCommand < $command\n")
+          case "-t" :: _ =>
 
-            val response = serialDriver.readline()
-            println(s"> $response")
+            serialDriver.write("first\n")
+            println(s"${Try(serialDriver.readline())}")
+            serialDriver.write("second\n")
+            println(s"${Try(serialDriver.readline())}")
+            serialDriver.write("third\n")
+            println(s"${Try(serialDriver.readline())}")
+            serialDriver.write("forth\n")
+            println(s"${Try(serialDriver.readline())}")
+
+          case "-c" :: command :: Nil =>
+//            println(s"initial readline ${Try(serialDriver.readline())}")
+
+            for {
+              i <- 0 to 10
+            } {
+              val writtenCommand = serialDriver.write(s"$command\n")
+              println(s"$writtenCommand < $command\n")
+
+              val response = List(Try(serialDriver.readline()), Try(serialDriver.readline()))
+              println(s"> $response")
+            }
 
           case "-c" :: command :: "-b" :: hexString :: "-r" :: readBytes :: Nil =>
             val bytes = Hex.decodeBytes(hexString)
@@ -53,6 +71,12 @@ object WriteToSerial extends App {
 
           case other => printHelp(other)
         }
+      } match {
+        case Failure(exception) =>
+          println(exception.getMessage)
+          exception.printStackTrace()
+          sys.exit(-1)
+        case _ =>
       }
 
     case other => printHelp(other)
