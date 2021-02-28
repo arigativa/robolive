@@ -66,7 +66,8 @@ object CallPuppetApp extends App {
     stunUri = stunUri,
     enableUserVideo = enableUserVideo,
     clientInputInterpreter = servoController,
-    eventListener = () => ()
+    eventListener = () => (),
+    gstInit = gstInit,
   )
 
   val kill = new CountDownLatch(1)

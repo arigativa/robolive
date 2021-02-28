@@ -8,14 +8,16 @@ import scala.concurrent.ExecutionContext
 
 // SOFTWARE CONTROLLER
 final class Puppet(
-  pipeline: Pipeline,
+  val pipeline: Pipeline,
+  val gstInit: GstManaged.GSTInit.type,
   sipRobotName: String,
   signallingUri: String,
   stunUri: String,
   enableUserVideo: Boolean,
   clientInputInterpreter: ClientInputInterpreter,
   eventListener: Puppet.PuppetEventListener,
-)(implicit ec: ExecutionContext, gstInit: GstManaged.GSTInit.type) {
+)(implicit ec: ExecutionContext) {
+  private implicit val gst = gstInit
   private val logger = LoggerFactory.getLogger(getClass.getName)
 
   private val controller =
@@ -47,8 +49,6 @@ final class Puppet(
   }
 
   def stop(): Unit = {
-    pipeline.stop()
-    pipeline.dispose()
     sipClient.stop()
     controller.dispose()
   }

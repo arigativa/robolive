@@ -20,6 +20,7 @@ final class WebRTCController(
   private val logger = LoggerFactory.getLogger(getClass.getName)
 
   private var webRTCBin: WebRTCBinManaged = _
+  private var disposeRtpPipeline: () => () = _
   @volatile private var state: WebRTCControllerPlayState = WebRTCControllerPlayState.Wait
 
   private def initBus(bus: Bus): Unit = {
@@ -51,6 +52,13 @@ final class WebRTCController(
           logger.info(s"Success: rtpVideoSrc ! vpEncoder")
         } else {
           logger.info(s"Error: rtpVideoSrc ! vpEncoder")
+        }
+
+        disposeRtpPipeline = () => {
+          rtpPipeline.pause()
+          rtpPipeline.stop()
+          rtpVideoSrc.unlink(vp8EncoderSync)
+          pipeline.remove(rtpPipeline)
         }
 
         val isSynced = rtpPipeline.syncStateWithParent()
@@ -91,9 +99,13 @@ final class WebRTCController(
   }
 
   def dispose(): Unit = synchronized {
+    if (disposeRtpPipeline != null) {
+      disposeRtpPipeline()
+      disposeRtpPipeline = null
+    }
     if (webRTCBin != null) {
-      webRTCBin.stop()
-      webRTCBin = null
+//      webRTCBin.stop()
+//      webRTCBin = null
     }
     logger.debug("State transition to 'WAIT'")
     state = WebRTCControllerPlayState.Wait
