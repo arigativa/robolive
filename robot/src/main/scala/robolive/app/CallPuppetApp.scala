@@ -1,7 +1,9 @@
 package robolive.app
 
+import org.freedesktop.gstreamer.{Bus, GstObject, Version}
 import org.slf4j.LoggerFactory
 import robolive.app.ManagedRobotApp.log
+import robolive.gstreamer.{GstManaged, PipelineManaged}
 import robolive.puppet.{ClientInputInterpreter, Puppet}
 
 import java.util.concurrent.CountDownLatch
@@ -31,15 +33,39 @@ object CallPuppetApp extends App {
       new ClientInputInterpreter.ClientInputInterpreterImpl(log)
     case "FAKE" => new ClientInputInterpreter.FakeClientInputInterpreter(log)
   }
+  implicit val gstInit: GstManaged.GSTInit.type =
+    GstManaged(robotName, new Version(1, 14))
+
+  val pipelineDescription =
+    s"""$videoSrc ! queue ! tee name=t
+       |t. ! queue ! videoscale ! video/x-raw,width=640,height=480 ! videoconvert ! autovideosink
+       |t. ! queue name=rtpVideoSrc""".stripMargin
+
+  val pipeline = PipelineManaged(
+    name = "robolive-robot-pipeline",
+    description = pipelineDescription,
+  )
+
+  def initBus(bus: Bus): Unit = {
+    val eosHandler: Bus.EOS =
+      (source: GstObject) => logger.info(s"EOS ${source.getName}")
+
+    val errorHandler: Bus.ERROR = (source: GstObject, code: Int, message: String) =>
+      logger.error(s"Error ${source.getName}: $code $message")
+
+    bus.connect(eosHandler)
+    bus.connect(errorHandler)
+  }
+
+  initBus(pipeline.getBus)
 
   val puppet = new Puppet(
-    videoSrc = videoSrc,
+    pipeline = pipeline,
     sipRobotName = robotName,
     signallingUri = signallingUri,
     stunUri = stunUri,
     enableUserVideo = enableUserVideo,
     clientInputInterpreter = servoController,
-    robotName = robotName,
     eventListener = () => ()
   )
 

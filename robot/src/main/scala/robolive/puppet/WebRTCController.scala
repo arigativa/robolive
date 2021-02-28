@@ -11,7 +11,7 @@ import sdp.{Attributes, SdpMessage}
 import scala.concurrent.{ExecutionContext, Future}
 
 final class WebRTCController(
-  videoSrc: String,
+  pipeline: Pipeline,
   stunServerUrl: String,
   enableUserVideo: Boolean,
 )(implicit gst: GstManaged.GSTInit.type) {
@@ -19,16 +19,15 @@ final class WebRTCController(
 
   private val logger = LoggerFactory.getLogger(getClass.getName)
 
-  private var pipeline: Pipeline = _
   private var webRTCBin: WebRTCBinManaged = _
   @volatile private var state: WebRTCControllerPlayState = WebRTCControllerPlayState.Wait
 
   private def initBus(bus: Bus): Unit = {
     val eosHandler: Bus.EOS =
-      (source: GstObject) => logger.info(s"EOS ${source.getName}")
+      (source: GstObject) => logger.info(s"BUS EOS ${source.getName}")
 
     val errorHandler: Bus.ERROR = (source: GstObject, code: Int, message: String) =>
-      logger.error(s"Error ${source.getName}: $code $message")
+      logger.error(s"BUS Error ${source.getName}: $code $message")
 
     bus.connect(eosHandler)
     bus.connect(errorHandler)
@@ -36,38 +35,54 @@ final class WebRTCController(
 
   private def start(rtcType: Int): StateChangeReturn = synchronized {
     try {
+      val encodedVideoSrc = {
+        val description = s"""vp8enc deadline=1 name=vpEncoder ! rtpvp8pay pt=$rtcType ! 
+          | application/x-rtp,media=video,encoding-name=VP8,payload=$rtcType !
+          | queue name=encodedVideoSrc""".stripMargin
+
+        val rtpPipeline = PipelineManaged.apply("rtpPipeline", description)
+        initBus(rtpPipeline.getBus)
+        pipeline.add(rtpPipeline)
+
+        val rtpVideoSrc = pipeline.getElementByName("rtpVideoSrc")
+        val vp8EncoderSync = pipeline.getElementByName("vpEncoder")
+        val isLinked = rtpVideoSrc.link(vp8EncoderSync)
+        if (isLinked) {
+          logger.info(s"Success: rtpVideoSrc ! vpEncoder")
+        } else {
+          logger.info(s"Error: rtpVideoSrc ! vpEncoder")
+        }
+
+        val isSynced = rtpPipeline.syncStateWithParent()
+        if (isSynced) {
+          logger.info(s"RTPPipeline successfully synced with video stream pipeline")
+        } else {
+          logger.error(s"Error: RTPPipeline failed to sync with video stream pipeline")
+        }
+
+        rtpPipeline.getElementByName("encodedVideoSrc")
+      }
+
       webRTCBin = WebRTCBinManaged("sendrecv")
 
       webRTCBin.setStunServer(stunServerUrl)
       webRTCBin.onPadAdded(onIncomingStream)
 
-      val pipelineDescription =
-        s"""$videoSrc ! queue ! tee name=t
-           |t. ! queue ! videoscale ! video/x-raw,width=640,height=480 ! videoconvert ! autovideosink
-           |t. ! queue ! vp8enc deadline=1 ! rtpvp8pay pt=$rtcType ! 
-           | application/x-rtp,media=video,encoding-name=VP8,payload=$rtcType !
-           | queue name=rtpVideoSrc""".stripMargin
-
-      pipeline = PipelineManaged(
-        name = "robolive-robot-pipeline",
-        description = pipelineDescription,
-      )
-
-      val rtpVideoSrc = pipeline.getElementByName("rtpVideoSrc")
-
       pipeline.add(webRTCBin.underlying)
 
-      webRTCBin.underlying.syncStateWithParent()
+      val isLinked = encodedVideoSrc.link(webRTCBin.underlying)
+      if (isLinked) {
+        logger.info(s"Success: encodedVideoSrc ! sendrecv")
+      } else {
+        logger.info(s"Error: encodedVideoSrc ! sendrecv")
+      }
 
-      rtpVideoSrc.link(webRTCBin.underlying)
-
-      pipeline.ready()
-
-      initBus(pipeline.getBus)
-
-      val stateChange = pipeline.play()
-
-      stateChange
+      val isSynced = webRTCBin.underlying.syncStateWithParent()
+      if (isSynced) {
+        StateChangeReturn.SUCCESS
+      } else {
+        StateChangeReturn.FAILURE
+      }
     } catch {
       case err: Throwable =>
         logger.error("Error: fail to start pipeline", err)
@@ -76,12 +91,10 @@ final class WebRTCController(
   }
 
   def dispose(): Unit = synchronized {
-    if (pipeline != null) {
-      pipeline.stop()
-      pipeline.dispose()
+    if (webRTCBin != null) {
+      webRTCBin.stop()
+      webRTCBin = null
     }
-    webRTCBin = null
-    pipeline = null
     logger.debug("State transition to 'WAIT'")
     state = WebRTCControllerPlayState.Wait
   }

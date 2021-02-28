@@ -2,10 +2,11 @@ package robolive.managed
 
 import Agent.RegistryMessage.Message
 import Agent.{AgentMessage, RegistryMessage}
-import robolive.gstreamer.VideoSources
+import robolive.gstreamer.{GstManaged, PipelineManaged, VideoSources}
 import robolive.microactor.MicroActor
 import SipChannel.{AllocateRequest, SipChannelEndpointGrpc}
 import Storage.{ReadRequest, StorageEndpointGrpc}
+import org.freedesktop.gstreamer.{Bus, GstObject, Version}
 import org.slf4j.Logger
 import robolive.microactor.MicroActor.TimeredMicroActor
 import robolive.puppet.{ClientInputInterpreter, Puppet}
@@ -152,9 +153,37 @@ object AgentState {
               }
             }
 
+            implicit val gstInit: GstManaged.GSTInit.type =
+              GstManaged(deps.agentName, new Version(1, 14))
+
+            val pipelineDescription =
+              s"""$videoSource ! queue ! tee name=t
+                 |t. ! queue ! videoscale ! video/x-raw,width=640,height=480 ! videoconvert ! autovideosink
+                 |t. ! queue name=rtpVideoSrc""".stripMargin
+
+            val pipeline = PipelineManaged(
+              name = "robolive-robot-pipeline",
+              description = pipelineDescription,
+            )
+
+            def initBus(bus: Bus): Unit = {
+              val eosHandler: Bus.EOS =
+                (source: GstObject) => deps.logger.info(s"EOS ${source.getName}")
+
+              val errorHandler: Bus.ERROR = (source: GstObject, code: Int, message: String) =>
+                deps.logger.error(s"Error ${source.getName}: $code $message")
+
+              bus.connect(eosHandler)
+              bus.connect(errorHandler)
+            }
+
+            initBus(pipeline.getBus)
+
+            pipeline.ready()
+            pipeline.play()
+
             val puppet = new Puppet(
-              robotName = deps.agentName,
-              videoSrc = videoSource,
+              pipeline = pipeline,
               sipRobotName = sipAgentName,
               signallingUri = signallingUri,
               stunUri = stunUri,
