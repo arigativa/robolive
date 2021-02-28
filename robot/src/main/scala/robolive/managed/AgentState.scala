@@ -91,8 +91,7 @@ object AgentState {
 
             val pipelineDescription =
               s"""$videoSource ! queue ! tee name=t
-                 |t. ! queue ! videoscale ! video/x-raw,width=640,height=480 ! videoconvert ! autovideosink
-                 |t. ! queue name=rtpVideoSrc""".stripMargin
+                 |t. ! queue ! videoscale ! video/x-raw,width=640,height=480 ! videoconvert ! autovideosink""".stripMargin
 
             val pipeline = PipelineManaged(
               name = "robolive-robot-pipeline",

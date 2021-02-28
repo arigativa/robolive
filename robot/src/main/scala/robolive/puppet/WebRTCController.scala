@@ -36,53 +36,56 @@ final class WebRTCController(
 
   private def start(rtcType: Int): StateChangeReturn = synchronized {
     try {
-      val encodedVideoSrc = {
-        val description = s"""vp8enc deadline=1 name=vpEncoder ! rtpvp8pay pt=$rtcType ! 
-          | application/x-rtp,media=video,encoding-name=VP8,payload=$rtcType !
-          | queue name=encodedVideoSrc""".stripMargin
+      val description = s"""queue name=vpEncoder ! vp8enc deadline=1 ! rtpvp8pay pt=$rtcType !
+        | application/x-rtp,media=video,encoding-name=VP8,payload=$rtcType !
+        | queue name=encodedVideoSrc""".stripMargin
 
-        val rtpPipeline = PipelineManaged.apply("rtpPipeline", description)
-        initBus(rtpPipeline.getBus)
-        pipeline.add(rtpPipeline)
+      val rtpPipeline = PipelineManaged.apply("rtpPipeline", description)
+      initBus(rtpPipeline.getBus)
+      pipeline.add(rtpPipeline)
 
-        val rtpVideoSrc = pipeline.getElementByName("rtpVideoSrc")
-        val vp8EncoderSync = pipeline.getElementByName("vpEncoder")
-        val isLinked = rtpVideoSrc.link(vp8EncoderSync)
-        if (isLinked) {
-          logger.info(s"Success: rtpVideoSrc ! vpEncoder")
-        } else {
-          logger.info(s"Error: rtpVideoSrc ! vpEncoder")
-        }
-
-        disposeRtpPipeline = () => {
-          rtpPipeline.pause()
-          rtpPipeline.stop()
-          rtpVideoSrc.unlink(vp8EncoderSync)
-          pipeline.remove(rtpPipeline)
-        }
-
-        val isSynced = rtpPipeline.syncStateWithParent()
-        if (isSynced) {
-          logger.info(s"RTPPipeline successfully synced with video stream pipeline")
-        } else {
-          logger.error(s"Error: RTPPipeline failed to sync with video stream pipeline")
-        }
-
-        rtpPipeline.getElementByName("encodedVideoSrc")
+      val tee = pipeline.getElementByName("t")
+      val vp8EncoderSync = rtpPipeline.getElementByName("vpEncoder")
+      val isRTPVideoSrcToVpEncoderLinked = tee.link(vp8EncoderSync)
+      if (isRTPVideoSrcToVpEncoderLinked) {
+        logger.info(s"Success: tee ! vpEncoder")
+      } else {
+        throw new RuntimeException(s"Error: tee ! vpEncoder")
       }
+
+      val isRTPVideoSrcToVpEncoderSynced = rtpPipeline.syncStateWithParent()
+      if (isRTPVideoSrcToVpEncoderSynced) {
+        logger.info(s"RTPPipeline successfully synced with video stream pipeline")
+      } else {
+        throw new RuntimeException("Error: RTPPipeline failed to sync with video stream pipeline")
+      }
+
+      val encodedVideoSrc = rtpPipeline.getElementByName("encodedVideoSrc")
 
       webRTCBin = WebRTCBinManaged("sendrecv")
 
       webRTCBin.setStunServer(stunServerUrl)
-      webRTCBin.onPadAdded(onIncomingStream)
+      webRTCBin.onPadAdded(onIncomingStream(_, rtpPipeline))
 
-      pipeline.add(webRTCBin.underlying)
+      rtpPipeline.add(webRTCBin.underlying)
 
       val isLinked = encodedVideoSrc.link(webRTCBin.underlying)
       if (isLinked) {
         logger.info(s"Success: encodedVideoSrc ! sendrecv")
       } else {
-        logger.info(s"Error: encodedVideoSrc ! sendrecv")
+        throw new RuntimeException("Error: encodedVideoSrc ! sendrecv")
+      }
+
+      disposeRtpPipeline = () => {
+        rtpPipeline.remove(webRTCBin.underlying)
+        pipeline.remove(rtpPipeline)
+        rtpPipeline.pause()
+        rtpPipeline.stop()
+        webRTCBin.pause()
+        webRTCBin.stop()
+        webRTCBin.dispose()
+        rtpPipeline.dispose()
+        webRTCBin = null
       }
 
       val isSynced = webRTCBin.underlying.syncStateWithParent()
@@ -103,15 +106,11 @@ final class WebRTCController(
       disposeRtpPipeline()
       disposeRtpPipeline = null
     }
-    if (webRTCBin != null) {
-//      webRTCBin.stop()
-//      webRTCBin = null
-    }
     logger.debug("State transition to 'WAIT'")
     state = WebRTCControllerPlayState.Wait
   }
 
-  private def onIncomingStream(pad: Pad): Unit = {
+  private def onIncomingStream(pad: Pad, pipeline: Pipeline): Unit = {
     if (pad.getDirection != PadDirection.SRC) {
       logger.error("Error incoming stream: pad direction incorrect")
     } else {
@@ -120,7 +119,7 @@ final class WebRTCController(
         override def padAdded(
           element: Element,
           pad: Pad
-        ): Unit = onIncomingDecodebinStream(pad)
+        ): Unit = onIncomingDecodebinStream(pad, pipeline)
       })
       pipeline.add(decodebin)
       decodebin.syncStateWithParent()
@@ -128,7 +127,7 @@ final class WebRTCController(
     }
   }
 
-  private def onIncomingDecodebinStream(pad: Pad) = {
+  private def onIncomingDecodebinStream(pad: Pad, pipeline: Pipeline) = {
     logger.info(s"onIncomingDecodebinStream(${pad.getName})")
     if (!pad.hasCurrentCaps) {
       logger.error(s"Error incoming stream ${pad.getName}: pad has no caps")
