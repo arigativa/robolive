@@ -2,10 +2,11 @@ package robolive.managed
 
 import Agent.RegistryMessage.Message
 import Agent.{AgentMessage, RegistryMessage}
-import robolive.gstreamer.VideoSources
+import robolive.gstreamer.{GstManaged, PipelineDescription, PipelineManaged, VideoSources}
 import robolive.microactor.MicroActor
 import SipChannel.{AllocateRequest, SipChannelEndpointGrpc}
 import Storage.{ReadRequest, StorageEndpointGrpc}
+import org.freedesktop.gstreamer.{Bus, GstObject, Pipeline, Version}
 import org.slf4j.Logger
 import robolive.microactor.MicroActor.TimeredMicroActor
 import robolive.puppet.{ClientInputInterpreter, Puppet}
@@ -70,14 +71,38 @@ object AgentState {
     sendMessage: AgentMessage => Unit,
   )
 
-  final case object Idle extends AgentState {
+  final case class Idle(pipelineDescription: PipelineDescription) extends AgentState {
+    private val VideoSrcFn = "videoSrcFn"
+
     override def apply(deps: Deps, event: RegistryMessage.Message)(
       implicit ec: ExecutionContext
     ): Future[AgentState] = {
       event match {
         case Message.Registered(_) =>
-          deps.sendMessage(statusUpdate("Registered"))
-          Future.successful(Registered)
+          deps.storageEndpointClient.get(ReadRequest(Seq(VideoSrcFn))).map { storageResponse =>
+            val videoSource = {
+              val videoSourceFn = storageResponse.values.getOrElse(VideoSrcFn, "unknown")
+              deps.videoSources.getSource(videoSourceFn)
+            }
+
+            deps.logger.info(s"using video source: $videoSource")
+
+            implicit val gstInit: GstManaged.GSTInit.type =
+              GstManaged(deps.agentName, new Version(1, 14))
+
+            val pipeline = PipelineManaged(
+              name = "robolive-robot-pipeline",
+              description = pipelineDescription.description(videoSource),
+              logger = deps.logger
+            )
+
+            pipeline.ready()
+            pipeline.play()
+
+            deps.sendMessage(statusUpdate("Registered"))
+
+            Registered(pipeline, gstInit)
+          }
 
         case other =>
           deps.logger.error(s"Unexpected message $other in Idle state")
@@ -86,8 +111,8 @@ object AgentState {
     }
   }
 
-  final case object Registered extends AgentState {
-    private val VideoSrcFn = "videoSrcFn"
+  final case class Registered(pipeline: Pipeline, gstInit: GstManaged.GSTInit.type)
+      extends AgentState {
     private val SignallingUri = "signallingUri"
     private val StunUri = "stunUri"
     private val EnableUserVideo = "enableUserVideo"
@@ -95,7 +120,6 @@ object AgentState {
     private val TurnUri = "turnUri"
 
     private val puppetConfigurationKeys = Seq(
-      VideoSrcFn,
       SignallingUri,
       StunUri,
       EnableUserVideo,
@@ -131,15 +155,9 @@ object AgentState {
 
             val sipAgentName = sipChannelAllocationResponse.agentName
             val sipClientName = sipChannelAllocationResponse.clientName
-            val videoSrcFn = settings("videoSrcFn").getOrElse("unknown")
             val signallingUri = settings("signallingUri").get
             val stunUri = settings("stunUri").get
             val enableUserVideo = settings("enableUserVideo").getOrElse("false").toBoolean
-            val servoControllerType = settings("servoControllerType").getOrElse("FAKE")
-
-            val videoSource = deps.videoSources.getSource(videoSrcFn)
-
-            deps.logger.info(s"using video source: $videoSource")
 
             val freeRunningPuppet = new Puppet.PuppetEventListener {
               def stop(): Unit = {
@@ -154,14 +172,14 @@ object AgentState {
             }
 
             val puppet = new Puppet(
-              robotName = deps.agentName,
-              videoSrc = videoSource,
+              pipeline = pipeline,
               sipRobotName = sipAgentName,
               signallingUri = signallingUri,
               stunUri = stunUri,
               enableUserVideo = enableUserVideo,
               clientInputInterpreter = deps.servoController,
-              eventListener = freeRunningPuppet
+              eventListener = freeRunningPuppet,
+              gstInit = gstInit
             )
 
             deps.logger.info("trying to start puppet")
@@ -188,10 +206,12 @@ object AgentState {
                 deps.sendMessage(statusUpdate("Busy"))
 
                 Busy(
+                  pipeline = pipeline,
+                  gstInit = gstInit,
                   puppet = puppet,
                   clientName = sipClientName,
                   agentName = sipAgentName,
-                  duration = sipChannelAllocationResponse.durationSeconds
+                  duration = sipChannelAllocationResponse.durationSeconds,
                 )
 
               case Failure(exception) =>
@@ -215,8 +235,14 @@ object AgentState {
     }
   }
 
-  final case class Busy(puppet: Puppet, clientName: String, agentName: String, duration: Long)
-      extends AgentState {
+  final case class Busy(
+    pipeline: Pipeline,
+    gstInit: GstManaged.GSTInit.type,
+    puppet: Puppet,
+    clientName: String,
+    agentName: String,
+    duration: Long,
+  ) extends AgentState {
     override def apply(deps: Deps, event: RegistryMessage.Message)(
       implicit ec: ExecutionContext
     ): Future[AgentState] = {
@@ -225,7 +251,7 @@ object AgentState {
         case Message.Registered(_) =>
           puppet.stop()
           deps.sendMessage(statusUpdate("Registered"))
-          Future.successful(AgentState.Registered)
+          Future.successful(AgentState.Registered(pipeline, gstInit))
 
         case other @ Message.Connected(clientConnectionRequest) =>
           deps.logger.error(s"Unexpected message $other in Busy state")

@@ -110,7 +110,12 @@ public class TlsServerFactory {
 
 	/** Creates a new TlsServer */
 	public TlsServer createTlsServer(int port, TcpServerListener listener) throws java.io.IOException {
-		SSLServerSocket ssl_server=(SSLServerSocket)ssl_factory.createServerSocket(port);
+		SSLServerSocket ssl_server=null;
+		try {
+			ssl_server = (SSLServerSocket)ssl_factory.createServerSocket(port);
+		} catch (Exception e) {
+			throw e;
+		}
 		if (client_mode) ssl_server.setUseClientMode(true);
 		if (client_auth) ssl_server.setNeedClientAuth(true);
 		if (enabled_protocols!=null) ssl_server.setEnabledProtocols(enabled_protocols);

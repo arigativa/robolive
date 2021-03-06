@@ -5,7 +5,7 @@ import SipChannel.SipChannelEndpointGrpc
 import Storage.StorageEndpointGrpc
 import org.slf4j.LoggerFactory
 import robolive.BuildInfo
-import robolive.gstreamer.{SimpleFunctionCalculator, VideoSources}
+import robolive.gstreamer.{PipelineDescription, SimpleFunctionCalculator, VideoSources}
 import robolive.managed.RunningPuppet
 import robolive.puppet.ClientInputInterpreter
 import robolive.registry.Clients
@@ -27,9 +27,14 @@ object ManagedRobotApp extends App {
     val AgentPort: Int = getEnv("REGISTRY_PORT_FOR_AGENT", "10476").toInt
     val StoragePort: Int = getEnv("REGISTRY_PORT_FOR_STORAGE", "10479").toInt
     val SipChannelPort: Int = getEnv("REGISTRY_PORT_FOR_SIP_CHANNEL", "10480").toInt
-
     val usePlaintext: Boolean = getEnv("INVENTORY_USE_PLAINTEXT", "true").toBoolean
   }
+
+  val RestreamType: PipelineDescription.RestreamType = {
+    val rawType = getEnv("RESTREAM_TYPE", "NONE")
+    PipelineDescription.RestreamType.fromUnsafe(rawType)
+  }
+  val RTMPLink: Option[String] = getEnv("RTMP_LINK")
 
   val defaultVideoSource: String =
     getEnv("DEFAULT_VIDEO_PIPELINE", "videotestsrc is-live=true pattern=ball ! videoconvert")
@@ -56,6 +61,8 @@ object ManagedRobotApp extends App {
       new ClientInputInterpreter.ClientInputInterpreterImpl(log)
     case "FAKE" => new ClientInputInterpreter.FakeClientInputInterpreter(log)
   }
+
+  val pipelineDescription = new PipelineDescription(RestreamType, RTMPLink)
 
   implicit object PuppetReleasable extends Using.Releasable[RunningPuppet] {
     override def release(resource: RunningPuppet): Unit = {
@@ -93,6 +100,7 @@ object ManagedRobotApp extends App {
               storageEndpointClient = StorageEndpointGrpc.stub(storageChannel),
               sipChannelEndpointClient = SipChannelEndpointGrpc.stub(sipChannel),
               servoController = servoController,
+              pipelineDescription = pipelineDescription,
             )
           ) { runningPuppet =>
             runningPuppet.register()

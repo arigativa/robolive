@@ -59,4 +59,10 @@ streamTestVideoWithOverlay
 # GST_DEBUG=*webkit*:5 gst-launch-1.0 videotestsrc ! video/x-raw, format=RGBA, width=1280, height=720 ! mixer.sink_0   webkitsrc  url="http://localhost/news/" ! video/x-raw, format=RGBA, width=1280, height=720 ! alpha method=green ! mixer.sink_1   videomixer name=mixer sink_0::zorder=0 sink_1::zorder=1 !   videoconvert ! autovideosink sync=FALSE
         
 #        
-#gst-launch-1.0 videotestsrc is-live=1 ! videoconvert ! "video/x-raw, width=1280, height=720, framerate=25/1" ! queue ! x264enc bitrate=2000 byte-stream=false key-int-max=60 bframes=0 aud=true tune=zerolatency ! "video/x-h264,profile=main" ! flvmux streamable=true name=mux  ! rtmpsink location="rtmp://a.rtmp.youtube.com/live2/x/sm10-ud24-dahj-4fu5 app=live2" audiotestsrc ! voaacenc bitrate=128000 ! mux.
+#gst-launch-1.0 videotestsrc is-live=1 !
+# videoconvert !
+# "video/x-raw, width=1280, height=720, framerate=25/1" !
+# queue !
+# x264enc bitrate=2000 byte-stream=false key-int-max=60 bframes=0 aud=true tune=zerolatency !
+# "video/x-h264,profile=main" !
+# flvmux streamable=true name=mux  ! rtmpsink location="rtmp://a.rtmp.youtube.com/live2/x/sm10-ud24-dahj-4fu5 app=live2" audiotestsrc ! voaacenc bitrate=128000 ! mux.

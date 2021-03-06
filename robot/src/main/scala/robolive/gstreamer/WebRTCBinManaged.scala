@@ -12,7 +12,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success}
 
-final class WebRTCBinManaged(webRTCBin: WebRTCBin) extends AutoCloseable {
+final class WebRTCBinManaged(val underlying: WebRTCBin) extends AutoCloseable {
   import WebRTCBinManaged._
 
   private val logger = LoggerFactory.getLogger(getClass.getName)
@@ -37,42 +37,42 @@ final class WebRTCBinManaged(webRTCBin: WebRTCBin) extends AutoCloseable {
   def negotiate(): Future[Element] = {
     val p = Promise[Element]()
     val cb: WebRTCBin.ON_NEGOTIATION_NEEDED = (elem: Element) => p.success(elem)
-    webRTCBin.connect(cb)
+    underlying.connect(cb)
     p.future
   }
 
   /**
-   *
-   * We wait for [[totalTimeout]] until webrtcbin reported COMPLETE state
-   * Once ICE fetching state is COMPLETE, webrtcbin will send all items one by one
-   * So we assume here that it's not necessary to wait for a long time if the state is COMPLETE
-   * and we switch to [[shortTimeout]] that will be necessary.
-   *
-   * To recap timeline of events will look like this
-   *  1. ICE gathering state is GATHERING
-   *  2. few seconds passed
-   *  3. WebRTCBin.ON_ICE_CANDIDATE callback is called with first candidate, ICE gathering state is COMPLETE
-   *  4. all other candidates are being sent one after another
-   *
-   * Some real log of fetching:
-   *   10:49:18,587 Fetching ICE candidates
-   *   10:49:22,084 ICE candidate fetched: 1 1 UDP 2013266431 fe80::42:8dff:fe9d:743e 59461 typ host
-   *   10:49:22,086 ICE candidate fetched: 2 1 TCP 1015027455 fe80::42:8dff:fe9d:743e 9 typ host tcptype active
-   *   10:49:22,088 ICE candidate fetched: 3 1 TCP 1010833151 fe80::42:8dff:fe9d:743e 50113 typ host tcptype passive
-   *   ...
-   *   10:49:22,171 ICE candidate fetched: 59 1 TCP 1015026687 192.168.1.72 9 typ host tcptype active
-   *   10:49:22,172 ICE candidate fetched: 60 1 TCP 1010832383 192.168.1.72 35221 typ host tcptype passive
-   *   10:49:22,173 ICE candidate fetched: 1 2 UDP 2013266430 fe80::42:8dff:fe9d:743e 37946 typ host
-   *   10:49:22,175 ICE candidate fetched: 2 2 TCP 1015027454 fe80::42:8dff:fe9d:743e 9 typ host tcptype active
-   *   ...
-   *   10:49:22,250 ICE candidate fetched: 79 1 UDP 1677722105 85.149.49.186 54479 typ srflx raddr 192.168.1.72 rport 54479
-   *   10:49:22,251 ICE candidate fetched: 80 1 TCP 847254527 85.149.49.186 9 typ srflx raddr 192.168.1.72 rport 9 tcptype active
-   *   10:49:22,251 ICE candidate fetched: 81 1 TCP 843060223 85.149.49.186 35221 typ srflx raddr 192.168.1.72 rport 35221 tcptype passive
-   *
-   * @param totalTimeout time to wait for ICE candidate to be added to result
-   * @param shortTimeout time to wait for ICE candidate to be added to result after ICE gathering state became COMPLETE
-   * @return
-   */
+    *
+    * We wait for [[totalTimeout]] until webrtcbin reported COMPLETE state
+    * Once ICE fetching state is COMPLETE, webrtcbin will send all items one by one
+    * So we assume here that it's not necessary to wait for a long time if the state is COMPLETE
+    * and we switch to [[shortTimeout]] that will be necessary.
+    *
+    * To recap timeline of events will look like this
+    *  1. ICE gathering state is GATHERING
+    *  2. few seconds passed
+    *  3. WebRTCBin.ON_ICE_CANDIDATE callback is called with first candidate, ICE gathering state is COMPLETE
+    *  4. all other candidates are being sent one after another
+    *
+    * Some real log of fetching:
+    *   10:49:18,587 Fetching ICE candidates
+    *   10:49:22,084 ICE candidate fetched: 1 1 UDP 2013266431 fe80::42:8dff:fe9d:743e 59461 typ host
+    *   10:49:22,086 ICE candidate fetched: 2 1 TCP 1015027455 fe80::42:8dff:fe9d:743e 9 typ host tcptype active
+    *   10:49:22,088 ICE candidate fetched: 3 1 TCP 1010833151 fe80::42:8dff:fe9d:743e 50113 typ host tcptype passive
+    *   ...
+    *   10:49:22,171 ICE candidate fetched: 59 1 TCP 1015026687 192.168.1.72 9 typ host tcptype active
+    *   10:49:22,172 ICE candidate fetched: 60 1 TCP 1010832383 192.168.1.72 35221 typ host tcptype passive
+    *   10:49:22,173 ICE candidate fetched: 1 2 UDP 2013266430 fe80::42:8dff:fe9d:743e 37946 typ host
+    *   10:49:22,175 ICE candidate fetched: 2 2 TCP 1015027454 fe80::42:8dff:fe9d:743e 9 typ host tcptype active
+    *   ...
+    *   10:49:22,250 ICE candidate fetched: 79 1 UDP 1677722105 85.149.49.186 54479 typ srflx raddr 192.168.1.72 rport 54479
+    *   10:49:22,251 ICE candidate fetched: 80 1 TCP 847254527 85.149.49.186 9 typ srflx raddr 192.168.1.72 rport 9 tcptype active
+    *   10:49:22,251 ICE candidate fetched: 81 1 TCP 843060223 85.149.49.186 35221 typ srflx raddr 192.168.1.72 rport 35221 tcptype passive
+    *
+    * @param totalTimeout time to wait for ICE candidate to be added to result
+    * @param shortTimeout time to wait for ICE candidate to be added to result after ICE gathering state became COMPLETE
+    * @return
+    */
   def fetchIceCandidates(
     totalTimeout: FiniteDuration = 10.seconds,
     shortTimeout: FiniteDuration = 500.millis
@@ -80,7 +80,8 @@ final class WebRTCBinManaged(webRTCBin: WebRTCBin) extends AutoCloseable {
 
     logger.info("Fetching ICE candidates")
 
-    val (tryAddItem, result) = makeCollectionFromCallback[IceCandidate]("ICE gathering", totalTimeout, shortTimeout)
+    val (tryAddItem, result) =
+      makeCollectionFromCallback[IceCandidate]("ICE gathering", totalTimeout, shortTimeout)
 
     result.onComplete {
       case Failure(exception) => logger.error("ICE candidates fetching failed", exception)
@@ -89,7 +90,7 @@ final class WebRTCBinManaged(webRTCBin: WebRTCBin) extends AutoCloseable {
 
     val cb: WebRTCBin.ON_ICE_CANDIDATE = (sdpMLineIndex: Int, candidate: String) => {
       val value = candidate.substring(candidate.indexOf(":") + 1)
-      val isAlmostDone = webRTCBin.getICEGatheringState == WebRTCICEGatheringState.COMPLETE
+      val isAlmostDone = underlying.getICEGatheringState == WebRTCICEGatheringState.COMPLETE
 
       if (tryAddItem(IceCandidate(sdpMLineIndex, value), isAlmostDone)) {
         logger.debug(s"ICE candidate fetched: $value")
@@ -98,11 +99,10 @@ final class WebRTCBinManaged(webRTCBin: WebRTCBin) extends AutoCloseable {
       }
     }
 
-    webRTCBin.connect(cb)
+    underlying.connect(cb)
 
     result
   }
-
 
   def createOffer(): Future[SdpMessage] = {
     val p = Promise[SdpMessage]()
@@ -115,7 +115,7 @@ final class WebRTCBinManaged(webRTCBin: WebRTCBin) extends AutoCloseable {
             p.failure(new RuntimeException(err))
         }
       }
-    webRTCBin.createOffer(cb)
+    underlying.createOffer(cb)
     p.future
   }
 
@@ -129,12 +129,12 @@ final class WebRTCBinManaged(webRTCBin: WebRTCBin) extends AutoCloseable {
             val err = s"Can not parse GStreamer SdpMessage: ${errors.mkString(", ")}"
             p.failure(new RuntimeException(err))
         }
-    webRTCBin.createAnswer(cb)
+    underlying.createAnswer(cb)
     p.future
   }
 
   def addIceCandidate(candidate: IceCandidate): Unit = {
-    webRTCBin.addIceCandidate(candidate.sdpMLineIndex, s"candidate:${candidate.candidate}")
+    underlying.addIceCandidate(candidate.sdpMLineIndex, s"candidate:${candidate.candidate}")
   }
 
   private def getIceCandidatesFromSdpMessage(message: SdpMessage): Seq[IceCandidate] = {
@@ -148,60 +148,60 @@ final class WebRTCBinManaged(webRTCBin: WebRTCBin) extends AutoCloseable {
   }
 
   def setLocalAnswer(answer: SdpMessage): Unit = {
-    webRTCBin.setLocalDescription(toGstSdpAnswer(answer))
+    underlying.setLocalDescription(toGstSdpAnswer(answer))
   }
 
   def setRemoteAnswer(answer: SdpMessage): Unit = {
-    webRTCBin.setRemoteDescription(toGstSdpAnswer(answer))
+    underlying.setRemoteDescription(toGstSdpAnswer(answer))
     val candidates = getIceCandidatesFromSdpMessage(answer)
     candidates.foreach(addIceCandidate)
   }
 
   def setLocalOffer(offer: SdpMessage): Unit = {
-    webRTCBin.setLocalDescription(toGstSdpOffer(offer))
+    underlying.setLocalDescription(toGstSdpOffer(offer))
   }
 
   def setRemoteOffer(offer: SdpMessage): Unit = {
-    webRTCBin.setRemoteDescription(toGstSdpOffer(offer))
+    underlying.setRemoteDescription(toGstSdpOffer(offer))
   }
 
   def getRemoteDescription: Either[Seq[String], SdpMessage] = fromGstSdp(
-    webRTCBin.getRemoteDescription
+    underlying.getRemoteDescription
   )
 
   def getLocalDescription: Either[Seq[String], SdpMessage] = fromGstSdp(
-    webRTCBin.getLocalDescription
+    underlying.getLocalDescription
   )
 
-  def setStunServer(server: String): Unit = webRTCBin.setStunServer(server)
+  def setStunServer(server: String): Unit = underlying.setStunServer(server)
 
-  def getStunServer: String = webRTCBin.getStunServer
+  def getStunServer: String = underlying.getStunServer
 
-  def setTurnServer(server: String): Unit = webRTCBin.setTurnServer(server)
+  def setTurnServer(server: String): Unit = underlying.setTurnServer(server)
 
-  def getTurnServer: String = webRTCBin.getTurnServer
+  def getTurnServer: String = underlying.getTurnServer
 
-  def getConnectionState: WebRTCPeerConnectionState = webRTCBin.getConnectionState
+  def getConnectionState: WebRTCPeerConnectionState = underlying.getConnectionState
 
-  def getICEGatheringState: WebRTCICEGatheringState = webRTCBin.getICEGatheringState
+  def getICEGatheringState: WebRTCICEGatheringState = underlying.getICEGatheringState
 
   def createDataChannel(name: String): Option[GstWebRTCDataChannel] = {
-    Option(webRTCBin.emit(classOf[GstWebRTCDataChannel], "create-data-channel", name, null))
+    Option(underlying.emit(classOf[GstWebRTCDataChannel], "create-data-channel", name, null))
   }
 
-  def play(): StateChangeReturn = webRTCBin.play()
+  def play(): StateChangeReturn = underlying.play()
 
-  def pause(): StateChangeReturn = webRTCBin.pause()
+  def pause(): StateChangeReturn = underlying.pause()
 
-  def ready(): StateChangeReturn = webRTCBin.ready()
+  def ready(): StateChangeReturn = underlying.ready()
 
-  def stop(): StateChangeReturn = webRTCBin.stop()
+  def stop(): StateChangeReturn = underlying.stop()
 
-  def isPlaying = webRTCBin.isPlaying
+  def isPlaying: Boolean = underlying.isPlaying
 
-  def dispose(): Unit = webRTCBin.dispose()
+  def dispose(): Unit = underlying.dispose()
 
-  def link(element: Element): Unit = webRTCBin.link(element)
+  def link(element: Element): Unit = underlying.link(element)
 
   def onPadAdded(f: Pad => Unit): Unit = {
     val callback = new Element.PAD_ADDED {
@@ -210,7 +210,7 @@ final class WebRTCBinManaged(webRTCBin: WebRTCBin) extends AutoCloseable {
         pad: Pad
       ): Unit = f(pad)
     }
-    webRTCBin.connect(callback)
+    underlying.connect(callback)
   }
 
   override def close(): Unit = dispose()
@@ -218,6 +218,11 @@ final class WebRTCBinManaged(webRTCBin: WebRTCBin) extends AutoCloseable {
 
 object WebRTCBinManaged {
   final case class IceCandidate(sdpMLineIndex: Int, candidate: String)
+
+  def apply(name: String): WebRTCBinManaged = {
+    val bin = ElementFactory.make("webrtcbin", name).asInstanceOf[WebRTCBin]
+    new WebRTCBinManaged(bin)
+  }
 
   def apply(pipeline: Pipeline, name: String)(
     implicit ev: GSTInit.type
