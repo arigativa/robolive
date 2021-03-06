@@ -26,7 +26,11 @@ object CallPuppetApp extends App {
   val robotName: String = getEnv("ROBOT_NAME", "robomachine")
   val signallingUri: String = getEnv("SIGNALLING_SIP_URI", "sip:rl.arigativa.ru:9031")
   val stunUri: String = getEnv("STUN_URI", "stun://rl.arigativa.ru:8080")
-  val RestreamEnabled: Boolean = getEnv("RESTREAM_ENABLED", "false").toBoolean
+  val RestreamType: PipelineDescription.RestreamType = {
+    val rawType = getEnv("RESTREAM_TYPE", "NONE")
+    PipelineDescription.RestreamType.fromUnsafe(rawType)
+  }
+  val RTMPLink: Option[String] = getEnv("RTMP_LINK")
   val enableUserVideo: Boolean = sys.env.contains("ENABLE_USER_VIDEO")
   val servoControllerType: String = getEnv("SERVO_CONTROLLER", default = "FAKE")
   val servoController = getEnv("SERVO_CONTROLLER_TYPE", "FAKE") match {
@@ -37,7 +41,7 @@ object CallPuppetApp extends App {
   implicit val gstInit: GstManaged.GSTInit.type =
     GstManaged(robotName, new Version(1, 14))
 
-  val pipelineDescription = new PipelineDescription(RestreamEnabled)
+  val pipelineDescription = new PipelineDescription(RestreamType, RTMPLink)
 
   val pipeline = PipelineManaged(
     name = "robolive-robot-pipeline",

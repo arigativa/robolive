@@ -30,7 +30,11 @@ object ManagedRobotApp extends App {
     val usePlaintext: Boolean = getEnv("INVENTORY_USE_PLAINTEXT", "true").toBoolean
   }
 
-  val RestreamEnabled: Boolean = getEnv("RESTREAM_ENABLED", "false").toBoolean
+  val RestreamType: PipelineDescription.RestreamType = {
+    val rawType = getEnv("RESTREAM_TYPE", "NONE")
+    PipelineDescription.RestreamType.fromUnsafe(rawType)
+  }
+  val RTMPLink: Option[String] = getEnv("RTMP_LINK")
 
   val defaultVideoSource: String =
     getEnv("DEFAULT_VIDEO_PIPELINE", "videotestsrc is-live=true pattern=ball ! videoconvert")
@@ -58,7 +62,7 @@ object ManagedRobotApp extends App {
     case "FAKE" => new ClientInputInterpreter.FakeClientInputInterpreter(log)
   }
 
-  val pipelineDescription = new PipelineDescription(RestreamEnabled)
+  val pipelineDescription = new PipelineDescription(RestreamType, RTMPLink)
 
   implicit object PuppetReleasable extends Using.Releasable[RunningPuppet] {
     override def release(resource: RunningPuppet): Unit = {
