@@ -5,7 +5,7 @@ import SipChannel.SipChannelEndpointGrpc
 import Storage.StorageEndpointGrpc
 import io.grpc.stub.StreamObserver
 import org.slf4j.LoggerFactory
-import robolive.gstreamer.VideoSources
+import robolive.gstreamer.{PipelineDescription, VideoSources}
 import robolive.microactor.MicroActor
 import robolive.microactor.MicroActor.TimeredMicroActor
 import robolive.puppet.ClientInputInterpreter
@@ -20,13 +20,14 @@ final class RunningPuppet(
   agentEndpointClient: Agent.AgentEndpointGrpc.AgentEndpointStub,
   storageEndpointClient: StorageEndpointGrpc.StorageEndpointStub,
   sipChannelEndpointClient: SipChannelEndpointGrpc.SipChannelEndpointStub,
+  pipelineDescription: PipelineDescription
 )(implicit ec: ExecutionContext) {
   private val logger = LoggerFactory.getLogger(getClass.getName)
 
   private val registryChannel: StreamObserver[AgentMessage] = {
     lazy val actor: RunningPuppet.RunningPuppetActor =
       new RunningPuppet.RunningPuppetActor(
-        AgentState.Idle,
+        AgentState.Idle(pipelineDescription),
         AgentState.Deps(
           () => actor,
           logger = logger,

@@ -8,8 +8,8 @@ import scala.concurrent.ExecutionContext
 
 // SOFTWARE CONTROLLER
 final class Puppet(
-  val pipeline: Pipeline,
-  val gstInit: GstManaged.GSTInit.type,
+  pipeline: Pipeline,
+  gstInit: GstManaged.GSTInit.type,
   sipRobotName: String,
   signallingUri: String,
   stunUri: String,

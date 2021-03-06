@@ -3,7 +3,7 @@ package robolive.app
 import org.freedesktop.gstreamer.{Bus, GstObject, Version}
 import org.slf4j.LoggerFactory
 import robolive.app.ManagedRobotApp.log
-import robolive.gstreamer.{GstManaged, PipelineManaged}
+import robolive.gstreamer.{GstManaged, PipelineDescription, PipelineManaged}
 import robolive.puppet.{ClientInputInterpreter, Puppet}
 
 import java.util.concurrent.CountDownLatch
@@ -26,6 +26,7 @@ object CallPuppetApp extends App {
   val robotName: String = getEnv("ROBOT_NAME", "robomachine")
   val signallingUri: String = getEnv("SIGNALLING_SIP_URI", "sip:rl.arigativa.ru:9031")
   val stunUri: String = getEnv("STUN_URI", "stun://rl.arigativa.ru:8080")
+  val RestreamEnabled: Boolean = getEnv("RESTREAM_ENABLED", "false").toBoolean
   val enableUserVideo: Boolean = sys.env.contains("ENABLE_USER_VIDEO")
   val servoControllerType: String = getEnv("SERVO_CONTROLLER", default = "FAKE")
   val servoController = getEnv("SERVO_CONTROLLER_TYPE", "FAKE") match {
@@ -36,28 +37,13 @@ object CallPuppetApp extends App {
   implicit val gstInit: GstManaged.GSTInit.type =
     GstManaged(robotName, new Version(1, 14))
 
-  val pipelineDescription =
-    s"""$videoSrc ! queue ! tee name=t
-       |t. ! queue ! videoscale ! video/x-raw,width=640,height=480 ! videoconvert ! autovideosink
-       |t. ! queue name=rtpVideoSrc""".stripMargin
+  val pipelineDescription = new PipelineDescription(RestreamEnabled)
 
   val pipeline = PipelineManaged(
     name = "robolive-robot-pipeline",
-    description = pipelineDescription,
+    description = pipelineDescription.description(videoSrc),
+    logger
   )
-
-  def initBus(bus: Bus): Unit = {
-    val eosHandler: Bus.EOS =
-      (source: GstObject) => logger.info(s"EOS ${source.getName}")
-
-    val errorHandler: Bus.ERROR = (source: GstObject, code: Int, message: String) =>
-      logger.error(s"Error ${source.getName}: $code $message")
-
-    bus.connect(eosHandler)
-    bus.connect(errorHandler)
-  }
-
-  initBus(pipeline.getBus)
 
   val puppet = new Puppet(
     pipeline = pipeline,

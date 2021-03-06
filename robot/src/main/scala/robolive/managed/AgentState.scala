@@ -2,7 +2,7 @@ package robolive.managed
 
 import Agent.RegistryMessage.Message
 import Agent.{AgentMessage, RegistryMessage}
-import robolive.gstreamer.{GstManaged, PipelineManaged, VideoSources}
+import robolive.gstreamer.{GstManaged, PipelineDescription, PipelineManaged, VideoSources}
 import robolive.microactor.MicroActor
 import SipChannel.{AllocateRequest, SipChannelEndpointGrpc}
 import Storage.{ReadRequest, StorageEndpointGrpc}
@@ -71,7 +71,7 @@ object AgentState {
     sendMessage: AgentMessage => Unit,
   )
 
-  final case object Idle extends AgentState {
+  final case class Idle(pipelineDescription: PipelineDescription) extends AgentState {
     private val VideoSrcFn = "videoSrcFn"
 
     override def apply(deps: Deps, event: RegistryMessage.Message)(
@@ -80,36 +80,21 @@ object AgentState {
       event match {
         case Message.Registered(_) =>
           deps.storageEndpointClient.get(ReadRequest(Seq(VideoSrcFn))).map { storageResponse =>
-            val videoSourceFn = storageResponse.values.getOrElse(VideoSrcFn, "unknown")
-
-            val videoSource = deps.videoSources.getSource(videoSourceFn)
+            val videoSource = {
+              val videoSourceFn = storageResponse.values.getOrElse(VideoSrcFn, "unknown")
+              deps.videoSources.getSource(videoSourceFn)
+            }
 
             deps.logger.info(s"using video source: $videoSource")
 
             implicit val gstInit: GstManaged.GSTInit.type =
               GstManaged(deps.agentName, new Version(1, 14))
 
-            val pipelineDescription =
-              s"""$videoSource ! queue ! tee name=t
-                 |t. ! queue ! videoscale ! video/x-raw,width=640,height=480 ! videoconvert ! autovideosink""".stripMargin
-
             val pipeline = PipelineManaged(
               name = "robolive-robot-pipeline",
-              description = pipelineDescription,
+              description = pipelineDescription.description(videoSource),
+              logger = deps.logger
             )
-
-            def initBus(bus: Bus): Unit = {
-              val eosHandler: Bus.EOS =
-                (source: GstObject) => deps.logger.info(s"EOS ${source.getName}")
-
-              val errorHandler: Bus.ERROR = (source: GstObject, code: Int, message: String) =>
-                deps.logger.error(s"Error ${source.getName}: $code $message")
-
-              bus.connect(eosHandler)
-              bus.connect(errorHandler)
-            }
-
-            initBus(pipeline.getBus)
 
             pipeline.ready()
             pipeline.play()
@@ -221,10 +206,12 @@ object AgentState {
                 deps.sendMessage(statusUpdate("Busy"))
 
                 Busy(
+                  pipeline = pipeline,
+                  gstInit = gstInit,
                   puppet = puppet,
                   clientName = sipClientName,
                   agentName = sipAgentName,
-                  duration = sipChannelAllocationResponse.durationSeconds
+                  duration = sipChannelAllocationResponse.durationSeconds,
                 )
 
               case Failure(exception) =>
@@ -248,8 +235,14 @@ object AgentState {
     }
   }
 
-  final case class Busy(puppet: Puppet, clientName: String, agentName: String, duration: Long)
-      extends AgentState {
+  final case class Busy(
+    pipeline: Pipeline,
+    gstInit: GstManaged.GSTInit.type,
+    puppet: Puppet,
+    clientName: String,
+    agentName: String,
+    duration: Long,
+  ) extends AgentState {
     override def apply(deps: Deps, event: RegistryMessage.Message)(
       implicit ec: ExecutionContext
     ): Future[AgentState] = {
@@ -258,7 +251,7 @@ object AgentState {
         case Message.Registered(_) =>
           puppet.stop()
           deps.sendMessage(statusUpdate("Registered"))
-          Future.successful(AgentState.Registered(puppet.pipeline, puppet.gstInit))
+          Future.successful(AgentState.Registered(pipeline, gstInit))
 
         case other @ Message.Connected(clientConnectionRequest) =>
           deps.logger.error(s"Unexpected message $other in Busy state")

@@ -21,44 +21,22 @@ final class WebRTCController(
 
   private var webRTCBin: WebRTCBinManaged = _
   private var disposeRtpPipeline: () => () = _
-  @volatile private var state: WebRTCControllerPlayState = WebRTCControllerPlayState.Wait
-
-  private def initBus(bus: Bus): Unit = {
-    val eosHandler: Bus.EOS =
-      (source: GstObject) => logger.info(s"BUS EOS ${source.getName}")
-
-    val errorHandler: Bus.ERROR = (source: GstObject, code: Int, message: String) =>
-      logger.error(s"BUS Error ${source.getName}: $code $message")
-
-    bus.connect(eosHandler)
-    bus.connect(errorHandler)
-  }
+  private var state: WebRTCControllerPlayState = WebRTCControllerPlayState.Wait
 
   private def start(rtcType: Int): StateChangeReturn = synchronized {
     try {
-      val description = s"""queue name=vpEncoder ! vp8enc deadline=1 ! rtpvp8pay pt=$rtcType !
-        | application/x-rtp,media=video,encoding-name=VP8,payload=$rtcType !
-        | queue name=encodedVideoSrc""".stripMargin
+      val rtpPipeline = PipelineManaged("rtpPipeline", description(rtcType), logger)
 
-      val rtpPipeline = PipelineManaged.apply("rtpPipeline", description)
-      initBus(rtpPipeline.getBus)
       pipeline.add(rtpPipeline)
 
       val tee = pipeline.getElementByName("t")
       val vp8EncoderSync = rtpPipeline.getElementByName("vpEncoder")
+
       val isRTPVideoSrcToVpEncoderLinked = tee.link(vp8EncoderSync)
-      if (isRTPVideoSrcToVpEncoderLinked) {
-        logger.info(s"Success: tee ! vpEncoder")
-      } else {
-        throw new RuntimeException(s"Error: tee ! vpEncoder")
-      }
+      assert(isRTPVideoSrcToVpEncoderLinked, s"Error: tee ! vpEncoder")
 
       val isRTPVideoSrcToVpEncoderSynced = rtpPipeline.syncStateWithParent()
-      if (isRTPVideoSrcToVpEncoderSynced) {
-        logger.info(s"RTPPipeline successfully synced with video stream pipeline")
-      } else {
-        throw new RuntimeException("Error: RTPPipeline failed to sync with video stream pipeline")
-      }
+      assert(isRTPVideoSrcToVpEncoderSynced, "Error: RTPPipeline failed to sync with video stream pipeline")
 
       val encodedVideoSrc = rtpPipeline.getElementByName("encodedVideoSrc")
 
@@ -70,11 +48,7 @@ final class WebRTCController(
       rtpPipeline.add(webRTCBin.underlying)
 
       val isLinked = encodedVideoSrc.link(webRTCBin.underlying)
-      if (isLinked) {
-        logger.info(s"Success: encodedVideoSrc ! sendrecv")
-      } else {
-        throw new RuntimeException("Error: encodedVideoSrc ! sendrecv")
-      }
+      assert(isLinked, "Error: encodedVideoSrc ! sendrecv")
 
       disposeRtpPipeline = () => {
         rtpPipeline.remove(webRTCBin.underlying)
@@ -277,5 +251,14 @@ object WebRTCController {
     }
   }
 
-  def fixSdpForChrome(sdp: String) = s"$sdp\n"
+  def fixSdpForChrome(sdp: String) = {
+    s"$sdp\n"
+  }
+
+  def description(rtcType: Int): String = {
+    s"""queue name=vpEncoder ! vp8enc deadline=1 ! rtpvp8pay pt=$rtcType !
+                         | application/x-rtp,media=video,encoding-name=VP8,payload=$rtcType !
+                         | queue name=encodedVideoSrc""".stripMargin
+
+  }
 }
