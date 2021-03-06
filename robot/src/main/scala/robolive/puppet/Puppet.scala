@@ -10,7 +10,7 @@ import scala.concurrent.ExecutionContext
 final class Puppet(
   pipeline: Pipeline,
   gstInit: GstManaged.GSTInit.type,
-  sipRobotName: String,
+  sipAgentName: String,
   signallingUri: String,
   stunUri: String,
   enableUserVideo: Boolean,
@@ -30,7 +30,7 @@ final class Puppet(
   private val sipClient = {
     val sipConfig = SipConfig(
       registrarUri = signallingUri,
-      name = sipRobotName,
+      name = sipAgentName,
     )
 
     val sipEventsHandler =

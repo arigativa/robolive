@@ -182,7 +182,7 @@ static_resources:
                       filename: "{{ registry_tls_private_key_path }}"
 
 
-    - name: registry_sip_channel_listener
+    - name: registry_session_listener
       address:
         socket_address: { address: 0.0.0.0, port_value: 10480 }
       filter_chains:
@@ -196,12 +196,12 @@ static_resources:
                 route_config:
                   name: local_route
                   virtual_hosts:
-                    - name: registry_sip_channel_service
+                    - name: registry_session_service
                       domains: [ "*" ]
                       routes:
                         - match: { prefix: "/" }
                           route:
-                            cluster: registry_sip_channel_cluster
+                            cluster: registry_session_cluster
                             max_grpc_timeout: 0s
                       cors:
                         allow_origin_string_match:
@@ -287,7 +287,7 @@ static_resources:
                       address: localhost
                       port_value: 3479
 
-    - name: registry_sip_channel_cluster
+    - name: registry_session_cluster
       connect_timeout: 0.25s
       type: logical_dns
       http2_protocol_options: { }

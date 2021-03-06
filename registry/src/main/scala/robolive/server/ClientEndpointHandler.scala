@@ -1,20 +1,37 @@
 package robolive.server
-import java.util.concurrent.ConcurrentHashMap
-import Agent.RegistryMessage
 import Client.{JoinRequest, JoinResponse}
+import org.slf4j.LoggerFactory
+import robolive.server.SessionManager.CommunicationChannelSession
 
-import java.util.UUID
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import java.util.concurrent.ConcurrentHashMap
+import scala.concurrent.{ExecutionContext, Future}
 
-final class ClientEndpointHandler(robotTable: ConcurrentHashMap[String, AgentState])(
+final class ClientEndpointHandler(
+  robotTable: ConcurrentHashMap[String, AgentState],
+  sipChannel: SipChannel
+)(
   implicit ec: ExecutionContext
 ) extends Client.ClientEndpointGrpc.ClientEndpoint {
+  private val logger = LoggerFactory.getLogger(getClass)
 
   override def join(
     request: JoinRequest
   ): Future[JoinResponse] = {
     val robotState = robotTable.get(request.targetId)
-    val result = robotState.send(request.name, request.settings)
+    val result = sipChannel
+      .allocate(request.name, request.targetId)
+      .flatMap(_ => robotState.send(request.name, request.settings))
+      .recoverWith {
+        case error =>
+          logger.error(
+            s"Error while trying to connect from client: `${request.name}` to agent: `${request.targetId}`",
+            error
+          )
+          sipChannel.deallocate(
+            CommunicationChannelSession(request.name, request.targetId)
+          )
+          Future.failed(error)
+      }
 
     result.map { settings =>
       clientSuccessResponse(settings)

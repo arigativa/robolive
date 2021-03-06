@@ -1,0 +1,53 @@
+syntax = "proto2";
+
+message OngoingSession {
+  required string clientId = 1;
+  required string agentId = 2;
+  required int64 durationInSeconds = 3;
+  required int64 timeLeftInSeconds = 4;
+}
+
+message OngoingSessions {
+  repeated OngoingSession ongoingSessions = 1;
+}
+
+message AllowedSession {
+  required string clientId = 1;
+  required string agentId = 2;
+  required int64 durationInSeconds = 3;
+}
+
+message AllowedSessions {
+  repeated AllowedSession allowedSessions = 1;
+}
+
+message AllowSession {
+  required string clientId = 1;
+  required string agentId = 2;
+  required int64 durationInSeconds = 3;
+}
+
+message EvictedSession {
+  required string clientId = 1;
+  required string agentId = 2;
+}
+
+message EvictedSessions {
+  repeated EvictedSession evictedSessions = 1;
+}
+
+message EvictSession {
+  required string clientId = 1;
+  required string agentId = 2;
+}
+
+message Empty {}
+
+service SessionEndpoint {
+  rpc GetAllowedSessions(Empty) returns (AllowedSessions);
+  rpc GetEvictedSessions(Empty) returns (EvictedSessions);
+  rpc GetOngoingSessions(Empty) returns (OngoingSessions);
+  rpc DoAllowSession(AllowSession) returns (Empty);
+  rpc DoEvictSession(EvictSession) returns (Empty);
+}
+
