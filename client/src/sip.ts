@@ -27,7 +27,7 @@ const buildWebSocketUrl = (
 }
 
 const extractHost = (server: string): string => {
-  return server.replace(/(^sips:|:\d+$)/g, '')
+  return server.replace(/(^sips?:|:\d+$)/g, '')
 }
 
 const extractPort = (server: string): string | null => {

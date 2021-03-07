@@ -6,7 +6,9 @@ import { AgentListRequest, AgentView } from './generated/Info_pb'
 import { ClientEndpointClient } from './generated/Client_pb_service'
 import { JoinRequest } from './generated/Client_pb'
 
-const infoClient = new InfoEndpointClient('https://rl.arigativa.ru:10477')
+const REACT_APP_REGISTRY_URL = process.env.REACT_APP_REGISTRY_URL ?? ''
+
+const infoClient = new InfoEndpointClient(REACT_APP_REGISTRY_URL)
 
 export interface Agent {
   id: string
