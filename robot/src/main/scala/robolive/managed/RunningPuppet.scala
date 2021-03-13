@@ -1,7 +1,6 @@
 package robolive.managed
 
 import Agent.{AgentMessage, RegistryMessage}
-import SipChannel.SipChannelEndpointGrpc
 import Storage.StorageEndpointGrpc
 import io.grpc.stub.StreamObserver
 import org.slf4j.LoggerFactory
@@ -19,7 +18,6 @@ final class RunningPuppet(
   servoController: ClientInputInterpreter,
   agentEndpointClient: Agent.AgentEndpointGrpc.AgentEndpointStub,
   storageEndpointClient: StorageEndpointGrpc.StorageEndpointStub,
-  sipChannelEndpointClient: SipChannelEndpointGrpc.SipChannelEndpointStub,
   pipelineDescription: PipelineDescription
 )(implicit ec: ExecutionContext) {
   private val logger = LoggerFactory.getLogger(getClass.getName)
@@ -35,7 +33,6 @@ final class RunningPuppet(
           videoSources = videoSources,
           servoController = servoController,
           storageEndpointClient = storageEndpointClient,
-          sipChannelEndpointClient = sipChannelEndpointClient,
           sendMessage = (status: AgentMessage) => registryChannel.onNext(status),
         )
       )

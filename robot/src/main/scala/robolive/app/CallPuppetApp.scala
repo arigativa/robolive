@@ -51,7 +51,7 @@ object CallPuppetApp extends App {
 
   val puppet = new Puppet(
     pipeline = pipeline,
-    sipRobotName = robotName,
+    sipAgentName = robotName,
     signallingUri = signallingUri,
     stunUri = stunUri,
     enableUserVideo = enableUserVideo,

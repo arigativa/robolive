@@ -1,13 +1,12 @@
 package robolive.managed
 
-import Agent.RegistryMessage.Message
+import Agent.RegistryMessage.{Message, RegisterResponse}
 import Agent.{AgentMessage, RegistryMessage}
+import Storage.{ReadRequest, StorageEndpointGrpc}
+import org.freedesktop.gstreamer.{Pipeline, Version}
+import org.slf4j.Logger
 import robolive.gstreamer.{GstManaged, PipelineDescription, PipelineManaged, VideoSources}
 import robolive.microactor.MicroActor
-import SipChannel.{AllocateRequest, SipChannelEndpointGrpc}
-import Storage.{ReadRequest, StorageEndpointGrpc}
-import org.freedesktop.gstreamer.{Bus, GstObject, Pipeline, Version}
-import org.slf4j.Logger
 import robolive.microactor.MicroActor.TimeredMicroActor
 import robolive.puppet.{ClientInputInterpreter, Puppet}
 
@@ -67,7 +66,6 @@ object AgentState {
     videoSources: VideoSources,
     servoController: ClientInputInterpreter,
     storageEndpointClient: StorageEndpointGrpc.StorageEndpointStub,
-    sipChannelEndpointClient: SipChannelEndpointGrpc.SipChannelEndpointStub,
     sendMessage: AgentMessage => Unit,
   )
 
@@ -78,7 +76,7 @@ object AgentState {
       implicit ec: ExecutionContext
     ): Future[AgentState] = {
       event match {
-        case Message.Registered(_) =>
+        case Message.Registered(RegisterResponse(sipAgentName, _)) =>
           deps.storageEndpointClient.get(ReadRequest(Seq(VideoSrcFn))).map { storageResponse =>
             val videoSource = {
               val videoSourceFn = storageResponse.values.getOrElse(VideoSrcFn, "unknown")
@@ -101,7 +99,7 @@ object AgentState {
 
             deps.sendMessage(statusUpdate("Registered"))
 
-            Registered(pipeline, gstInit)
+            Registered(pipeline, gstInit, sipAgentName)
           }
 
         case other =>
@@ -111,8 +109,11 @@ object AgentState {
     }
   }
 
-  final case class Registered(pipeline: Pipeline, gstInit: GstManaged.GSTInit.type)
-      extends AgentState {
+  final case class Registered(
+    pipeline: Pipeline,
+    gstInit: GstManaged.GSTInit.type,
+    sipAgentName: String
+  ) extends AgentState {
     private val SignallingUri = "signallingUri"
     private val StunUri = "stunUri"
     private val EnableUserVideo = "enableUserVideo"
@@ -141,10 +142,6 @@ object AgentState {
             )
             _ = deps.logger.info(s"got settings from storage: `$storageResponse`")
             _ = deps.logger.info("allocating sip channel")
-            sipChannelAllocationResponse <- deps.sipChannelEndpointClient.allocate(
-              AllocateRequest()
-            )
-            _ = deps.logger.info(s"sip channel allocated: $sipChannelAllocationResponse ")
           } yield {
 
             // fixme: user can override any setting? maybe there should be only some settings overridable by user?
@@ -153,8 +150,7 @@ object AgentState {
                 .get(key)
                 .orElse(storageResponse.values.get(key))
 
-            val sipAgentName = sipChannelAllocationResponse.agentName
-            val sipClientName = sipChannelAllocationResponse.clientName
+            val sipClientName = clientConnectionRequest.name
             val signallingUri = settings("signallingUri").get
             val stunUri = settings("stunUri").get
             val enableUserVideo = settings("enableUserVideo").getOrElse("false").toBoolean
@@ -165,7 +161,8 @@ object AgentState {
                   .enclosingMicroActor()
                   .send(
                     RegistryMessage.Message.Registered(
-                      RegistryMessage.RegisterResponse(_root_.scalapb.UnknownFieldSet.empty)
+                      RegistryMessage
+                        .RegisterResponse(sipAgentName, _root_.scalapb.UnknownFieldSet.empty)
                     )
                   )
               }
@@ -173,7 +170,7 @@ object AgentState {
 
             val puppet = new Puppet(
               pipeline = pipeline,
-              sipRobotName = sipAgentName,
+              sipAgentName = sipAgentName,
               signallingUri = signallingUri,
               stunUri = stunUri,
               enableUserVideo = enableUserVideo,
@@ -209,9 +206,7 @@ object AgentState {
                   pipeline = pipeline,
                   gstInit = gstInit,
                   puppet = puppet,
-                  clientName = sipClientName,
-                  agentName = sipAgentName,
-                  duration = sipChannelAllocationResponse.durationSeconds,
+                  sipAgentName = sipAgentName,
                 )
 
               case Failure(exception) =>
@@ -239,9 +234,7 @@ object AgentState {
     pipeline: Pipeline,
     gstInit: GstManaged.GSTInit.type,
     puppet: Puppet,
-    clientName: String,
-    agentName: String,
-    duration: Long,
+    sipAgentName: String
   ) extends AgentState {
     override def apply(deps: Deps, event: RegistryMessage.Message)(
       implicit ec: ExecutionContext
@@ -251,7 +244,7 @@ object AgentState {
         case Message.Registered(_) =>
           puppet.stop()
           deps.sendMessage(statusUpdate("Registered"))
-          Future.successful(AgentState.Registered(pipeline, gstInit))
+          Future.successful(AgentState.Registered(pipeline, gstInit, sipAgentName))
 
         case other @ Message.Connected(clientConnectionRequest) =>
           deps.logger.error(s"Unexpected message $other in Busy state")

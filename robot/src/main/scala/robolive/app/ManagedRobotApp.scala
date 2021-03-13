@@ -1,7 +1,6 @@
 package robolive.app
 
 import Agent.AgentEndpointGrpc
-import SipChannel.SipChannelEndpointGrpc
 import Storage.StorageEndpointGrpc
 import org.slf4j.LoggerFactory
 import robolive.BuildInfo
@@ -87,35 +86,28 @@ object ManagedRobotApp extends App {
         RegistryConnection.StoragePort,
         RegistryConnection.usePlaintext
       ) { storageChannel =>
-        Clients.grpcChannel(
-          RegistryConnection.Host,
-          RegistryConnection.SipChannelPort,
-          RegistryConnection.usePlaintext
-        ) { sipChannel =>
-          Using.resource(
-            new RunningPuppet(
-              name = robotName,
-              videoSources = videoSources,
-              agentEndpointClient = AgentEndpointGrpc.stub(agentChannel),
-              storageEndpointClient = StorageEndpointGrpc.stub(storageChannel),
-              sipChannelEndpointClient = SipChannelEndpointGrpc.stub(sipChannel),
-              servoController = servoController,
-              pipelineDescription = pipelineDescription,
-            )
-          ) { runningPuppet =>
-            runningPuppet.register()
+        Using.resource(
+          new RunningPuppet(
+            name = robotName,
+            videoSources = videoSources,
+            agentEndpointClient = AgentEndpointGrpc.stub(agentChannel),
+            storageEndpointClient = StorageEndpointGrpc.stub(storageChannel),
+            servoController = servoController,
+            pipelineDescription = pipelineDescription,
+          )
+        ) { runningPuppet =>
+          runningPuppet.register()
 
-            Await.result(
-              runningPuppet.terminated.map(_ => None).recover { case th => Some(th) },
-              Duration.Inf
-            ) match {
-              case Some(error) =>
-                log.warn("RunningPuppet failed", error)
-                log.info("restarting the robot, after a 1 second nap")
-              case None =>
-                log.info("registry finished session, shutting down the robot")
-                gracefulQuit = true
-            }
+          Await.result(
+            runningPuppet.terminated.map(_ => None).recover { case th => Some(th) },
+            Duration.Inf
+          ) match {
+            case Some(error) =>
+              log.warn("RunningPuppet failed", error)
+              log.info("restarting the robot, after a 1 second nap")
+            case None =>
+              log.info("registry finished session, shutting down the robot")
+              gracefulQuit = true
           }
         }
       }

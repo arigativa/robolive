@@ -13,11 +13,12 @@ import scala.concurrent.Promise
 
 final class AgentEndpointHandler(
   agentTable: ConcurrentHashMap[String, AgentState],
+  sessionManager: SessionManager
 ) extends AgentEndpoint {
   private val logger = LoggerFactory.getLogger(getClass.getName)
 
-  private val registerResponse = RegistryMessage(
-    RegistryMessage.Message.Registered(RegistryMessage.RegisterResponse())
+  private def registerResponse(agentId: String) = RegistryMessage(
+    RegistryMessage.Message.Registered(RegistryMessage.RegisterResponse(agentId))
   )
 
   override def register(
@@ -47,7 +48,7 @@ final class AgentEndpointHandler(
               )
               agentTable.put(agentId, agentState)
 
-              responseObserver.onNext(registerResponse)
+              responseObserver.onNext(registerResponse(agentId))
             } else {
               val errorMessage = s"agent $agentId | ${message.name}: already registered"
               logger.error(errorMessage)
@@ -78,12 +79,14 @@ final class AgentEndpointHandler(
       override def onError(error: Throwable): Unit = {
         logger.error(agentLog(s"${error.getMessage}"), error)
         agentTable.remove(agentId)
+        sessionManager.evictAgentSessions(agentId)
         responseObserver.onError(error)
       }
 
       override def onCompleted(): Unit = {
         logger.info(agentLog("disconnected"))
         agentTable.remove(agentId)
+        sessionManager.evictAgentSessions(agentId)
         responseObserver.onCompleted()
       }
     }
