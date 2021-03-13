@@ -71,7 +71,7 @@ jobs:
         run: sudo add-apt-repository universe
 
       - name: Setting up dependencies tooling
-        run: sudo apt-get install python python-pip python-setuptools python-wheel ansible
+        run: sudo apt-get install python3 python3-pip python3-setuptools python3-wheel ansible
 
       - name: Fix Ansible bug (https://github.com/ansible/ansible/issues/27793)
         run: rm -rf ~/.ansible/cp
