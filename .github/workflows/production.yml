@@ -67,6 +67,9 @@ jobs:
       - run: terraform init # terraform needed to create ansible inventory, see: `signalling_and_relay.py`
         working-directory: infra/production
 
+      - name: Fix Ubuntu bug (https://github.com/trailofbits/algo/issues/1533)
+        run: sudo add-apt-repository universe
+
       - name: Setting up dependencies tooling
         run: sudo apt-get install python python-pip python-setuptools python-wheel ansible
 
