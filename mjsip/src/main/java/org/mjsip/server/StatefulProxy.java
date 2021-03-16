@@ -367,7 +367,12 @@ public class StatefulProxy extends Proxy implements TransactionClientListener {
 		}
 						
 		SipStack.init(file);
-		SipProvider sip_provider=new SipProvider(file);
+		SipProvider sip_provider= null;
+		try {
+			sip_provider = new SipProvider(file);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 		ServerProfile server_profile=new ServerProfile(file);
 		
 		StatefulProxy sproxy=new StatefulProxy(sip_provider,server_profile);   

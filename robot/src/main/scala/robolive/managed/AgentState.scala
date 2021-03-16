@@ -179,7 +179,7 @@ object AgentState {
               gstInit = gstInit
             )
 
-            deps.logger.info("trying to start puppet")
+            deps.logger.info(s"trying to start puppet, thread: ${Thread.currentThread().getId}")
 
             scala.util.Try(puppet.start()) match {
               case Success(puppet) =>
@@ -212,6 +212,7 @@ object AgentState {
               case Failure(exception) =>
                 val errorMessage = s"Can not start-up the puppet: ${exception.getMessage}"
                 deps.logger.error(errorMessage, exception)
+                freeRunningPuppet.stop()
                 deps.sendMessage(decline(clientConnectionRequest.requestId, errorMessage))
                 this
             }

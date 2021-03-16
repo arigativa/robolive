@@ -48,7 +48,12 @@ public class DummyUAS implements SipProviderListener {
 	public DummyUAS(int port, int code, String reason) throws NoSuchAlgorithmException {
 		this.code=code;
 		this.reason=reason;
-		SipProvider sip_provider=new SipProvider(null,port);
+		SipProvider sip_provider= null;
+		try {
+			sip_provider = new SipProvider(null, port);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 		sip_provider.addSelectiveListener(MethodId.ANY,this);
 	}
 

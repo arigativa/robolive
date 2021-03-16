@@ -27,7 +27,9 @@ final class Puppet(
       enableUserVideo = enableUserVideo,
     )
 
-  private val sipClient = {
+  // lazy because SipClient starts a server in constructor,
+  // I don't want this side effect until actual `start()` will be called
+  private lazy val sipClient = {
     val sipConfig = SipConfig(
       registrarUri = signallingUri,
       name = sipAgentName,
@@ -39,7 +41,7 @@ final class Puppet(
     new SipClient(sipEventsHandler, registrationClientHandler, sipConfig)
   }
 
-  def start(): Puppet = {
+  def start(): Puppet = synchronized {
     logger.info(s"Starting Robolive inc. robot")
     logger.info(s"Trying to connect to signalling `$signallingUri`")
 
@@ -48,7 +50,7 @@ final class Puppet(
     this
   }
 
-  def stop(): Unit = {
+  def stop(): Unit = synchronized {
     sipClient.stop()
     controller.dispose()
   }

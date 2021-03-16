@@ -16,6 +16,10 @@
         <appender-ref ref="STDOUT"/>
     </logger>
 
+    <logger name="io.grpc.netty" level="INFO">
+        <appender-ref ref="STDOUT"/>
+    </logger>
+
     <logger name="com.sun.jna" level="INFO">
         <appender-ref ref="STDOUT"/>
     </logger>

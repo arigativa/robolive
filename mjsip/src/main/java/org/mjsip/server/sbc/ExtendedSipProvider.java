@@ -58,7 +58,7 @@ public class ExtendedSipProvider extends org.mjsip.sip.provider.SipProvider {
 
 	/** Costructs a new ExtendedSipProvider. 
 	  * Creates the ExtendedSipProvider, initializing the SipProviderListeners, the transport protocols, and other attributes. */ 
-	public ExtendedSipProvider(String via_addr, int port, String[] protocols, long refresh_time, long keepalive_time) {
+	public ExtendedSipProvider(String via_addr, int port, String[] protocols, long refresh_time, long keepalive_time) throws Exception {
 		super(via_addr,port,protocols);
 		init(refresh_time,keepalive_time);
 	}    
@@ -66,7 +66,7 @@ public class ExtendedSipProvider extends org.mjsip.sip.provider.SipProvider {
 
 	/** Costructs a new ExtendedSipProvider. 
 	  * Creates the SipProvider, initializing the SipProviderListeners, the transport protocols, the outbound proxy, and other attributes. */ 
-	public ExtendedSipProvider(String via_addr, int port, String[] protocols, String host_ifaddr, long refresh_time, long keepalive_time) {
+	public ExtendedSipProvider(String via_addr, int port, String[] protocols, String host_ifaddr, long refresh_time, long keepalive_time) throws Exception {
 		super(via_addr,port,protocols,host_ifaddr);
 		init(refresh_time,keepalive_time);
 	}
@@ -74,7 +74,7 @@ public class ExtendedSipProvider extends org.mjsip.sip.provider.SipProvider {
 
 	/** Costructs a new ExtendedSipProvider. 
 	  * The SipProvider attributres are read from file. */ 
-	public ExtendedSipProvider(String file, long refresh_time, long keepalive_time) {
+	public ExtendedSipProvider(String file, long refresh_time, long keepalive_time) throws Exception {
 		super(file);
 		init(refresh_time,keepalive_time);
 	}

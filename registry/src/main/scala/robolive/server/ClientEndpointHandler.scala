@@ -27,9 +27,6 @@ final class ClientEndpointHandler(
             s"Error while trying to connect from client: `${request.name}` to agent: `${request.targetId}`",
             error
           )
-          sipChannel.deallocate(
-            CommunicationChannelSession(request.name, request.targetId)
-          )
           Future.failed(error)
       }
 

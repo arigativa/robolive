@@ -6,9 +6,13 @@ import { AgentListRequest, AgentView } from './generated/Info_pb'
 import { ClientEndpointClient } from './generated/Client_pb_service'
 import { JoinRequest } from './generated/Client_pb'
 
-const REACT_APP_REGISTRY_URL = process.env.REACT_APP_REGISTRY_URL ?? ''
+const REACT_APP_CLIENT_ENDPOINT_URL =
+  process.env.REACT_APP_CLIENT_ENDPOINT_URL ?? ''
 
-const infoClient = new InfoEndpointClient(REACT_APP_REGISTRY_URL)
+const REACT_APP_INFO_ENDPOINT_URL =
+  process.env.REACT_APP_INFO_ENDPOINT_URL ?? ''
+
+const infoClient = new InfoEndpointClient(REACT_APP_INFO_ENDPOINT_URL)
 
 export interface Agent {
   id: string
@@ -47,7 +51,7 @@ export const getAgentList = (): Promise<Either<string, Array<Agent>>> => {
   })
 }
 
-const clientClient = new ClientEndpointClient('https://rl.arigativa.ru:10478')
+const clientClient = new ClientEndpointClient(REACT_APP_CLIENT_ENDPOINT_URL)
 
 const keyValuesToRecord = <T>(
   keyValues: Array<[string, T]>

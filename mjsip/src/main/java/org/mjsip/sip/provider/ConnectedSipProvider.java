@@ -55,7 +55,7 @@ public class ConnectedSipProvider extends SipProvider {
 	  * @param via_addr SIP local via address
 	  * @param host_port SIP local port
 	  * @param outbound_proxy the URI of the outbound proxy */ 
-	public ConnectedSipProvider(String via_addr, int host_port, SipURI outbound_proxy) throws IOException {
+	public ConnectedSipProvider(String via_addr, int host_port, SipURI outbound_proxy) throws Exception {
 		super(via_addr,host_port);
 		setOutboundProxy(outbound_proxy);
 		setForceRport(true);
@@ -68,7 +68,7 @@ public class ConnectedSipProvider extends SipProvider {
 	  * @param host_port SIP local port
 	  * @param transport_protocols array of active transport protocols
 	  * @param outbound_proxy the URI of the outbound proxy */ 
-	public ConnectedSipProvider(String via_addr, int host_port, String[] transport_protocols, SipURI outbound_proxy) throws IOException {
+	public ConnectedSipProvider(String via_addr, int host_port, String[] transport_protocols, SipURI outbound_proxy) throws Exception {
 		super(via_addr,host_port,transport_protocols);
 		setOutboundProxy(outbound_proxy);
 		setForceRport(true);
@@ -81,7 +81,7 @@ public class ConnectedSipProvider extends SipProvider {
 	  * @param transport_protocols array of active transport protocols 
 	  * @param transport_ports array of transport ports used for the corresponding transport protocols
 	  * @param outbound_proxy the URI of the outbound proxy */ 
-	public ConnectedSipProvider(String via_addr, int host_port, String[] transport_protocols, int[] transport_ports, SipURI outbound_proxy) throws IOException {
+	public ConnectedSipProvider(String via_addr, int host_port, String[] transport_protocols, int[] transport_ports, SipURI outbound_proxy) throws Exception {
 		super(via_addr,host_port,transport_protocols,transport_ports);
 		setOutboundProxy(outbound_proxy);
 		setForceRport(true);
@@ -92,7 +92,7 @@ public class ConnectedSipProvider extends SipProvider {
 	/** Creates a new ConnectedSipProvider. 
 	  * @param file file where all configuration parameters are read from
 	  * @param outbound_proxy the URI of the outbound proxy */ 
-	public ConnectedSipProvider(String file, SipURI outbound_proxy) throws IOException {
+	public ConnectedSipProvider(String file, SipURI outbound_proxy) throws Exception {
 		super(file);
 		setOutboundProxy(outbound_proxy);
 		setForceRport(true);
