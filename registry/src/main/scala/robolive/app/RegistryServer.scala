@@ -39,7 +39,7 @@ object RegistryServer extends App {
   val SessionPort = getEnv("REGISTRY_PORT_FOR_SESSION", "3480").toInt
   val signallingSipEndpointUri: String = getEnv("SIGNALLING_SIP_URI", "sip:localhost:9031")
   val signallingHttpUri: String = getEnv("SIGNALLING_HTTP_URI", "http://localhost:9031")
-  val stunUri: String = getEnv("STUN_URI", "stun://rl.arigativa.ru:8080")
+  val stunUri: String = getEnv("STUN_URI", "stun:rl.arigativa.ru:8080")
   val allowAll: Boolean = getEnv("ALLOW_ALL", "false").toBoolean
   val turnUri: String = getEnv("TURN_URI", "turn:rl.arigativa.ru:8080?transport=tcp")
   val turnUsername: String = getEnv("TURN_USERNAME", "turn")

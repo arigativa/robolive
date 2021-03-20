@@ -394,7 +394,12 @@ public class Proxy extends Registrar {
 		}
 					
 		SipStack.init(file);
-		SipProvider sip_provider=new SipProvider(file);
+		SipProvider sip_provider= null;
+		try {
+			sip_provider = new SipProvider(file);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 		ServerProfile server_profile=new ServerProfile(file);
 
 		new Proxy(sip_provider,server_profile);

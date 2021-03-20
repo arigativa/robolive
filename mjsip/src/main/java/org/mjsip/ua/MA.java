@@ -41,7 +41,12 @@ public class MA {
 		if (unregist) user_profile.do_unregister=true;
 		if (unregist_all) user_profile.do_unregister_all=true;
 
-		MessageAgentCli cli=new MessageAgentCli(new SipProvider(file),user_profile);
+		MessageAgentCli cli= null;
+		try {
+			cli = new MessageAgentCli(new SipProvider(file), user_profile);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 		if (user_profile.do_unregister_all) {
 			cli.unregisterall();
 		} 

@@ -26,6 +26,7 @@ package org.mjsip.sip.provider;
 
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 import java.util.Enumeration;
@@ -218,7 +219,7 @@ public class SipProvider implements Configurable, SipTransportListener {
 	/** Creates a new SipProvider.
 	  * @param via_addr SIP local via address
 	  * @param host_port SIP local port */ 
-	public SipProvider(String via_addr, int host_port) {
+	public SipProvider(String via_addr, int host_port) throws Exception {
 		init(via_addr,host_port);
 		initLog();
 		initSipTrasport(transport_protocols,null);
@@ -229,7 +230,7 @@ public class SipProvider implements Configurable, SipTransportListener {
 	  * @param via_addr SIP local via address
 	  * @param host_port SIP local port
 	  * @param transport_protocols array of active transport protocols */
-	public SipProvider(String via_addr, int host_port, String[] transport_protocols) {
+	public SipProvider(String via_addr, int host_port, String[] transport_protocols) throws Exception {
 		init(via_addr,host_port);
 		initLog();
 		initSipTrasport(transport_protocols,null);
@@ -241,7 +242,7 @@ public class SipProvider implements Configurable, SipTransportListener {
 	  * @param host_port SIP local port
 	  * @param transport_protocols array of active transport protocols
 	  * @param binding_addr local IP address to which the SIP provider has to be bound to */ 
-	public SipProvider(String via_addr, int host_port, String[] transport_protocols, String binding_addr) {
+	public SipProvider(String via_addr, int host_port, String[] transport_protocols, String binding_addr) throws Exception {
 		init(via_addr,host_port);
 		initLog();
 		setBindingIpAddress(binding_addr);
@@ -253,7 +254,7 @@ public class SipProvider implements Configurable, SipTransportListener {
 	  * @param via_addr SIP local via address
 	  * @param transport_protocols array of active transport protocols 
 	  * @param transport_ports array of transport port used for the corresponding transport protocols */ 
-	public SipProvider(String via_addr, int host_port, String[] transport_protocols, int[] transport_ports) {
+	public SipProvider(String via_addr, int host_port, String[] transport_protocols, int[] transport_ports) throws Exception {
 		init(via_addr,host_port);
 		initLog();
 		initSipTrasport(transport_protocols,transport_ports);
@@ -265,7 +266,7 @@ public class SipProvider implements Configurable, SipTransportListener {
 	  * @param transport_protocols array of active transport protocols 
 	  * @param transport_ports array of transport port used for the corresponding transport protocols 
 	  * @param binding_addr local IP address to which the SIP provider has to be bound to */ 
-	public SipProvider(String via_addr, int host_port, String[] transport_protocols, int[] transport_ports, String binding_addr) {
+	public SipProvider(String via_addr, int host_port, String[] transport_protocols, int[] transport_ports, String binding_addr) throws Exception {
 		init(via_addr,host_port);
 		initLog();
 		setBindingIpAddress(binding_addr);
@@ -304,7 +305,7 @@ public class SipProvider implements Configurable, SipTransportListener {
 
 	/** Creates a new SipProvider. 
 	  * @param file file where all configuration parameters are read from. */ 
-	public SipProvider(String file) {
+	public SipProvider(String file) throws Exception {
 		if (!SipStack.isInit()) SipStack.init(file);
 		new Configure(this,file);
 		init(via_addr,host_port);
@@ -363,7 +364,7 @@ public class SipProvider implements Configurable, SipTransportListener {
 
 
 	/** Inits and starts the transport services. */ 
-	private void initSipTrasport(String[] transport_protocols, int[] transport_ports) {
+	private void initSipTrasport(String[] transport_protocols, int[] transport_ports) throws IllegalAccessException, NoSuchAlgorithmException, IOException, InstantiationException, InvocationTargetException, ClassNotFoundException {
 		
 		if (transport_protocols==null) transport_protocols=SipStack.default_transport_protocols;
 		this.transport_protocols=transport_protocols;
@@ -416,7 +417,7 @@ public class SipProvider implements Configurable, SipTransportListener {
 				}
 			}
 			catch (Exception e) {
-				log(LogLevel.INFO,e);
+				throw e;
 			}
 		}
 		//log(LogLevel.DEBUG,"transport is up");

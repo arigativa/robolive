@@ -5,6 +5,14 @@
         </encoder>
     </appender>
 
+    <logger name="io.netty" level="INFO">
+        <appender-ref ref="STDOUT"/>
+    </logger>
+
+    <logger name="io.grpc.netty" level="INFO">
+        <appender-ref ref="STDOUT"/>
+    </logger>
+
     <root level="INFO">
         <appender-ref ref="STDOUT" />
     </root>
