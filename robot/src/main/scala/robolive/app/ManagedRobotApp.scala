@@ -5,7 +5,7 @@ import Storage.StorageEndpointGrpc
 import org.slf4j.LoggerFactory
 import robolive.BuildInfo
 import robolive.gstreamer.{PipelineDescription, SimpleFunctionCalculator, VideoSources}
-import robolive.managed.RunningPuppet
+import robolive.managed.{ConfigurationManager, RunningPuppet}
 import robolive.puppet.ClientInputInterpreter
 import robolive.registry.Clients
 
@@ -33,7 +33,11 @@ object ManagedRobotApp extends App {
     val rawType = getEnv("RESTREAM_TYPE", "NONE")
     PipelineDescription.RestreamType.fromUnsafe(rawType)
   }
+
   val RTMPLink: Option[String] = getEnv("RTMP_LINK")
+
+  val ConfigurationPath =
+    getEnv("CONFIG_PATH").getOrElse(throw new RuntimeException("Please, specify CONFIG_PATH"))
 
   val defaultVideoSource: String =
     getEnv("DEFAULT_VIDEO_PIPELINE", "videotestsrc is-live=true pattern=ball ! videoconvert")
@@ -42,6 +46,8 @@ object ManagedRobotApp extends App {
     name = "ROBOT_NAME",
     default = throw new RuntimeException("`ROBOT_NAME` environment variable is undefined")
   )
+
+  val configurationManager = new ConfigurationManager(ConfigurationPath)
 
   val videoSources = new VideoSources(
     new SimpleFunctionCalculator(
@@ -94,6 +100,7 @@ object ManagedRobotApp extends App {
             storageEndpointClient = StorageEndpointGrpc.stub(storageChannel),
             servoController = servoController,
             pipelineDescription = pipelineDescription,
+            configurationManager = configurationManager,
           )
         ) { runningPuppet =>
           runningPuppet.register()

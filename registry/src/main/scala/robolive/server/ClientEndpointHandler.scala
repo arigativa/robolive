@@ -7,7 +7,7 @@ import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.{ExecutionContext, Future}
 
 final class ClientEndpointHandler(
-  robotTable: ConcurrentHashMap[String, AgentState],
+  agentSystem: Server.AgentSystem,
   sipChannel: SipChannel
 )(
   implicit ec: ExecutionContext
@@ -17,10 +17,17 @@ final class ClientEndpointHandler(
   override def join(
     request: JoinRequest
   ): Future[JoinResponse] = {
-    val robotState = robotTable.get(request.targetId)
+    val robotState = agentSystem.getConnection(request.targetId)
     val result = sipChannel
       .allocate(request.name, request.targetId)
-      .flatMap(_ => robotState.send(request.name, request.settings))
+      .flatMap { _ =>
+        robotState match {
+          case Some(state) =>
+            state.join(request.name, request.settings)
+          case None =>
+            Future.failed(new RuntimeException(s"Can not find agent by ${request.targetId}"))
+        }
+      }
       .recoverWith {
         case error =>
           logger.error(

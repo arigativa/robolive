@@ -10,6 +10,7 @@ import robolive.microactor.MicroActor.TimeredMicroActor
 import robolive.puppet.ClientInputInterpreter
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.util.{Failure, Success}
 import scala.util.control.NonFatal
 
 final class RunningPuppet(
@@ -18,7 +19,8 @@ final class RunningPuppet(
   servoController: ClientInputInterpreter,
   agentEndpointClient: Agent.AgentEndpointGrpc.AgentEndpointStub,
   storageEndpointClient: StorageEndpointGrpc.StorageEndpointStub,
-  pipelineDescription: PipelineDescription
+  pipelineDescription: PipelineDescription,
+  configurationManager: ConfigurationManager,
 )(implicit ec: ExecutionContext) {
   private val logger = LoggerFactory.getLogger(getClass.getName)
 
@@ -34,6 +36,7 @@ final class RunningPuppet(
           servoController = servoController,
           storageEndpointClient = storageEndpointClient,
           sendMessage = (status: AgentMessage) => registryChannel.onNext(status),
+          configurationManager = configurationManager,
         )
       )
 
@@ -66,11 +69,22 @@ final class RunningPuppet(
   }
 
   def register(): Unit = {
-    val message = AgentMessage(
-      AgentMessage.Message.Register(
-        AgentMessage.RegisterRequest(name)
-      )
-    )
+    val message = configurationManager.read() match {
+      case Failure(exception) =>
+        logger.error("Error reading configuration", exception)
+        AgentMessage(
+          AgentMessage.Message.Register(
+            AgentMessage.RegisterRequest(name, None, None)
+          )
+        )
+
+      case Success(value) =>
+        AgentMessage(
+          AgentMessage.Message.Register(
+            AgentMessage.RegisterRequest(name, Some(value.login), Some(value.password))
+          )
+        )
+    }
 
     registryChannel.onNext(message)
   }

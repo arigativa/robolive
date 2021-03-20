@@ -3,6 +3,8 @@ syntax = "proto2";
 message AgentMessage {
   message RegisterRequest {
     required string name = 1;
+    optional string login = 2;
+    optional string password = 3;
   }
 
   message StatusUpdate {
@@ -33,7 +35,9 @@ message AgentMessage {
 
 message RegistryMessage {
   message RegisterResponse {
-    required string id = 1;
+    required string connectionId = 1;
+    required string login = 2;
+    required string password = 3;
   }
 
   message Connected {
