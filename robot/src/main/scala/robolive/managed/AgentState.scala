@@ -178,20 +178,22 @@ object AgentState {
               }
             }
 
-            val puppet = new Puppet(
-              pipeline = pipeline,
-              sipAgentName = connectionId,
-              signallingUri = signallingUri,
-              stunUri = stunUri,
-              enableUserVideo = enableUserVideo,
-              clientInputInterpreter = deps.servoController,
-              eventListener = freeRunningPuppet,
-              gstInit = gstInit
-            )
+            deps.logger.info(s"Starting Robolive inc. robot")
+            deps.logger.info(s"Trying to connect to signalling `$signallingUri`")
+            deps.logger.info(s"Trying to start puppet, thread: ${Thread.currentThread().getId}")
 
-            deps.logger.info(s"trying to start puppet, thread: ${Thread.currentThread().getId}")
-
-            scala.util.Try(puppet.start()) match {
+            scala.util.Try(
+              new Puppet(
+                pipeline = pipeline,
+                sipAgentName = connectionId,
+                signallingUri = signallingUri,
+                stunUri = stunUri,
+                enableUserVideo = enableUserVideo,
+                clientInputInterpreter = deps.servoController,
+                eventListener = freeRunningPuppet,
+                gstInit = gstInit
+              )
+            ) match {
               case Success(puppet) =>
                 deps.logger.info("accepting incoming connection")
 
