@@ -2,6 +2,8 @@ syntax = "proto2";
 
 message ReadRequest {
   repeated string keys = 1;
+  required string login = 2;
+  required string password = 3;
 }
 
 message ReadResponse {

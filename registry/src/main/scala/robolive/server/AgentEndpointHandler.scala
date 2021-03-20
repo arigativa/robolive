@@ -12,21 +12,27 @@ import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.Promise
 
 final class AgentEndpointHandler(
-  agentTable: ConcurrentHashMap[String, AgentState],
+  agentSystem: Server.AgentSystem,
   sessionManager: SessionManager
 ) extends AgentEndpoint {
   private val logger = LoggerFactory.getLogger(getClass.getName)
 
-  private def registerResponse(agentId: String) = RegistryMessage(
-    RegistryMessage.Message.Registered(RegistryMessage.RegisterResponse(agentId))
+  private def registerResponse(
+    connectionId: String,
+    login: String,
+    password: String,
+  ) = RegistryMessage(
+    RegistryMessage.Message.Registered(
+      RegistryMessage.RegisterResponse(connectionId, login, password)
+    )
   )
 
   override def register(
     responseObserver: StreamObserver[RegistryMessage]
   ): StreamObserver[AgentMessage] = {
-    val agentId = UUID.randomUUID().toString
+    val connectionId = UUID.randomUUID().toString
 
-    def agentLog(message: String) = s"agent $agentId: $message"
+    def agentLog(message: String) = s"agent $connectionId: $message"
 
     logger.info(agentLog("joined"))
 
@@ -39,21 +45,15 @@ final class AgentEndpointHandler(
           case AgentMessage.Message.Register(message) =>
             logger.info(s"register `${message.name}")
 
-            if (agentTable.get(agentId) == null) {
-              val agentState = new AgentState(
-                name = message.name,
-                statusRef = new AtomicReference[String]("Status unknown"),
-                sendToAgent = responseObserver.onNext,
-                requests = new ConcurrentHashMap[String, Promise[Map[String, String]]]()
-              )
-              agentTable.put(agentId, agentState)
+            val (login, password) = agentSystem.newConnection(
+              connectionId = connectionId,
+              name = message.name,
+              sendToAgent = responseObserver.onNext,
+              loginOpt = message.login,
+              passwordOpt = message.password,
+            )
 
-              responseObserver.onNext(registerResponse(agentId))
-            } else {
-              val errorMessage = s"agent $agentId | ${message.name}: already registered"
-              logger.error(errorMessage)
-              responseObserver.onError(new RuntimeException(errorMessage))
-            }
+            responseObserver.onNext(registerResponse(connectionId, login, password))
 
           case AgentMessage.Message.Join(message) =>
             logger.info(agentLog(s"join decision `$message`"))
@@ -62,31 +62,30 @@ final class AgentEndpointHandler(
 
             message.message match {
               case JoinMessage.Accepted(Accepted(settings, requestId, _)) =>
-                agentTable.get(agentId).success(requestId, settings)
+                agentSystem.getConnection(connectionId).foreach(_.success(requestId, settings))
+
               case JoinMessage.Declined(Declined(reason, requestId, _)) =>
-                agentTable.get(agentId).fail(requestId, reason)
+                agentSystem.getConnection(connectionId).foreach(_.fail(requestId, reason))
+
               case JoinMessage.Empty =>
             }
 
           case Message.StatusUpdate(message) =>
-            val agentState = agentTable.get(agentId)
-            if (agentState != null) {
-              agentState.updateStatus(message.status)
-            }
+            agentSystem.getConnection(connectionId).foreach(_.updateStatus(message.status))
         }
       }
 
       override def onError(error: Throwable): Unit = {
         logger.error(agentLog(s"${error.getMessage}"), error)
-        agentTable.remove(agentId)
-        sessionManager.evictAgentSessions(agentId)
+        agentSystem.removeConnection(connectionId)
+        sessionManager.evictAgentSessions(connectionId)
         responseObserver.onError(error)
       }
 
       override def onCompleted(): Unit = {
         logger.info(agentLog("disconnected"))
-        agentTable.remove(agentId)
-        sessionManager.evictAgentSessions(agentId)
+        agentSystem.removeConnection(connectionId)
+        sessionManager.evictAgentSessions(connectionId)
         responseObserver.onCompleted()
       }
     }

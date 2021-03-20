@@ -67,6 +67,7 @@ object AgentState {
     servoController: ClientInputInterpreter,
     storageEndpointClient: StorageEndpointGrpc.StorageEndpointStub,
     sendMessage: AgentMessage => Unit,
+    configurationManager: ConfigurationManager,
   )
 
   final case class Idle(pipelineDescription: PipelineDescription) extends AgentState {
@@ -76,30 +77,32 @@ object AgentState {
       implicit ec: ExecutionContext
     ): Future[AgentState] = {
       event match {
-        case Message.Registered(RegisterResponse(sipAgentName, _)) =>
-          deps.storageEndpointClient.get(ReadRequest(Seq(VideoSrcFn))).map { storageResponse =>
-            val videoSource = {
-              val videoSourceFn = storageResponse.values.getOrElse(VideoSrcFn, "unknown")
-              deps.videoSources.getSource(videoSourceFn)
-            }
+        case Message.Registered(RegisterResponse(connectionId, login, password, _)) =>
+          deps.configurationManager.write(ConfigurationManager.Config(login, password))
+          deps.storageEndpointClient.get(ReadRequest(Seq(VideoSrcFn), login, password)).map {
+            storageResponse =>
+              val videoSource = {
+                val videoSourceFn = storageResponse.values.getOrElse(VideoSrcFn, "unknown")
+                deps.videoSources.getSource(videoSourceFn)
+              }
 
-            deps.logger.info(s"using video source: $videoSource")
+              deps.logger.info(s"using video source: $videoSource")
 
-            implicit val gstInit: GstManaged.GSTInit.type =
-              GstManaged(deps.agentName, new Version(1, 14))
+              implicit val gstInit: GstManaged.GSTInit.type =
+                GstManaged(deps.agentName, new Version(1, 14))
 
-            val pipeline = PipelineManaged(
-              name = "robolive-robot-pipeline",
-              description = pipelineDescription.description(videoSource),
-              logger = deps.logger
-            )
+              val pipeline = PipelineManaged(
+                name = "robolive-robot-pipeline",
+                description = pipelineDescription.description(videoSource),
+                logger = deps.logger
+              )
 
-            pipeline.ready()
-            pipeline.play()
+              pipeline.ready()
+              pipeline.play()
 
-            deps.sendMessage(statusUpdate("Registered"))
+              deps.sendMessage(statusUpdate("Registered"))
 
-            Registered(pipeline, gstInit, sipAgentName)
+              Registered(pipeline, gstInit, connectionId, login, password)
           }
 
         case other =>
@@ -112,7 +115,9 @@ object AgentState {
   final case class Registered(
     pipeline: Pipeline,
     gstInit: GstManaged.GSTInit.type,
-    sipAgentName: String
+    connectionId: String,
+    login: String,
+    password: String,
   ) extends AgentState {
     private val SignallingUri = "signallingUri"
     private val StunUri = "stunUri"
@@ -138,7 +143,7 @@ object AgentState {
           deps.logger.info("request settings from storage")
           (for {
             storageResponse <- deps.storageEndpointClient.get(
-              ReadRequest(puppetConfigurationKeys)
+              ReadRequest(puppetConfigurationKeys, login, password)
             )
             _ = deps.logger.info(s"got settings from storage: `$storageResponse`")
             _ = deps.logger.info("allocating sip channel")
@@ -162,7 +167,12 @@ object AgentState {
                   .send(
                     RegistryMessage.Message.Registered(
                       RegistryMessage
-                        .RegisterResponse(sipAgentName, _root_.scalapb.UnknownFieldSet.empty)
+                        .RegisterResponse(
+                          connectionId,
+                          login,
+                          password,
+                          _root_.scalapb.UnknownFieldSet.empty
+                        )
                     )
                   )
               }
@@ -170,7 +180,7 @@ object AgentState {
 
             val puppet = new Puppet(
               pipeline = pipeline,
-              sipAgentName = sipAgentName,
+              sipAgentName = connectionId,
               signallingUri = signallingUri,
               stunUri = stunUri,
               enableUserVideo = enableUserVideo,
@@ -191,7 +201,7 @@ object AgentState {
                   accept(
                     clientConnectionRequest.requestId,
                     Map(
-                      "sipAgentName" -> sipAgentName,
+                      "sipAgentName" -> connectionId,
                       "sipClientName" -> sipClientName,
                       "signallingUri" -> signallingUri,
                       "stunUri" -> stunUri,
@@ -206,7 +216,9 @@ object AgentState {
                   pipeline = pipeline,
                   gstInit = gstInit,
                   puppet = puppet,
-                  sipAgentName = sipAgentName,
+                  connectionId = connectionId,
+                  login = login,
+                  password = password
                 )
 
               case Failure(exception) =>
@@ -235,7 +247,9 @@ object AgentState {
     pipeline: Pipeline,
     gstInit: GstManaged.GSTInit.type,
     puppet: Puppet,
-    sipAgentName: String
+    connectionId: String,
+    login: String,
+    password: String,
   ) extends AgentState {
     override def apply(deps: Deps, event: RegistryMessage.Message)(
       implicit ec: ExecutionContext
@@ -245,7 +259,7 @@ object AgentState {
         case Message.Registered(_) =>
           puppet.stop()
           deps.sendMessage(statusUpdate("Registered"))
-          Future.successful(AgentState.Registered(pipeline, gstInit, sipAgentName))
+          Future.successful(AgentState.Registered(pipeline, gstInit, connectionId, login, password))
 
         case other @ Message.Connected(clientConnectionRequest) =>
           deps.logger.error(s"Unexpected message $other in Busy state")

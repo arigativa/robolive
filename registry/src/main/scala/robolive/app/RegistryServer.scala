@@ -14,6 +14,7 @@ import robolive.server.{
   AgentEndpointHandler,
   ClientEndpointHandler,
   InfoEndpointHandler,
+  Server,
   SessionEndpointHandler,
   SessionState,
   SipChannel,
@@ -37,19 +38,28 @@ object RegistryServer extends App {
   val ClientPort = getEnv("REGISTRY_PORT_FOR_CLIENT", "3478").toInt
   val StoragePort = getEnv("REGISTRY_PORT_FOR_STORAGE", "3479").toInt
   val SessionPort = getEnv("REGISTRY_PORT_FOR_SESSION", "3480").toInt
-  val signallingSipEndpointUri: String = getEnv("SIGNALLING_SIP_URI", "sip:localhost:9031")
-  val signallingHttpUri: String = getEnv("SIGNALLING_HTTP_URI", "http://localhost:9031")
-  val stunUri: String = getEnv("STUN_URI", "stun:rl.arigativa.ru:8080")
-  val allowAll: Boolean = getEnv("ALLOW_ALL", "false").toBoolean
-  val turnUri: String = getEnv("TURN_URI", "turn:rl.arigativa.ru:8080?transport=tcp")
-  val turnUsername: String = getEnv("TURN_USERNAME", "turn")
-  val turnPassword: String = getEnv("TURN_PASSWORD", "turn")
+  val SignallingSipEndpointUri: String = getEnv("SIGNALLING_SIP_URI", "sip:localhost:9031")
+  val SignallingHttpUri: String = getEnv("SIGNALLING_HTTP_URI", "http://localhost:9031")
+  val StunUri: String = getEnv("STUN_URI", "stun:rl.arigativa.ru:8080")
+  val AllowAll: Boolean = getEnv("ALLOW_ALL", "false").toBoolean
+  val TurnUri: String = getEnv("TURN_URI", "turn:rl.arigativa.ru:8080?transport=tcp")
+  val TurnUsername: String = getEnv("TURN_USERNAME", "turn")
+  val TurnPassword: String = getEnv("TURN_PASSWORD", "turn")
 
-  val robotsState = new ConcurrentHashMap[String, server.AgentState]()
+  val ConfigMap = Map(
+    "signallingUri" -> SignallingSipEndpointUri,
+    "stunUri" -> StunUri,
+    "turnUri" -> TurnUri,
+    "turnUsername" -> TurnUsername,
+    "turnPassword" -> TurnPassword,
+  )
+
   val sipSessionsState = new SessionState
+  val agentSystem: Server.AgentSystem = Server.AgentSystem.create(ConfigMap)
 
   val agentEndpoint = {
-    val agentEndpointHandler = new AgentEndpointHandler(robotsState, sipSessionsState)
+    val agentEndpointHandler =
+      new AgentEndpointHandler(agentSystem, sipSessionsState)
 
     runServer(
       ssd = AgentEndpoint.bindService(agentEndpointHandler, implicitly[ExecutionContext]),
@@ -58,7 +68,7 @@ object RegistryServer extends App {
   }
 
   val infoEndpoint = {
-    val infoEndpointHandler = new InfoEndpointHandler(robotsState)
+    val infoEndpointHandler = new InfoEndpointHandler(agentSystem)
     runServer(
       ssd = InfoEndpoint.bindService(infoEndpointHandler, implicitly[ExecutionContext]),
       port = InfoPort
@@ -69,9 +79,9 @@ object RegistryServer extends App {
     val backend: SttpBackend[Future, Nothing, WebSocketHandler] = AsyncHttpClientFutureBackend()
     new SipChannel(
       backend = backend,
-      sipUri = signallingHttpUri,
+      sipUri = SignallingHttpUri,
       sessionStorage = sipSessionsState,
-      allowAll = allowAll
+      allowAll = AllowAll
     )
   }
 
@@ -84,7 +94,7 @@ object RegistryServer extends App {
   }
 
   val clientEndpoint = {
-    val clientEndpointHandler = new ClientEndpointHandler(robotsState, sipChannel)
+    val clientEndpointHandler = new ClientEndpointHandler(agentSystem, sipChannel)
     runServer(
       ssd = ClientEndpoint.bindService(clientEndpointHandler, implicitly[ExecutionContext]),
       port = ClientPort
@@ -92,15 +102,7 @@ object RegistryServer extends App {
   }
 
   val storageEndpoint = {
-    val configMap = Map(
-      "signallingUri" -> signallingSipEndpointUri,
-      "stunUri" -> stunUri,
-      "turnUri" -> turnUri,
-      "turnUsername" -> turnUsername,
-      "turnPassword" -> turnPassword,
-    )
-
-    val storageEndpointHandler = new StorageEndpointHandler(configMap)
+    val storageEndpointHandler = new StorageEndpointHandler(ConfigMap)
     runServer(
       ssd = StorageEndpoint.bindService(storageEndpointHandler, implicitly[ExecutionContext]),
       port = StoragePort

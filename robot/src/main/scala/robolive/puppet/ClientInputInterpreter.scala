@@ -1,4 +1,5 @@
 package robolive.puppet
+
 import io.circe.Decoder
 import io.circe.generic.extras.Configuration
 import org.slf4j.Logger
