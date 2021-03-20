@@ -68,7 +68,5 @@ object CallPuppetApp extends App {
     kill.countDown()
   }
 
-  puppet.start()
-
   logger.info(s"Stopped $robotName")
 }

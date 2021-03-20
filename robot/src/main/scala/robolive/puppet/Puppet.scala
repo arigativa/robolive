@@ -18,7 +18,6 @@ final class Puppet(
   eventListener: Puppet.PuppetEventListener,
 )(implicit ec: ExecutionContext) {
   private implicit val gst = gstInit
-  private val logger = LoggerFactory.getLogger(getClass.getName)
 
   private val controller =
     new WebRTCController(
@@ -27,9 +26,7 @@ final class Puppet(
       enableUserVideo = enableUserVideo,
     )
 
-  // lazy because SipClient starts a server in constructor,
-  // I don't want this side effect until actual `start()` will be called
-  private lazy val sipClient = {
+  private val sipClient = {
     val sipConfig = SipConfig(
       registrarUri = signallingUri,
       name = sipAgentName,
@@ -41,14 +38,7 @@ final class Puppet(
     new SipClient(sipEventsHandler, registrationClientHandler, sipConfig)
   }
 
-  def start(): Puppet = synchronized {
-    logger.info(s"Starting Robolive inc. robot")
-    logger.info(s"Trying to connect to signalling `$signallingUri`")
-
-    sipClient.start(60)
-
-    this
-  }
+  sipClient.start(60)
 
   def stop(): Unit = synchronized {
     sipClient.stop()
