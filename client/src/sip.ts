@@ -6,47 +6,71 @@ import { CaseOf, CaseCreator } from 'utils'
 
 debug.enable('JsSIP:*')
 
-interface NewRoom<AppMsg> {
-  registerSession(
-    router: Router<AppMsg, SipSelfMsg<AppMsg>>,
-    userAgent: UA,
-    options: ConnectionOptions
-  ): NewRoom<AppMsg>
+class Room<AppMsg> {
+  public static init<T>({
+    pendingInfoToSend = [],
+    streamRequests = [],
+    eventListeners = []
+  }: {
+    pendingInfoToSend?: Array<string>
+    streamRequests?: Array<(steram: MediaStream) => T>
+    eventListeners?: Array<(event: ListenEvent) => T>
+  } = {}): Room<T> {
+    return new Room(
+      null,
+      null,
+      [],
+      pendingInfoToSend,
+      streamRequests,
+      eventListeners
+    )
+  }
 
-  registerStream(router: Router<AppMsg, SipSelfMsg<AppMsg>>): NewRoom<AppMsg>
-
-  dispatchStream(tagger: (stream: MediaStream) => AppMsg): NewRoom<AppMsg>
-
-  dispatchInfo(info: string): NewRoom<AppMsg>
-
-  pushListener(listener: (event: ListenEvent) => AppMsg): NewRoom<AppMsg>
-
-  clearListeners(): NewRoom<AppMsg>
-
-  dispatchEvent(
-    router: Router<AppMsg, SipSelfMsg<AppMsg>>,
-    event: ListenEvent
-  ): void
-
-  close(): void
-}
-
-class EmptyRoom<AppMsg> implements NewRoom<AppMsg> {
-  public constructor(
-    private readonly infoToSend: Array<string>,
-    private readonly streamRequests: Array<(steram: MediaStream) => AppMsg>,
+  private constructor(
+    private readonly userAgent: null | UA,
+    private readonly session: null | RTCSession,
+    private readonly cleanups: Array<VoidFunction>,
+    private readonly pendingSendInfo: Array<string>,
+    private readonly pendingStreamRequests: Array<
+      (steram: MediaStream) => AppMsg
+    >,
     private readonly eventListeners: Array<(event: ListenEvent) => AppMsg>
   ) {}
 
-  public registerStream(): NewRoom<AppMsg> {
-    return this
+  public clone({
+    userAgent = this.userAgent,
+    session = this.session,
+    pendingInfoToSend = this.pendingSendInfo,
+    cleanups = this.cleanups,
+    pendingStreamRequests = this.pendingStreamRequests,
+    eventListeners = this.eventListeners
+  }: {
+    userAgent?: null | UA
+    session?: null | RTCSession
+    cleanups?: Array<VoidFunction>
+    pendingInfoToSend?: Array<string>
+    pendingStreamRequests?: Array<(steram: MediaStream) => AppMsg>
+    eventListeners?: Array<(event: ListenEvent) => AppMsg>
+  }): Room<AppMsg> {
+    return new Room(
+      userAgent,
+      session,
+      cleanups,
+      pendingInfoToSend,
+      pendingStreamRequests,
+      eventListeners
+    )
   }
 
   public registerSession(
     router: Router<AppMsg, SipSelfMsg<AppMsg>>,
-    userAgent: UA,
-    options: ConnectionOptions
-  ): NewRoom<AppMsg> {
+    options: ConnectionOptions,
+    userAgent: UA
+  ): Room<AppMsg> {
+    if (this.session != null) {
+      return this
+    }
+
     const key = options.key
     const [fakeVideoStream, stopFakeStream] = makeFakeVideoStream()
 
@@ -86,83 +110,79 @@ class EmptyRoom<AppMsg> implements NewRoom<AppMsg> {
       .on('ended', onEnded)
       .on('confirmed', onConfirmed)
 
-    return new RegistringRoom(
+    return this.clone({
       userAgent,
       session,
-      [stopFakeStream, stopSessionListeners],
-      this.eventListeners,
-      this.infoToSend,
-      this.streamRequests
-    )
-  }
-
-  public dispatchStream(
-    tagger: (stream: MediaStream) => AppMsg
-  ): NewRoom<AppMsg> {
-    return new EmptyRoom(
-      this.infoToSend,
-      [...this.streamRequests, tagger],
-      this.eventListeners
-    )
-  }
-
-  public dispatchInfo(info: string): NewRoom<AppMsg> {
-    return new EmptyRoom(
-      [...this.infoToSend, info],
-      this.streamRequests,
-      this.eventListeners
-    )
-  }
-
-  public pushListener(
-    listener: (event: ListenEvent) => AppMsg
-  ): NewRoom<AppMsg> {
-    return new EmptyRoom(this.infoToSend, this.streamRequests, [
-      ...this.eventListeners,
-      listener
-    ])
-  }
-
-  public clearListeners(): NewRoom<AppMsg> {
-    return new EmptyRoom(this.infoToSend, this.streamRequests, [])
-  }
-
-  public dispatchEvent(
-    router: Router<AppMsg, SipSelfMsg<AppMsg>>,
-    event: ListenEvent
-  ): void {
-    for (const listener of this.eventListeners) {
-      router.sendToApp(listener(event))
-    }
-  }
-
-  // eslint-disable-next-line class-methods-use-this
-  public close(): void {
-    // do nothing
-  }
-}
-
-class OpenedRoom<AppMsg> implements NewRoom<AppMsg> {
-  public constructor(
-    protected readonly userAgent: UA,
-    protected readonly session: RTCSession,
-    protected readonly cleanups: Array<VoidFunction>,
-    protected readonly eventListeners: Array<(event: ListenEvent) => AppMsg>
-  ) {}
-
-  public registerSession(): NewRoom<AppMsg> {
-    return this
+      cleanups: [stopFakeStream, stopSessionListeners]
+    })
   }
 
   public registerStream(
     router: Router<AppMsg, SipSelfMsg<AppMsg>>
-  ): NewRoom<AppMsg> {
+  ): Room<AppMsg> {
+    if (this.session == null) {
+      return this
+    }
+
+    const streams = this.session.connection.getRemoteStreams()
+
+    if (streams.length > 0) {
+      for (const letter of this.pendingStreamRequests) {
+        router.sendToApp(letter(streams[0]))
+      }
+    }
+
+    for (const info of this.pendingSendInfo) {
+      this.session.sendInfo('text/plain', info)
+    }
+
+    return this.clone({
+      pendingInfoToSend: [],
+      pendingStreamRequests: []
+    })
+  }
+
+  public pushListener(
+    eventListener: (event: ListenEvent) => AppMsg
+  ): Room<AppMsg> {
+    return this.clone({
+      eventListeners: [...this.eventListeners, eventListener]
+    })
+  }
+
+  public close(): void {
+    if (this.session?.isEstablished()) {
+      this.session.terminate()
+    }
+
+    if (this.userAgent?.isConnected()) {
+      this.userAgent.stop()
+    }
+
+    for (const cleanup of this.cleanups) {
+      cleanup()
+    }
+  }
+
+  public sendInfo(info: string): Room<AppMsg> {
+    if (this.session == null) {
+      return this.clone({
+        pendingInfoToSend: [...this.pendingSendInfo, info]
+      })
+    }
+
+    this.session.sendInfo('text/plain', info)
+
     return this
   }
 
-  public dispatchStream(
-    tagger: (stream: MediaStream) => AppMsg
-  ): NewRoom<AppMsg> {
+  public dispatchStream(tagger: (stream: MediaStream) => AppMsg): Room<AppMsg> {
+    if (this.session == null) {
+      return this.clone({
+        pendingStreamRequests: [...this.pendingStreamRequests, tagger]
+      })
+    }
+
     const streams = this.session.connection.getRemoteStreams()
 
     if (streams.length > 0) {
@@ -179,93 +199,6 @@ class OpenedRoom<AppMsg> implements NewRoom<AppMsg> {
     for (const listener of this.eventListeners) {
       router.sendToApp(listener(event))
     }
-  }
-
-  public dispatchInfo(info: string): NewRoom<AppMsg> {
-    this.session.sendInfo('text/plain', info)
-
-    return this
-  }
-
-  public pushListener(
-    listener: (event: ListenEvent) => AppMsg
-  ): NewRoom<AppMsg> {
-    return new OpenedRoom(this.userAgent, this.session, this.cleanups, [
-      ...this.eventListeners,
-      listener
-    ])
-  }
-
-  public clearListeners(): NewRoom<AppMsg> {
-    return new OpenedRoom(this.userAgent, this.session, this.cleanups, [])
-  }
-
-  public close(): void {
-    if (this.session.isEstablished()) {
-      this.session.terminate()
-    }
-
-    if (this.userAgent.isConnected()) {
-      this.userAgent.stop()
-    }
-
-    for (const cleanup of this.cleanups) {
-      cleanup()
-    }
-  }
-}
-
-class RegistringRoom<AppMsg> extends OpenedRoom<AppMsg> {
-  public constructor(
-    userAgent: UA,
-    session: RTCSession,
-    cleanups: Array<VoidFunction>,
-    eventListeners: Array<(event: ListenEvent) => AppMsg>,
-    private readonly infoToSend: Array<string>,
-    private readonly streamRequests: Array<(steram: MediaStream) => AppMsg>
-  ) {
-    super(userAgent, session, cleanups, eventListeners)
-  }
-
-  public registerStream(
-    router: Router<AppMsg, SipSelfMsg<AppMsg>>
-  ): NewRoom<AppMsg> {
-    const streams = this.session.connection.getRemoteStreams()
-
-    if (streams.length > 0) {
-      for (const letter of this.streamRequests) {
-        router.sendToApp(letter(streams[0]))
-      }
-    }
-
-    for (const info of this.infoToSend) {
-      this.session.sendInfo('text/plain', info)
-    }
-
-    return new OpenedRoom(
-      this.userAgent,
-      this.session,
-      this.cleanups,
-      this.eventListeners
-    )
-  }
-
-  public dispatchStream(
-    tagger: (stream: MediaStream) => AppMsg
-  ): NewRoom<AppMsg> {
-    return new EmptyRoom(
-      this.infoToSend,
-      [...this.streamRequests, tagger],
-      this.eventListeners
-    )
-  }
-
-  public dispatchInfo(info: string): NewRoom<AppMsg> {
-    return new EmptyRoom(
-      [...this.infoToSend, info],
-      this.streamRequests,
-      this.eventListeners
-    )
   }
 }
 
@@ -285,7 +218,7 @@ const makeFakeVideoStream = (): [MediaStream, VoidFunction] => {
   ]
 }
 
-type State<AppMsg> = Record<string, undefined | NewRoom<AppMsg>>
+type State<AppMsg> = Record<string, undefined | Room<AppMsg>>
 
 interface SipSelfMsg<AppMsg> {
   proceed(
@@ -313,7 +246,7 @@ class RegisterSession<AppMsg> implements SipSelfMsg<AppMsg> {
 
     return {
       ...state,
-      [key]: room.registerSession(router, this.userAgent, this.options)
+      [key]: room.registerSession(router, this.options, this.userAgent)
     }
   }
 }
@@ -399,7 +332,9 @@ class GetStreamCmd<AppMsg> implements SipCmd<AppMsg> {
     if (room == null) {
       return {
         ...state,
-        [this.key]: new EmptyRoom([], [this.tagger], [])
+        [this.key]: Room.init({
+          streamRequests: [this.tagger]
+        })
       }
     }
 
@@ -426,13 +361,15 @@ class SendInfoCmd implements SipCmd<never> {
     if (room == null) {
       return {
         ...state,
-        [this.key]: new EmptyRoom([this.info], [], [])
+        [this.key]: Room.init({
+          pendingInfoToSend: [this.info]
+        })
       }
     }
 
     return {
       ...state,
-      [this.key]: room.dispatchInfo(this.info)
+      [this.key]: room.sendInfo(this.info)
     }
   }
 }
@@ -460,6 +397,29 @@ interface SipSub<AppMsg> extends Functor<AppMsg> {
 }
 
 class ListenSub<AppMsg> implements SipSub<AppMsg> {
+  private static startUserAgent<T>(
+    router: Router<T, SipSelfMsg<T>>,
+    options: ConnectionOptions,
+    ws: WebSocketInterface
+  ): void {
+    const ua = new UA({
+      uri: options.uri,
+      sockets: ws,
+      display_name: options.client,
+      register: true
+    })
+
+    ua.once('registrationFailed', ({ response }) => {
+      router.sendToSelf(new FailSession(options.key, response.reason_phrase))
+    })
+
+    ua.once('registered', () => {
+      router.sendToSelf(new RegisterSession(ua, options))
+    })
+
+    ua.start()
+  }
+
   public constructor(
     private readonly options: ConnectionOptions,
     private readonly onEvent: (event: ListenEvent) => AppMsg
@@ -488,15 +448,26 @@ class ListenSub<AppMsg> implements SipSub<AppMsg> {
     const oldRoom = prevState[key]
 
     if (oldRoom != null) {
-      nextState[key] = oldRoom.clearListeners().pushListener(this.onEvent)
+      nextState[key] = oldRoom.clone({
+        eventListeners: [this.onEvent]
+      })
 
       return
     }
 
-    let ws: null | WebSocketInterface = null
-
     try {
-      ws = new WebSocketInterface(this.options.webSocketUrl)
+      const ws = new WebSocketInterface(this.options.webSocketUrl)
+
+      try {
+        ListenSub.startUserAgent(router, this.options, ws)
+      } catch (error) {
+        router.sendToSelf(
+          new FailSession(
+            key,
+            error?.message ?? 'UserAgent initialisation failed'
+          )
+        )
+      }
     } catch (error) {
       router.sendToSelf(
         new FailSession(
@@ -504,53 +475,11 @@ class ListenSub<AppMsg> implements SipSub<AppMsg> {
           error?.message ?? 'WebSocketInterface initialisation failed'
         )
       )
-
-      nextState[key] = new EmptyRoom([], [], [this.onEvent])
-
-      return
     }
 
-    let ua: null | UA = null
-
-    try {
-      ua = new UA({
-        uri: this.options.uri,
-        sockets: ws,
-        display_name: this.options.client,
-        register: true
-      })
-    } catch (error) {
-      router.sendToSelf(
-        new FailSession(
-          key,
-          error?.message ?? 'UserAgent initialisation failed'
-        )
-      )
-
-      nextState[key] = new EmptyRoom([], [], [this.onEvent])
-
-      return
-    }
-
-    ua.once('registrationFailed', ({ response }) => {
-      router.sendToSelf(new FailSession(key, response.reason_phrase))
+    nextState[key] = Room.init({
+      eventListeners: [this.onEvent]
     })
-
-    ua.once('registered', () => {
-      try {
-        if (ua) {
-          router.sendToSelf(new RegisterSession(ua, this.options))
-        }
-      } catch (error) {
-        router.sendToSelf(
-          new FailSession(key, error?.message ?? 'Unknown error')
-        )
-      }
-    })
-
-    ua.start()
-
-    nextState[key] = new EmptyRoom([], [], [this.onEvent])
   }
 }
 
@@ -594,19 +523,6 @@ export type ListenEvent = CaseOf<'OnFailure', string> | CaseOf<'OnEnd'>
 
 const OnFailure: CaseCreator<ListenEvent> = CaseOf('OnFailure')
 const OnEnd: ListenEvent = CaseOf('OnEnd')()
-
-export interface Connection {
-  getStream<T>(tagger: (stream: MediaStream) => T): Cmd<T>
-  sendInfo(info: string): Cmd<never>
-  terminate: Cmd<never>
-  listen<T>(onEvent: (event: ListenEvent) => T): Sub<T>
-
-  //
-  // onEnd<T>(msg: T): Sub<T>
-  // onFail<T>(tagger: (reason: string) => T): Sub<T>
-  // onIncomingInfo<T>(tagger: (content: string) => T): Sub<T>
-  // onOutgoingInfo<T>(tagger: (content: string) => T): Sub<T>
-}
 
 // eslint-disable-next-line no-shadow
 enum WebSocketProtocol {
@@ -703,6 +619,19 @@ class ConnectionOptions {
   public get iceServers(): Array<RTCIceServer> {
     return this.servers.map(ConnectionOptions.urlToIceServer)
   }
+}
+
+export interface Connection {
+  getStream<T>(tagger: (stream: MediaStream) => T): Cmd<T>
+  sendInfo(info: string): Cmd<never>
+  terminate: Cmd<never>
+  listen<T>(onEvent: (event: ListenEvent) => T): Sub<T>
+
+  //
+  // onEnd<T>(msg: T): Sub<T>
+  // onFail<T>(tagger: (reason: string) => T): Sub<T>
+  // onIncomingInfo<T>(tagger: (content: string) => T): Sub<T>
+  // onOutgoingInfo<T>(tagger: (content: string) => T): Sub<T>
 }
 
 class ConnectionImpl implements Connection {
