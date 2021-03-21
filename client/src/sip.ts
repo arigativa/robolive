@@ -6,48 +6,6 @@ import { CaseOf, CaseCreator } from 'utils'
 
 debug.enable('JsSIP:*')
 
-// eslint-disable-next-line no-shadow
-enum WebSocketProtocol {
-  WS = 'ws',
-  WSS = 'wss'
-}
-
-const buildWebSocketUrl = (
-  protocol: WebSocketProtocol,
-  host: string,
-  port: null | string
-): string => {
-  const url = `${protocol}://${host}`
-
-  if (port == null) {
-    return url
-  }
-
-  return `${url}:${port}`
-}
-
-const extractHost = (server: string): string => {
-  return server.replace(/(^sips?:|:\d+$)/g, '')
-}
-
-const extractPort = (server: string): string | null => {
-  return server.replace(/^.+:/, '') || null
-}
-
-const buildUri = (
-  username: string,
-  host: string,
-  port: null | string
-): string => {
-  const uri = `${username}@${host}`
-
-  if (port === null) {
-    return uri
-  }
-
-  return `${uri}:${port}`
-}
-
 interface NewRoom<AppMsg> {
   registerSession(
     router: Router<AppMsg, SipSelfMsg<AppMsg>>,
@@ -92,28 +50,17 @@ class EmptyRoom<AppMsg> implements NewRoom<AppMsg> {
     const key = options.key
     const [fakeVideoStream, stopFakeStream] = makeFakeVideoStream()
 
-    const session = userAgent.call(
-      buildUri(options.agent, options.host, options.port),
-      {
-        mediaConstraints: {
-          audio: false,
-          video: false
-        },
-        mediaStream: fakeVideoStream,
-        pcConfig: {
-          rtcpMuxPolicy: 'negotiate',
-          iceServers: options.iceServers.map(url => {
-            return /^turns?:/.test(url)
-              ? {
-                  urls: url,
-                  username: 'turn',
-                  credential: 'turn'
-                }
-              : { urls: url }
-          })
-        }
+    const session = userAgent.call(options.uri, {
+      mediaConstraints: {
+        audio: false,
+        video: false
+      },
+      mediaStream: fakeVideoStream,
+      pcConfig: {
+        rtcpMuxPolicy: 'negotiate',
+        iceServers: options.iceServers
       }
-    )
+    })
 
     const onFailed: EndListener = event => {
       router.sendToSelf(new FailSession(key, event.cause))
@@ -546,16 +493,10 @@ class ListenSub<AppMsg> implements SipSub<AppMsg> {
       return
     }
 
-    const webSocketUrl = buildWebSocketUrl(
-      this.options.protocol,
-      this.options.host,
-      this.options.port
-    )
-
     let ws: null | WebSocketInterface = null
 
     try {
-      ws = new WebSocketInterface(webSocketUrl)
+      ws = new WebSocketInterface(this.options.webSocketUrl)
     } catch (error) {
       router.sendToSelf(
         new FailSession(
@@ -573,11 +514,7 @@ class ListenSub<AppMsg> implements SipSub<AppMsg> {
 
     try {
       ua = new UA({
-        uri: buildUri(
-          this.options.client,
-          this.options.host,
-          this.options.port
-        ),
+        uri: this.options.uri,
         sockets: ws,
         display_name: this.options.client,
         register: true
@@ -671,15 +608,86 @@ export interface Connection {
   // onOutgoingInfo<T>(tagger: (content: string) => T): Sub<T>
 }
 
+// eslint-disable-next-line no-shadow
+enum WebSocketProtocol {
+  WS = 'ws',
+  WSS = 'wss'
+}
+
+export interface CreateConnectionOptions {
+  secure?: boolean
+  server: string
+  agent: string
+  client: string
+  iceServers: Array<string>
+}
+
 class ConnectionOptions {
-  public constructor(
-    public readonly protocol: WebSocketProtocol,
-    public readonly host: string,
-    public readonly port: null | string,
-    public readonly agent: string,
+  private static compare(left: string, right: string): number {
+    if (left < right) {
+      return -1
+    }
+
+    if (left > right) {
+      return 1
+    }
+
+    return 0
+  }
+
+  private static extractHost(server: string): string {
+    return server.replace(/(^sips?:|:\d+$)/g, '')
+  }
+
+  private static extractPort(server: string): string | null {
+    return server.replace(/^.+:/, '') || null
+  }
+
+  private static urlToIceServer(url: string): RTCIceServer {
+    return /^turns?:/.test(url)
+      ? {
+          urls: url,
+          username: 'turn',
+          credential: 'turn'
+        }
+      : { urls: url }
+  }
+
+  public static create(options: CreateConnectionOptions): ConnectionOptions {
+    return new ConnectionOptions(
+      options.secure ? WebSocketProtocol.WSS : WebSocketProtocol.WS,
+      ConnectionOptions.extractHost(options.server),
+      ConnectionOptions.extractPort(options.server),
+      options.agent,
+      options.client,
+      options.iceServers.slice().sort(ConnectionOptions.compare)
+    )
+  }
+
+  private constructor(
+    private readonly protocol: WebSocketProtocol,
+    private readonly host: string,
+    private readonly port: null | string,
+    private readonly agent: string,
     public readonly client: string,
-    public readonly iceServers: Array<string>
+    private readonly servers: Array<string>
   ) {}
+
+  private withPort(path: string): string {
+    if (this.port == null) {
+      return path
+    }
+
+    return `${path}:${this.port}`
+  }
+
+  public get webSocketUrl(): string {
+    return this.withPort(`${this.protocol}://${this.host}`)
+  }
+
+  public get uri(): string {
+    return this.withPort(`${this.agent}@${this.host}`)
+  }
 
   public get key(): string {
     return [
@@ -688,8 +696,12 @@ class ConnectionOptions {
       this.port,
       this.agent,
       this.client,
-      this.iceServers
+      this.servers.join(',')
     ].join('|')
+  }
+
+  public get iceServers(): Array<RTCIceServer> {
+    return this.servers.map(ConnectionOptions.urlToIceServer)
   }
 }
 
@@ -713,33 +725,10 @@ class ConnectionImpl implements Connection {
   }
 }
 
-const compare = <T extends string | number>(left: T, right: T): number => {
-  if (left < right) {
-    return -1
-  }
-
-  if (left > right) {
-    return 1
-  }
-
-  return 0
-}
-
-export const createConnection = (options: {
-  secure: boolean
-  server: string
-  agent: string
-  client: string
-  iceServers: Array<string>
-}): Connection => {
-  const connectionOptions = new ConnectionOptions(
-    options.secure ? WebSocketProtocol.WSS : WebSocketProtocol.WS,
-    extractHost(options.server),
-    extractPort(options.server),
-    options.agent,
-    options.client,
-    options.iceServers.slice().sort(compare)
-  )
+export const createConnection = (
+  options: CreateConnectionOptions
+): Connection => {
+  const connectionOptions = ConnectionOptions.create(options)
 
   return new ConnectionImpl(connectionOptions)
 }
