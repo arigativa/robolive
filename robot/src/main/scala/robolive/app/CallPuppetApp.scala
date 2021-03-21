@@ -53,7 +53,7 @@ object CallPuppetApp extends App {
     pipeline = pipeline,
     sipAgentName = robotName,
     signallingUri = signallingUri,
-    stunUri = stunUri,
+    rawStunUri = stunUri,
     enableUserVideo = enableUserVideo,
     clientInputInterpreter = servoController,
     eventListener = () => (),
