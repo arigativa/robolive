@@ -1,5 +1,7 @@
 syntax = "proto2";
 
+import "Common.proto";
+
 message ReadRequest {
   repeated string keys = 1;
   required string login = 2;
@@ -10,6 +12,14 @@ message ReadResponse {
   map<string, string> values = 1;
 }
 
+message WriteRequest {
+  map<string, string> values = 1;
+  required string login = 2;
+  required string password = 3;
+}
+
 service StorageEndpoint {
   rpc Get(ReadRequest) returns (ReadResponse);
+
+  rpc Set(WriteRequest) returns (Empty);
 }

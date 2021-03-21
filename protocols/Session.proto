@@ -1,5 +1,7 @@
 syntax = "proto2";
 
+import "Common.proto";
+
 message OngoingSession {
   required string clientId = 1;
   required string agentId = 2;
@@ -40,8 +42,6 @@ message EvictSession {
   required string clientId = 1;
   required string agentId = 2;
 }
-
-message Empty {}
 
 service SessionEndpoint {
   rpc GetAllowedSessions(Empty) returns (AllowedSessions);
