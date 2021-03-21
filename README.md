@@ -117,7 +117,8 @@ export VIDEO_SRC='nvarguscamerasrc sensor_mode=3 ! video/x-raw(memory:NVMM),widt
 ### Run robot connected to Production using docker
 
 ```shell script
-docker-compose run --no-deps -e REGISTRY_HOST=rl.arigativa.ru -e INVENTORY_USE_PLAINTEXT=false -e ROBOT_NAME='FromDevMachine' robot
+CONFIG_PATH is where robot credentials will be stored
+docker-compose run --no-deps -e REGISTRY_HOST=rl.arigativa.ru -e INVENTORY_USE_PLAINTEXT=false -e ROBOT_NAME='FromDevMachine' -e CONFIG_PATH=. robot
 ```
 
 #### sensor_mode values
@@ -137,3 +138,18 @@ If you want to change something consider change .proto files in `protocols` fold
 ```shell script
 DOCKER_BUILDKIT=1 docker build -t client_proto --output client/ -f Dockerfile.client_proto .
 ```
+
+How to create a session:
+1. Open BloomRPC
+2. Import protocols from ./protocols folder to BloomRPC
+3. Click on `SessionEndpoint`.`DoAllowSession` in BloomRPC
+4. Paste something like the following:
+```
+{
+  "clientId": "test", // this is the name you enter on client
+  "agentId": "782e60f6-a996-4cf2-8453-ab19d8e78fd5", // this id could be found in `InfoEndpoint`.`AgentList`
+  "durationInSeconds": 3600 // time the session is active
+}```
+
+Other methods are used to get information about ongoing Sessions or to remove session.  
+They are, more or less, self explanatory. =))
