@@ -150,6 +150,9 @@ How to create a session:
   "agentId": "782e60f6-a996-4cf2-8453-ab19d8e78fd5", // this id could be found in `InfoEndpoint`.`AgentList`
   "durationInSeconds": 3600 // time the session is active
 }```
+5. Change address to: ```loclahost:10480```
+6. Set TLS settings to `Server Certificate`
+7. Push `Play` button
 
 Other methods are used to get information about ongoing Sessions or to remove session.  
 They are, more or less, self explanatory. =))
