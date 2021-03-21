@@ -1,6 +1,5 @@
 package robolive.app
 
-import java.util.concurrent.ConcurrentHashMap
 import Agent.AgentEndpointGrpc.AgentEndpoint
 import Client.ClientEndpointGrpc.ClientEndpoint
 import Info.InfoEndpointGrpc.InfoEndpoint
@@ -9,9 +8,9 @@ import Storage.StorageEndpointGrpc.StorageEndpoint
 import io.grpc.{ServerBuilder, ServerServiceDefinition}
 import org.slf4j.LoggerFactory
 import robolive.meta.BuildInfo
-import robolive.server
 import robolive.server.{
   AgentEndpointHandler,
+  AgentStateManager,
   ClientEndpointHandler,
   InfoEndpointHandler,
   Server,
@@ -47,6 +46,7 @@ object RegistryServer extends App {
   val TurnPassword: String = getEnv("TURN_PASSWORD", "turn")
   val RestreamType: String = getEnv("RESTREAM_TYPE", "NONE")
   val RTMPLink: String = getEnv("RTMP_LINK", "NONE")
+  val AgentStatePath: String = getEnv("AGENT_STATE_PATH", "./agent_state.cfg")
 
   val ConfigMap = Map(
     "signallingUri" -> SignallingSipEndpointUri,
@@ -59,7 +59,8 @@ object RegistryServer extends App {
   )
 
   val sipSessionsState = new SessionState
-  val agentSystem: Server.AgentSystem = Server.AgentSystem.create(ConfigMap)
+  val stateManager = new AgentStateManager(AgentStatePath)
+  val agentSystem: Server.AgentSystem = Server.AgentSystem.create(ConfigMap, stateManager)
 
   val agentEndpoint = {
     val agentEndpointHandler =
