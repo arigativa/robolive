@@ -70,8 +70,10 @@ object AgentState {
     configurationManager: ConfigurationManager,
   )
 
-  final case class Idle(pipelineDescription: PipelineDescription) extends AgentState {
+  final case class Idle() extends AgentState {
     private val VideoSrcFn = "videoSrcFn"
+    private val RestreamType = "restreamType"
+    private val RTMPLink = "rtmpLink"
 
     override def apply(deps: Deps, event: RegistryMessage.Message)(
       implicit ec: ExecutionContext
@@ -79,22 +81,33 @@ object AgentState {
       event match {
         case Message.Registered(RegisterResponse(connectionId, login, password, _)) =>
           deps.configurationManager.write(ConfigurationManager.Config(login, password))
-          deps.storageEndpointClient.get(ReadRequest(Seq(VideoSrcFn), login, password)).map {
-            storageResponse =>
+          deps.storageEndpointClient
+            .get(ReadRequest(Seq(VideoSrcFn, RestreamType, RTMPLink), login, password))
+            .map { storageResponse =>
               val videoSource = {
                 val videoSourceFn = storageResponse.values.getOrElse(VideoSrcFn, "unknown")
                 deps.videoSources.getSource(videoSourceFn)
               }
+
+              val restreamType = {
+                val rawType = storageResponse.values.getOrElse(RestreamType, "NONE")
+                PipelineDescription.RestreamType.fromUnsafe(rawType)
+              }
+
+              val rtmpLink: String = storageResponse.values.getOrElse(RTMPLink, "NONE")
 
               deps.logger.info(s"using video source: $videoSource")
 
               implicit val gstInit: GstManaged.GSTInit.type =
                 GstManaged(deps.agentName, new Version(1, 14))
 
+              val pipelineDescription =
+                PipelineDescription.description(restreamType, Some(rtmpLink), videoSource)
+
               val pipeline = PipelineManaged(
                 name = "robolive-robot-pipeline",
-                description = pipelineDescription.description(videoSource),
-                logger = deps.logger
+                description = pipelineDescription,
+                logger = deps.logger,
               )
 
               pipeline.ready()
@@ -103,7 +116,7 @@ object AgentState {
               deps.sendMessage(statusUpdate("Registered"))
 
               Registered(pipeline, gstInit, connectionId, login, password)
-          }
+            }
 
         case other =>
           deps.logger.error(s"Unexpected message $other in Idle state")

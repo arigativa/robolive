@@ -19,7 +19,6 @@ final class RunningPuppet(
   servoController: ClientInputInterpreter,
   agentEndpointClient: Agent.AgentEndpointGrpc.AgentEndpointStub,
   storageEndpointClient: StorageEndpointGrpc.StorageEndpointStub,
-  pipelineDescription: PipelineDescription,
   configurationManager: ConfigurationManager,
 )(implicit ec: ExecutionContext) {
   private val logger = LoggerFactory.getLogger(getClass.getName)
@@ -27,7 +26,7 @@ final class RunningPuppet(
   private val registryChannel: StreamObserver[AgentMessage] = {
     lazy val actor: RunningPuppet.RunningPuppetActor =
       new RunningPuppet.RunningPuppetActor(
-        AgentState.Idle(pipelineDescription),
+        AgentState.Idle(),
         AgentState.Deps(
           () => actor,
           logger = logger,

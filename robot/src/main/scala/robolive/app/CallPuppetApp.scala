@@ -41,11 +41,11 @@ object CallPuppetApp extends App {
   implicit val gstInit: GstManaged.GSTInit.type =
     GstManaged(robotName, new Version(1, 14))
 
-  val pipelineDescription = new PipelineDescription(RestreamType, RTMPLink)
+  val pipelineDescription = PipelineDescription.description(RestreamType, RTMPLink, videoSrc)
 
   val pipeline = PipelineManaged(
     name = "robolive-robot-pipeline",
-    description = pipelineDescription.description(videoSrc),
+    description = pipelineDescription,
     logger
   )
 
