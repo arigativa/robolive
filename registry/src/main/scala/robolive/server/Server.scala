@@ -1,31 +1,56 @@
 package robolive.server
 
 import Agent.RegistryMessage
+import org.slf4j.LoggerFactory
+import robolive.server.Server.AgentSystem.getClass
 
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.util.{Failure, Success, Try}
 
 object Server {
+  private val logger = LoggerFactory.getLogger(getClass)
+
   type ConnectionId = String
   type Reason = String
   type Login = String
   type Password = String
 
   object AgentSystem {
-    def create(defaultConfigs: Map[String, String]): AgentSystem = {
+
+    def create(
+      defaultConfigs: Map[String, String],
+      stateManager: AgentStateManager
+    ): AgentSystem = {
       val agentDatas = new ConcurrentHashMap[(Login, Password), AgentState]()
+      stateManager.read() match {
+        case Failure(exception) =>
+          logger.error("Can not load agents state: ", exception)
+
+        case Success(states) =>
+          states.foreach { state =>
+            val settings = new ConcurrentHashMap[String, String]()
+            state.settings.foreach {
+              case (key, value) => settings.put(key, value)
+            }
+            val agentState = new AgentState(state.name, state.login, state.password, settings)
+            agentDatas.put((state.login, state.password), agentState)
+          }
+      }
       val activeConnections = new ConcurrentHashMap[ConnectionId, ActiveConnection]()
-      new AgentSystem(agentDatas, activeConnections, defaultConfigs)
+      new AgentSystem(agentDatas, activeConnections, stateManager, defaultConfigs)
     }
   }
 
   final class AgentSystem(
     agentDatas: ConcurrentHashMap[(Login, Password), AgentState],
     activeConnections: ConcurrentHashMap[ConnectionId, ActiveConnection],
+    stateManager: AgentStateManager,
     defaultConfigs: Map[String, String],
   ) {
+    import scala.jdk.CollectionConverters._
 
     private def generateData(name: String): AgentState = {
       val login = UUID.randomUUID().toString
@@ -34,7 +59,12 @@ object Server {
       defaultConfigs.foreach {
         case (key, value) => settings.put(key, value)
       }
-      new AgentState(name, login, password, settings)
+      AgentState(name, login, password, settings)
+    }
+
+    def dumpState(): Try[Unit] = {
+      val datas = agentDatas.values().asScala.toList.map(_.toPersistentView)
+      stateManager.write(datas)
     }
 
     def getConnection(connectionId: String): Option[ActiveConnection] = {
@@ -50,7 +80,6 @@ object Server {
     }
 
     def getAllActiveConnections(): Map[String, ActiveConnection] = {
-      import scala.jdk.CollectionConverters._
       activeConnections.asScala.toMap
     }
 
@@ -74,13 +103,21 @@ object Server {
           if (agentData == null) {
             generateData(name)
           } else {
-            agentData
+            agentData.copy(name = name)
           }
 
         case None => generateData(name)
       }
 
       agentDatas.put((agentData.login, agentData.password), agentData)
+
+      dumpState() match {
+        case Failure(exception) =>
+          logger.error("Can not dump state, keeping in memory", exception)
+
+        case Success(()) =>
+          logger.debug("State successfully dumped")
+      }
 
       val agentState = new ActiveConnection(
         name = name,
@@ -95,11 +132,10 @@ object Server {
     }
   }
 
-  // fixme: rename to agent state
-  final class AgentState(
-    val name: String,
-    val login: String,
-    val password: String,
+  final case class AgentState(
+    name: String,
+    login: String,
+    password: String,
     private val settings: ConcurrentHashMap[String, String]
   ) {
     def getSettings(keys: String*): Map[String, String] = {
@@ -112,10 +148,13 @@ object Server {
       }
     }
 
+    def toPersistentView: AgentStateManager.PersistentAgentState = {
+      import scala.jdk.CollectionConverters._
+      val s = settings.entrySet().asScala.map(e => e.getKey -> e.getValue).toMap
+      AgentStateManager.PersistentAgentState(name, login, password, s)
+    }
   }
-
   // fixme: separate `Client` and `Agent` interfaces
-  // rename to agent connection
   final class ActiveConnection(
     val name: String,
     private val statusRef: AtomicReference[String],

@@ -200,7 +200,7 @@ object AgentState {
                 pipeline = pipeline,
                 sipAgentName = connectionId,
                 signallingUri = signallingUri,
-                stunUri = stunUri,
+                rawStunUri = stunUri,
                 enableUserVideo = enableUserVideo,
                 clientInputInterpreter = deps.servoController,
                 eventListener = freeRunningPuppet,
