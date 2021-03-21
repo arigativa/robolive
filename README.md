@@ -118,7 +118,7 @@ export VIDEO_SRC='nvarguscamerasrc sensor_mode=3 ! video/x-raw(memory:NVMM),widt
 
 ```shell script
 CONFIG_PATH is where robot credentials will be stored
-docker-compose run --no-deps -e REGISTRY_HOST=rl.arigativa.ru -e INVENTORY_USE_PLAINTEXT=false -e ROBOT_NAME='FromDevMachine' -e CONFIG_PATH=. robot
+docker-compose run --no-deps -e REGISTRY_HOST=rl.arigativa.ru -e INVENTORY_USE_PLAINTEXT=false -e ROBOT_NAME='FromDevMachine' -e CONFIG_PATH=./robot.cfg robot
 ```
 
 #### sensor_mode values
