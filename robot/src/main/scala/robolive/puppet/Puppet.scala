@@ -12,13 +12,14 @@ final class Puppet(
   gstInit: GstManaged.GSTInit.type,
   sipAgentName: String,
   signallingUri: String,
-  stunUri: String,
+  rawStunUri: String,
   enableUserVideo: Boolean,
   clientInputInterpreter: ClientInputInterpreter,
   eventListener: Puppet.PuppetEventListener,
 )(implicit ec: ExecutionContext) {
   private implicit val gst = gstInit
 
+  private val stunUri = rawStunUri.replaceAll("stun:", "stun://")
   private val controller =
     new WebRTCController(
       pipeline = pipeline,
