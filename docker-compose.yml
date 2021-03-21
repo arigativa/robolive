@@ -36,6 +36,7 @@ services:
       REGISTRY_PORT_FOR_AGENT: 10476
       REGISTRY_PORT_FOR_STORAGE: 10479
       REGISTRY_PORT_FOR_SIP_CHANNEL: 10480
+      CONFIG_PATH: .
     depends_on:
       - registry
       - envoy
