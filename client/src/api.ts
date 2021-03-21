@@ -6,13 +6,10 @@ import { AgentListRequest, AgentView } from './generated/Info_pb'
 import { ClientEndpointClient } from './generated/Client_pb_service'
 import { JoinRequest } from './generated/Client_pb'
 
-const REACT_APP_CLIENT_ENDPOINT_URL =
-  process.env.REACT_APP_CLIENT_ENDPOINT_URL ?? ''
+const CLIENT_ENDPOINT_URL = process.env.REACT_APP_CLIENT_ENDPOINT_URL ?? ''
+const INFO_ENDPOINT_URL = process.env.REACT_APP_INFO_ENDPOINT_URL ?? ''
 
-const REACT_APP_INFO_ENDPOINT_URL =
-  process.env.REACT_APP_INFO_ENDPOINT_URL ?? ''
-
-const infoClient = new InfoEndpointClient(REACT_APP_INFO_ENDPOINT_URL)
+const infoClient = new InfoEndpointClient(INFO_ENDPOINT_URL)
 
 export interface Agent {
   id: string
@@ -57,7 +54,7 @@ export const getAgentList = (options: {
   })
 }
 
-const clientClient = new ClientEndpointClient(REACT_APP_CLIENT_ENDPOINT_URL)
+const clientClient = new ClientEndpointClient(CLIENT_ENDPOINT_URL)
 
 const keyValuesToRecord = <T>(
   keyValues: Array<[string, T]>

@@ -20,7 +20,7 @@ import { ActionOf, CaseOf, CaseCreator, match } from 'utils'
 
 // S T A T E
 
-const REACT_APP_IS_SECURE_SIP_CONNECTION =
+const IS_SECURE_SIP_CONNECTION =
   process.env.REACT_APP_IS_SECURE_SIP_CONNECTION === 'true'
 
 export interface State {
@@ -35,7 +35,7 @@ export const init = (
   configuration: RoomConfiguration
 ): [State, Cmd<Action>] => {
   const connection = createConnection({
-    secure: REACT_APP_IS_SECURE_SIP_CONNECTION,
+    secure: IS_SECURE_SIP_CONNECTION,
     server: configuration.signallingUri,
     agent: configuration.sipAgentName,
     client: configuration.sipClientName,
