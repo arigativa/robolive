@@ -102,7 +102,7 @@ object RegistryServer extends App {
   }
 
   val storageEndpoint = {
-    val storageEndpointHandler = new StorageEndpointHandler(ConfigMap)
+    val storageEndpointHandler = new StorageEndpointHandler(agentSystem)
     runServer(
       ssd = StorageEndpoint.bindService(storageEndpointHandler, implicitly[ExecutionContext]),
       port = StoragePort

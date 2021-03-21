@@ -4,13 +4,13 @@ import Session.{
   AllowSession,
   AllowedSession,
   AllowedSessions,
-  Empty,
   EvictSession,
   EvictedSession,
   EvictedSessions,
   OngoingSession,
   OngoingSessions
 }
+import Common.Empty
 import robolive.server.SessionManager.CommunicationChannelSession
 
 import java.util.concurrent.TimeUnit
