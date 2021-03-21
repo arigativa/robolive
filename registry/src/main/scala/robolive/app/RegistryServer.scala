@@ -45,6 +45,8 @@ object RegistryServer extends App {
   val TurnUri: String = getEnv("TURN_URI", "turn:rl.arigativa.ru:8080?transport=tcp")
   val TurnUsername: String = getEnv("TURN_USERNAME", "turn")
   val TurnPassword: String = getEnv("TURN_PASSWORD", "turn")
+  val RestreamType: String = getEnv("RESTREAM_TYPE", "NONE")
+  val RTMPLink: String = getEnv("RTMP_LINK", "NONE")
 
   val ConfigMap = Map(
     "signallingUri" -> SignallingSipEndpointUri,
@@ -52,6 +54,8 @@ object RegistryServer extends App {
     "turnUri" -> TurnUri,
     "turnUsername" -> TurnUsername,
     "turnPassword" -> TurnPassword,
+    "restreamType" -> RestreamType,
+    "rtmpLink" -> RTMPLink,
   )
 
   val sipSessionsState = new SessionState

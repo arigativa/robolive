@@ -29,13 +29,6 @@ object ManagedRobotApp extends App {
     val usePlaintext: Boolean = getEnv("INVENTORY_USE_PLAINTEXT", "true").toBoolean
   }
 
-  val RestreamType: PipelineDescription.RestreamType = {
-    val rawType = getEnv("RESTREAM_TYPE", "NONE")
-    PipelineDescription.RestreamType.fromUnsafe(rawType)
-  }
-
-  val RTMPLink: Option[String] = getEnv("RTMP_LINK")
-
   val ConfigurationPath =
     getEnv("CONFIG_PATH").getOrElse(throw new RuntimeException("Please, specify CONFIG_PATH"))
 
@@ -67,8 +60,6 @@ object ManagedRobotApp extends App {
     case "FAKE" => new ClientInputInterpreter.FakeClientInputInterpreter(log)
   }
 
-  val pipelineDescription = new PipelineDescription(RestreamType, RTMPLink)
-
   implicit object PuppetReleasable extends Using.Releasable[RunningPuppet] {
     override def release(resource: RunningPuppet): Unit = {
       resource.stop("releasing resources")
@@ -99,7 +90,6 @@ object ManagedRobotApp extends App {
             agentEndpointClient = AgentEndpointGrpc.stub(agentChannel),
             storageEndpointClient = StorageEndpointGrpc.stub(storageChannel),
             servoController = servoController,
-            pipelineDescription = pipelineDescription,
             configurationManager = configurationManager,
           )
         ) { runningPuppet =>
