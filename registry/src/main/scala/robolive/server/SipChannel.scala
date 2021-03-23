@@ -1,7 +1,7 @@
 package robolive.server
 
 import org.slf4j.LoggerFactory
-import robolive.server.SessionManager.CommunicationChannelSession
+import robolive.server.SessionState.CommunicationChannelSession
 import robolive.server.SipChannel.{allocateRequestBody, deallocateRequestBody}
 import sttp.client._
 import sttp.client.asynchttpclient.WebSocketHandler
@@ -38,7 +38,7 @@ final class SipChannel(
   def deallocate(session: CommunicationChannelSession): Future[Unit] = {
     quickRequest
       .post(uri"$sipUri/users/destroy")
-      .body(deallocateRequestBody(session.clientName, session.agentName))
+      .body(deallocateRequestBody(session.clientId, session.agentId))
       .send()
       .map { response =>
         if (response.code.isSuccess) {
@@ -59,40 +59,43 @@ final class SipChannel(
       }
   }
 
-  def allocate(clientId: String, agentId: String): Future[Unit] = {
-    val session = CommunicationChannelSession(clientId, agentId)
+  def allocate(clientId: String, agentId: String, agentSessionId: String): Future[Unit] = {
+    val session = CommunicationChannelSession(clientId, agentSessionId)
     if (allowAll) {
-      allocateUnchecked(session, DefaultDuration)
+      allocateSIPSession(clientId, agentId, DefaultDuration)
+        .map(_ => sessionStorage.allocateSession(session, DefaultDuration))
     } else {
       if (sessionStorage.isAllowed(session) || sessionStorage.isOngoing(session)) {
         sessionStorage
           .allowedSessionDuration(session)
           .orElse(sessionStorage.ongoingSessionDuration(session)) match {
-          case Some(duration) => allocateUnchecked(session, duration)
-          case None => Future.failed(new RuntimeException(s"Session: $session not found"))
+          case Some(duration) =>
+            allocateSIPSession(clientId, agentId, duration)
+              .map(_ => sessionStorage.allocateSession(session, duration))
+          case None =>
+            Future.failed(new RuntimeException(s"Session $clientId -> $agentId not found"))
         }
       } else {
-        Future.failed(new RuntimeException(s"Session: $session is not allowed"))
+        Future.failed(new RuntimeException(s"Session $clientId -> $agentId is not allowed"))
       }
     }
   }
 
-  private def allocateUnchecked(
-    session: CommunicationChannelSession,
+  private def allocateSIPSession(
+    clientId: String,
+    agentId: String,
     duration: FiniteDuration
   ): Future[Unit] = {
     quickRequest
       .post(uri"$sipUri/users/create")
       .body(
-        allocateRequestBody(session.clientName, session.agentName, duration.toSeconds)
+        allocateRequestBody(clientId, agentId, duration.toSeconds)
       )
       .send()
       .flatMap { response =>
         if (response.code.isSuccess) {
-          logger.info(s"Successfully allocated: $session")
-          Future.successful {
-            sessionStorage.allocateSession(session, duration)
-          }
+          logger.info(s"Successfully allocated: $clientId -> $agentId")
+          Future.unit
         } else {
           Future.failed {
             new RuntimeException(
@@ -105,7 +108,7 @@ final class SipChannel(
       }
       .recoverWith {
         case error =>
-          logger.error(s"Error during session allocation: $session", error)
+          logger.error(s"Error during session allocation: $clientId -> $agentId", error)
           Future.failed(error)
       }
   }

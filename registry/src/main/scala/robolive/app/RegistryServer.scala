@@ -10,12 +10,13 @@ import org.slf4j.LoggerFactory
 import robolive.meta.BuildInfo
 import robolive.server.{
   AgentEndpointHandler,
-  AgentStateManager,
+  AgentStateStorage,
   ClientEndpointHandler,
   InfoEndpointHandler,
   Server,
   SessionEndpointHandler,
   SessionState,
+  SessionStorage,
   SipChannel,
   StorageEndpointHandler
 }
@@ -47,6 +48,7 @@ object RegistryServer extends App {
   val RestreamType: String = getEnv("RESTREAM_TYPE", "NONE")
   val RTMPLink: String = getEnv("RTMP_LINK", "NONE")
   val AgentStatePath: String = getEnv("AGENT_STATE_PATH", "./agent_state.cfg")
+  val SessionStatePath: String = getEnv("SESSION_STATE_PATH", "./session_state.cfg")
 
   val ConfigMap = Map(
     "signallingUri" -> SignallingSipEndpointUri,
@@ -58,13 +60,12 @@ object RegistryServer extends App {
     "rtmpLink" -> RTMPLink,
   )
 
-  val sipSessionsState = new SessionState
-  val stateManager = new AgentStateManager(AgentStatePath)
+  val sipSessionsState = SessionState(new SessionStorage(SessionStatePath))
+  val stateManager = new AgentStateStorage(AgentStatePath)
   val agentSystem: Server.AgentSystem = Server.AgentSystem.create(ConfigMap, stateManager)
 
   val agentEndpoint = {
-    val agentEndpointHandler =
-      new AgentEndpointHandler(agentSystem, sipSessionsState)
+    val agentEndpointHandler = new AgentEndpointHandler(agentSystem)
 
     runServer(
       ssd = AgentEndpoint.bindService(agentEndpointHandler, implicitly[ExecutionContext]),

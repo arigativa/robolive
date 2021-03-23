@@ -3,8 +3,8 @@ package robolive.server
 import io.circe._
 import scala.util.Using
 
-final class AgentStateManager(path: String) {
-  import AgentStateManager._
+final class AgentStateStorage(path: String) {
+  import AgentStateStorage._
 
   def read(): scala.util.Try[List[PersistentAgentState]] = {
     Using(scala.io.Source.fromFile(path)) { reader =>
@@ -26,7 +26,7 @@ final class AgentStateManager(path: String) {
   }
 }
 
-object AgentStateManager {
+object AgentStateStorage {
   final case class PersistentAgentState(
     name: String,
     login: String,

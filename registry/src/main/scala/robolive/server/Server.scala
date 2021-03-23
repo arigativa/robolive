@@ -22,7 +22,7 @@ object Server {
 
     def create(
       defaultConfigs: Map[String, String],
-      stateManager: AgentStateManager
+      stateManager: AgentStateStorage
     ): AgentSystem = {
       val agentDatas = new ConcurrentHashMap[(Login, Password), AgentState]()
       stateManager.read() match {
@@ -35,7 +35,7 @@ object Server {
             state.settings.foreach {
               case (key, value) => settings.put(key, value)
             }
-            val agentState = new AgentState(state.name, state.login, state.password, settings)
+            val agentState = AgentState(state.name, state.login, state.password, settings)
             agentDatas.put((state.login, state.password), agentState)
           }
       }
@@ -47,10 +47,14 @@ object Server {
   final class AgentSystem(
     agentDatas: ConcurrentHashMap[(Login, Password), AgentState],
     activeConnections: ConcurrentHashMap[ConnectionId, ActiveConnection],
-    stateManager: AgentStateManager,
+    stateManager: AgentStateStorage,
     defaultConfigs: Map[String, String],
   ) {
     import scala.jdk.CollectionConverters._
+
+    def getConnectionByLogin(login: Login): Option[ActiveConnection] = {
+      activeConnections.asScala.values.find(_.login == login)
+    }
 
     private def generateData(name: String): AgentState = {
       val login = UUID.randomUUID().toString
@@ -79,8 +83,8 @@ object Server {
       Option(agentDatas.get(login -> password))
     }
 
-    def getAllActiveConnections(): Map[String, ActiveConnection] = {
-      activeConnections.asScala.toMap
+    def getAllActiveConnections(): Seq[ActiveConnection] = {
+      activeConnections.asScala.values.toSeq
     }
 
     def newConnection(
@@ -97,7 +101,7 @@ object Server {
         (login, password)
       }
 
-      val agentData = credentials match {
+      val agentState = credentials match {
         case Some((login, password)) =>
           val agentData = agentDatas.get((login, password))
           if (agentData == null) {
@@ -109,7 +113,7 @@ object Server {
         case None => generateData(name)
       }
 
-      agentDatas.put((agentData.login, agentData.password), agentData)
+      agentDatas.put((agentState.login, agentState.password), agentState)
 
       dumpState() match {
         case Failure(exception) =>
@@ -119,16 +123,18 @@ object Server {
           logger.debug("State successfully dumped")
       }
 
-      val agentState = new ActiveConnection(
+      val activeConnection = new ActiveConnection(
+        connectionId = connectionId,
         name = name,
+        state = agentState,
         statusRef = new AtomicReference[String]("Status unknown"),
         sendToAgent = sendToAgent,
         requests = new ConcurrentHashMap[String, Promise[Map[String, String]]]()
       )
 
-      activeConnections.put(connectionId, agentState)
+      activeConnections.put(connectionId, activeConnection)
 
-      (agentData.login, agentData.password)
+      (agentState.login, agentState.password)
     }
   }
 
@@ -148,19 +154,23 @@ object Server {
       }
     }
 
-    def toPersistentView: AgentStateManager.PersistentAgentState = {
+    def toPersistentView: AgentStateStorage.PersistentAgentState = {
       import scala.jdk.CollectionConverters._
       val s = settings.entrySet().asScala.map(e => e.getKey -> e.getValue).toMap
-      AgentStateManager.PersistentAgentState(name, login, password, s)
+      AgentStateStorage.PersistentAgentState(name, login, password, s)
     }
   }
   // fixme: separate `Client` and `Agent` interfaces
   final class ActiveConnection(
+    val connectionId: ConnectionId,
     val name: String,
+    private val state: AgentState,
     private val statusRef: AtomicReference[String],
     private val sendToAgent: RegistryMessage => Unit,
     private val requests: ConcurrentHashMap[String, Promise[Map[String, String]]],
   ) {
+    def login: Login = state.login
+
     def updateStatus(status: String): String = {
       statusRef.updateAndGet(_ => status)
     }

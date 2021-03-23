@@ -11,21 +11,21 @@ import Session.{
   OngoingSessions
 }
 import Common.Empty
-import robolive.server.SessionManager.CommunicationChannelSession
+import robolive.server.SessionState.CommunicationChannelSession
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 
-final class SessionEndpointHandler(sessionState: SessionManager)
+final class SessionEndpointHandler(sessionState: SessionState)
     extends Session.SessionEndpointGrpc.SessionEndpoint {
   def getAllowedSessions(
     request: Empty
   ): Future[AllowedSessions] = {
     val sessions = sessionState.getAllowedSessions.map { allowedSession =>
       AllowedSession(
-        clientId = allowedSession.session.clientName,
-        agentId = allowedSession.session.agentName,
+        clientId = allowedSession.session.clientId,
+        agentId = allowedSession.session.agentId,
         durationInSeconds = allowedSession.duration.toSeconds,
       )
     }
@@ -38,8 +38,8 @@ final class SessionEndpointHandler(sessionState: SessionManager)
   ): Future[EvictedSessions] = {
     val sessions = sessionState.getEvictedSessions.map { evictedSession =>
       EvictedSession(
-        clientId = evictedSession.clientName,
-        agentId = evictedSession.agentName,
+        clientId = evictedSession.clientId,
+        agentId = evictedSession.agentId,
       )
     }
 
@@ -51,8 +51,8 @@ final class SessionEndpointHandler(sessionState: SessionManager)
   ): Future[OngoingSessions] = {
     val sessions = sessionState.getOngoingSessions.map { ongoingSession =>
       OngoingSession(
-        clientId = ongoingSession.session.clientName,
-        agentId = ongoingSession.session.agentName,
+        clientId = ongoingSession.session.clientId,
+        agentId = ongoingSession.session.agentId,
         durationInSeconds = ongoingSession.time.duration.toSeconds,
         timeLeftInSeconds = ongoingSession.time.timeLeft.toSeconds
       )
@@ -65,8 +65,8 @@ final class SessionEndpointHandler(sessionState: SessionManager)
     request: AllowSession
   ): Future[Empty] = {
     val session = CommunicationChannelSession(
-      clientName = request.clientId,
-      agentName = request.agentId,
+      clientId = request.clientId,
+      agentId = request.agentId,
     )
     val duration = FiniteDuration(request.durationInSeconds, TimeUnit.SECONDS)
     sessionState.allowSession(session, duration)
@@ -77,8 +77,8 @@ final class SessionEndpointHandler(sessionState: SessionManager)
     request: EvictSession
   ): Future[Empty] = {
     val session = CommunicationChannelSession(
-      clientName = request.clientId,
-      agentName = request.agentId,
+      clientId = request.clientId,
+      agentId = request.agentId,
     )
     sessionState.evictSession(session)
     Future.successful(Empty.defaultInstance)

@@ -10,11 +10,11 @@ final class InfoEndpointHandler(
 )(implicit ec: ExecutionContext)
     extends InfoEndpoint {
   override def agentList(request: AgentListRequest): Future[AgentListResponse] = {
-    Future {
-      val agents = agentSystem.getAllActiveConnections().map {
-        case (id, state) => AgentView(state.status, state.name, id)
+    Future.successful {
+      val views = agentSystem.getAllActiveConnections().map { connection =>
+        AgentView(connection.status, connection.name, connection.connectionId)
       }
-      AgentListResponse(agents.toSeq)
+      AgentListResponse(views)
     }
   }
 }

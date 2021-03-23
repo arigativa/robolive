@@ -11,10 +11,7 @@ import org.slf4j.LoggerFactory
 import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.Promise
 
-final class AgentEndpointHandler(
-  agentSystem: Server.AgentSystem,
-  sessionManager: SessionManager
-) extends AgentEndpoint {
+final class AgentEndpointHandler(agentSystem: Server.AgentSystem) extends AgentEndpoint {
   private val logger = LoggerFactory.getLogger(getClass.getName)
 
   private def registerResponse(
@@ -78,14 +75,12 @@ final class AgentEndpointHandler(
       override def onError(error: Throwable): Unit = {
         logger.error(agentLog(s"${error.getMessage}"), error)
         agentSystem.removeConnection(connectionId)
-        sessionManager.evictAgentSessions(connectionId)
         responseObserver.onError(error)
       }
 
       override def onCompleted(): Unit = {
         logger.info(agentLog("disconnected"))
         agentSystem.removeConnection(connectionId)
-        sessionManager.evictAgentSessions(connectionId)
         responseObserver.onCompleted()
       }
     }

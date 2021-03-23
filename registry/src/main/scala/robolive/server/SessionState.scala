@@ -1,24 +1,52 @@
 package robolive.server
 
-import robolive.server.SessionManager._
+import robolive.server.SessionState._
 
+import java.io.FileNotFoundException
 import scala.concurrent.duration.FiniteDuration
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 import scala.jdk.CollectionConverters._
+import scala.util.{Failure, Success}
 
-trait SessionManager {
-  def getOngoingSessions: Seq[OngoingSessionView]
-  def getAllowedSessions: Seq[AllowedSessionView]
-  def getEvictedSessions: Seq[CommunicationChannelSession]
-  def allowSession(session: CommunicationChannelSession, duration: FiniteDuration): Unit
-  def evictSession(session: CommunicationChannelSession): Unit
-  def evictAgentSessions(agentId: String): Unit
-}
+object SessionState {
+  def apply(storage: SessionStorage): SessionState = {
+    val ongoingSessions = new ConcurrentHashMap[CommunicationChannelSession, FiniteSession]()
+    val allowedSessions = new ConcurrentHashMap[CommunicationChannelSession, FiniteDuration]()
 
-object SessionManager {
+    storage.read() match {
+      case Failure(_: FileNotFoundException) =>
+        val empty = SessionStorage.SessionStorageData(Seq.empty, Seq.empty)
+        storage.write(empty)
+        new SessionState(storage, ongoingSessions, allowedSessions)
+
+      case Failure(error) => throw error
+
+      case Success(sessions) =>
+        sessions.allowedSessions.foreach { session =>
+          allowedSessions
+            .put(
+              CommunicationChannelSession(session.clientId, session.agentId),
+              FiniteDuration(session.durationInSeconds, TimeUnit.SECONDS),
+            )
+        }
+
+        sessions.ongoingSessions.foreach { session =>
+          ongoingSessions.put(
+            CommunicationChannelSession(session.clientId, session.agentId),
+            FiniteSession(
+              FiniteDuration(session.durationInSeconds, TimeUnit.SECONDS),
+              session.startTime
+            )
+          )
+        }
+
+        new SessionState(storage, ongoingSessions, allowedSessions)
+    }
+  }
+
   final case class CommunicationChannelSession(
-    clientName: String,
-    agentName: String,
+    clientId: String,
+    agentId: String,
   )
 
   final case class FiniteSession(duration: FiniteDuration, startTime: Long) {
@@ -42,11 +70,42 @@ object SessionManager {
   )
 }
 
-final class SessionState() extends SessionManager {
+final class SessionState(
+  storage: SessionStorage,
+  ongoingSessions: ConcurrentHashMap[CommunicationChannelSession, FiniteSession],
+  allowedSessions: ConcurrentHashMap[CommunicationChannelSession, FiniteDuration],
+) {
 
-  private val ongoingSessions = new ConcurrentHashMap[CommunicationChannelSession, FiniteSession]()
-  private val allowedSessions = new ConcurrentHashMap[CommunicationChannelSession, FiniteDuration]()
   private val evictedSessions = ConcurrentHashMap.newKeySet[CommunicationChannelSession]()
+
+  private def dump(): Unit = {
+    val ongoingPersinstent = ongoingSessions.asScala.map {
+      case (session, time) =>
+        SessionStorage.OngoingPersistentSession(
+          clientId = session.clientId,
+          agentId = session.agentId,
+          durationInSeconds = time.duration.toSeconds,
+          startTime = time.startTime
+        )
+    }.toSeq
+
+    val allowedPersistent = allowedSessions.asScala.map {
+      case (session, duration) =>
+        SessionStorage
+          .AllowedPersistentSession(
+            clientId = session.clientId,
+            agentId = session.agentId,
+            durationInSeconds = duration.toSeconds,
+          )
+    }.toSeq
+
+    val dataToStore = SessionStorage.SessionStorageData(
+      ongoingPersinstent,
+      allowedPersistent
+    )
+
+    storage.write(dataToStore)
+  }
 
   def isAllowed(session: CommunicationChannelSession): Boolean = {
     allowedSessions.containsKey(session)
@@ -84,11 +143,13 @@ final class SessionState() extends SessionManager {
   def allowSession(session: CommunicationChannelSession, duration: FiniteDuration): Unit = {
     allowedSessions.put(session, duration)
     evictedSessions.remove(session)
+    dump()
   }
 
   def evictSession(session: CommunicationChannelSession): Unit = {
     evictedSessions.add(session)
     allowedSessions.remove(session)
+    dump()
   }
 
   def allocateSession(
@@ -99,6 +160,7 @@ final class SessionState() extends SessionManager {
     val sessionDuration = FiniteSession(duration, currentTime)
     ongoingSessions.put(session, sessionDuration)
     allowedSessions.remove(session)
+    dump()
   }
 
   def deallocateSession(
@@ -106,6 +168,7 @@ final class SessionState() extends SessionManager {
   ): Unit = {
     ongoingSessions.remove(session)
     evictedSessions.remove(session)
+    dump()
   }
 
   def getInvalidSessions: Set[CommunicationChannelSession] = {
@@ -119,17 +182,5 @@ final class SessionState() extends SessionManager {
       }
       .map(_.getKey)
       .toSet ++ getEvictedSessions
-  }
-
-  def evictAgentSessions(agentIdToEvict: String): Unit = {
-    ongoingSessions
-      .entrySet()
-      .asScala
-      .foreach { entry =>
-        val agentId = entry.getKey.agentName
-        if (agentIdToEvict == agentId) {
-          evictSession(entry.getKey)
-        }
-      }
   }
 }
