@@ -2,6 +2,7 @@
 // file: Storage.proto
 
 import * as Storage_pb from "./Storage_pb";
+import * as Common_pb from "./Common_pb";
 import {grpc} from "@improbable-eng/grpc-web";
 
 type StorageEndpointGet = {
@@ -13,9 +14,19 @@ type StorageEndpointGet = {
   readonly responseType: typeof Storage_pb.ReadResponse;
 };
 
+type StorageEndpointSet = {
+  readonly methodName: string;
+  readonly service: typeof StorageEndpoint;
+  readonly requestStream: false;
+  readonly responseStream: false;
+  readonly requestType: typeof Storage_pb.WriteRequest;
+  readonly responseType: typeof Common_pb.Empty;
+};
+
 export class StorageEndpoint {
   static readonly serviceName: string;
   static readonly Get: StorageEndpointGet;
+  static readonly Set: StorageEndpointSet;
 }
 
 export type ServiceError = { message: string, code: number; metadata: grpc.Metadata }
@@ -58,6 +69,15 @@ export class StorageEndpointClient {
   get(
     requestMessage: Storage_pb.ReadRequest,
     callback: (error: ServiceError|null, responseMessage: Storage_pb.ReadResponse|null) => void
+  ): UnaryResponse;
+  set(
+    requestMessage: Storage_pb.WriteRequest,
+    metadata: grpc.Metadata,
+    callback: (error: ServiceError|null, responseMessage: Common_pb.Empty|null) => void
+  ): UnaryResponse;
+  set(
+    requestMessage: Storage_pb.WriteRequest,
+    callback: (error: ServiceError|null, responseMessage: Common_pb.Empty|null) => void
   ): UnaryResponse;
 }
 

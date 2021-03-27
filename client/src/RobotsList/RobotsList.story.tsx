@@ -11,7 +11,7 @@ export default {
   title: 'RobotsList'
 }
 
-const [initialState] = RobotsList.init
+const [initialState] = RobotsList.init('test')
 
 export const Loading: React.FC = () => (
   <RobotsList.View
@@ -49,7 +49,8 @@ const createAgentName = (index: number): string => `Agent #${index}`
 const createAgent = (index: number): Agent => ({
   id: createAgentId(index),
   name: createAgentName(index),
-  status: `Status of Agent #${index}`
+  status: `Status of Agent #${index}`,
+  isAvailableForConnection: false
 })
 
 export const AgentList: React.FC = () => {

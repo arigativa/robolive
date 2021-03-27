@@ -14,6 +14,11 @@ export class AgentMessage extends jspb.Message {
   getJoin(): AgentMessage.JoinDecision | undefined;
   setJoin(value?: AgentMessage.JoinDecision): void;
 
+  hasStatusupdate(): boolean;
+  clearStatusupdate(): void;
+  getStatusupdate(): AgentMessage.StatusUpdate | undefined;
+  setStatusupdate(value?: AgentMessage.StatusUpdate): void;
+
   getMessageCase(): AgentMessage.MessageCase;
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): AgentMessage.AsObject;
@@ -29,6 +34,7 @@ export namespace AgentMessage {
   export type AsObject = {
     register?: AgentMessage.RegisterRequest.AsObject,
     join?: AgentMessage.JoinDecision.AsObject,
+    statusupdate?: AgentMessage.StatusUpdate.AsObject,
   }
 
   export class RegisterRequest extends jspb.Message {
@@ -36,6 +42,16 @@ export namespace AgentMessage {
     clearName(): void;
     getName(): string | undefined;
     setName(value: string): void;
+
+    hasLogin(): boolean;
+    clearLogin(): void;
+    getLogin(): string | undefined;
+    setLogin(value: string): void;
+
+    hasPassword(): boolean;
+    clearPassword(): void;
+    getPassword(): string | undefined;
+    setPassword(value: string): void;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterRequest.AsObject;
@@ -50,6 +66,30 @@ export namespace AgentMessage {
   export namespace RegisterRequest {
     export type AsObject = {
       name?: string,
+      login?: string,
+      password?: string,
+    }
+  }
+
+  export class StatusUpdate extends jspb.Message {
+    hasStatus(): boolean;
+    clearStatus(): void;
+    getStatus(): string | undefined;
+    setStatus(value: string): void;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): StatusUpdate.AsObject;
+    static toObject(includeInstance: boolean, msg: StatusUpdate): StatusUpdate.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: StatusUpdate, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): StatusUpdate;
+    static deserializeBinaryFromReader(message: StatusUpdate, reader: jspb.BinaryReader): StatusUpdate;
+  }
+
+  export namespace StatusUpdate {
+    export type AsObject = {
+      status?: string,
     }
   }
 
@@ -84,6 +124,11 @@ export namespace AgentMessage {
     export class Accepted extends jspb.Message {
       getSettingsMap(): jspb.Map<string, string>;
       clearSettingsMap(): void;
+      hasRequestid(): boolean;
+      clearRequestid(): void;
+      getRequestid(): string | undefined;
+      setRequestid(value: string): void;
+
       serializeBinary(): Uint8Array;
       toObject(includeInstance?: boolean): Accepted.AsObject;
       static toObject(includeInstance: boolean, msg: Accepted): Accepted.AsObject;
@@ -97,6 +142,7 @@ export namespace AgentMessage {
     export namespace Accepted {
       export type AsObject = {
         settingsMap: Array<[string, string]>,
+        requestid?: string,
       }
     }
 
@@ -105,6 +151,11 @@ export namespace AgentMessage {
       clearReason(): void;
       getReason(): string | undefined;
       setReason(value: string): void;
+
+      hasRequestid(): boolean;
+      clearRequestid(): void;
+      getRequestid(): string | undefined;
+      setRequestid(value: string): void;
 
       serializeBinary(): Uint8Array;
       toObject(includeInstance?: boolean): Declined.AsObject;
@@ -119,6 +170,7 @@ export namespace AgentMessage {
     export namespace Declined {
       export type AsObject = {
         reason?: string,
+        requestid?: string,
       }
     }
 
@@ -133,6 +185,7 @@ export namespace AgentMessage {
     MESSAGE_NOT_SET = 0,
     REGISTER = 1,
     JOIN = 2,
+    STATUSUPDATE = 3,
   }
 }
 
@@ -165,6 +218,21 @@ export namespace RegistryMessage {
   }
 
   export class RegisterResponse extends jspb.Message {
+    hasConnectionid(): boolean;
+    clearConnectionid(): void;
+    getConnectionid(): string | undefined;
+    setConnectionid(value: string): void;
+
+    hasLogin(): boolean;
+    clearLogin(): void;
+    getLogin(): string | undefined;
+    setLogin(value: string): void;
+
+    hasPassword(): boolean;
+    clearPassword(): void;
+    getPassword(): string | undefined;
+    setPassword(value: string): void;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResponse.AsObject;
     static toObject(includeInstance: boolean, msg: RegisterResponse): RegisterResponse.AsObject;
@@ -177,6 +245,9 @@ export namespace RegistryMessage {
 
   export namespace RegisterResponse {
     export type AsObject = {
+      connectionid?: string,
+      login?: string,
+      password?: string,
     }
   }
 
@@ -188,6 +259,11 @@ export namespace RegistryMessage {
 
     getSettingsMap(): jspb.Map<string, string>;
     clearSettingsMap(): void;
+    hasRequestid(): boolean;
+    clearRequestid(): void;
+    getRequestid(): string | undefined;
+    setRequestid(value: string): void;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): Connected.AsObject;
     static toObject(includeInstance: boolean, msg: Connected): Connected.AsObject;
@@ -202,6 +278,7 @@ export namespace RegistryMessage {
     export type AsObject = {
       name?: string,
       settingsMap: Array<[string, string]>,
+      requestid?: string,
     }
   }
 

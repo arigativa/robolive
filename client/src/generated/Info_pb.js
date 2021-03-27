@@ -110,7 +110,7 @@ proto.AgentListRequest.prototype.toObject = function(opt_includeInstance) {
  */
 proto.AgentListRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-
+    name: (f = jspb.Message.getField(msg, 1)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -147,6 +147,10 @@ proto.AgentListRequest.deserializeBinaryFromReader = function(msg, reader) {
     }
     var field = reader.getFieldNumber();
     switch (field) {
+    case 1:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setName(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -176,6 +180,49 @@ proto.AgentListRequest.prototype.serializeBinary = function() {
  */
 proto.AgentListRequest.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
+  f = /** @type {string} */ (jspb.Message.getField(message, 1));
+  if (f != null) {
+    writer.writeString(
+      1,
+      f
+    );
+  }
+};
+
+
+/**
+ * required string name = 1;
+ * @return {string}
+ */
+proto.AgentListRequest.prototype.getName = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.AgentListRequest} returns this
+ */
+proto.AgentListRequest.prototype.setName = function(value) {
+  return jspb.Message.setField(this, 1, value);
+};
+
+
+/**
+ * Clears the field making it undefined.
+ * @return {!proto.AgentListRequest} returns this
+ */
+proto.AgentListRequest.prototype.clearName = function() {
+  return jspb.Message.setField(this, 1, undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.AgentListRequest.prototype.hasName = function() {
+  return jspb.Message.getField(this, 1) != null;
 };
 
 
@@ -213,7 +260,8 @@ proto.AgentView.toObject = function(includeInstance, msg) {
   var f, obj = {
     status: (f = jspb.Message.getField(msg, 1)) == null ? undefined : f,
     name: (f = jspb.Message.getField(msg, 2)) == null ? undefined : f,
-    id: (f = jspb.Message.getField(msg, 3)) == null ? undefined : f
+    id: (f = jspb.Message.getField(msg, 3)) == null ? undefined : f,
+    isavailableforconnection: (f = jspb.Message.getBooleanField(msg, 4)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -262,6 +310,10 @@ proto.AgentView.deserializeBinaryFromReader = function(msg, reader) {
       var value = /** @type {string} */ (reader.readString());
       msg.setId(value);
       break;
+    case 4:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setIsavailableforconnection(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -309,6 +361,13 @@ proto.AgentView.serializeBinaryToWriter = function(message, writer) {
   if (f != null) {
     writer.writeString(
       3,
+      f
+    );
+  }
+  f = /** @type {boolean} */ (jspb.Message.getField(message, 4));
+  if (f != null) {
+    writer.writeBool(
+      4,
       f
     );
   }
@@ -420,6 +479,42 @@ proto.AgentView.prototype.clearId = function() {
  */
 proto.AgentView.prototype.hasId = function() {
   return jspb.Message.getField(this, 3) != null;
+};
+
+
+/**
+ * required bool isAvailableForConnection = 4;
+ * @return {boolean}
+ */
+proto.AgentView.prototype.getIsavailableforconnection = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 4, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.AgentView} returns this
+ */
+proto.AgentView.prototype.setIsavailableforconnection = function(value) {
+  return jspb.Message.setField(this, 4, value);
+};
+
+
+/**
+ * Clears the field making it undefined.
+ * @return {!proto.AgentView} returns this
+ */
+proto.AgentView.prototype.clearIsavailableforconnection = function() {
+  return jspb.Message.setField(this, 4, undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.AgentView.prototype.hasIsavailableforconnection = function() {
+  return jspb.Message.getField(this, 4) != null;
 };
 
 
