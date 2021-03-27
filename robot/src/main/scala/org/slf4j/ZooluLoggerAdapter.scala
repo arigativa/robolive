@@ -2,13 +2,13 @@ package org.slf4j
 
 import org.zoolu.util.{LogLevel, Logger => ZLogger}
 
-
 // the name should start with Logger in order to be consdered as a part of a logging framework
-// this affects how caller/file/line loggin parameters are evaluated
-class LoggerForZoolupa(classicLogger: Logger) extends ZLogger {
+// this affects how caller/file/line logging parameters are evaluated
+class ZooluLoggerAdapter(classicLogger: Logger) extends ZLogger {
 
   override def log(message: String): Unit = log(LogLevel.INFO, message)
-  override def log(level: LogLevel, source_class: Class[_], message: String): Unit = log(level, message)
+  override def log(level: LogLevel, source_class: Class[_], message: String): Unit =
+    log(level, message)
 
   override def log(level: LogLevel, message: String): Unit = {
     level match {

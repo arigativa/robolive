@@ -1,9 +1,6 @@
 package robolive.server
 import Client.{JoinRequest, JoinResponse}
 import org.slf4j.LoggerFactory
-import robolive.server.SessionManager.CommunicationChannelSession
-
-import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.{ExecutionContext, Future}
 
 final class ClientEndpointHandler(
@@ -17,25 +14,25 @@ final class ClientEndpointHandler(
   override def join(
     request: JoinRequest
   ): Future[JoinResponse] = {
-    val robotState = agentSystem.getConnection(request.targetId)
-    val result = sipChannel
-      .allocate(request.name, request.targetId)
-      .flatMap { _ =>
-        robotState match {
-          case Some(state) =>
-            state.join(request.name, request.settings)
-          case None =>
-            Future.failed(new RuntimeException(s"Can not find agent by ${request.targetId}"))
-        }
-      }
-      .recoverWith {
-        case error =>
-          logger.error(
-            s"Error while trying to connect from client: `${request.name}` to agent: `${request.targetId}`",
-            error
-          )
-          Future.failed(error)
-      }
+    val result = agentSystem.getConnection(request.targetId) match {
+      case Some(activeConnection) =>
+        logger.info(s"Join ${request.name} -> ${request.targetId} (${activeConnection.login})")
+        sipChannel
+          .allocate(request.name, activeConnection.connectionId, activeConnection.login)
+          .flatMap { _ =>
+            activeConnection.join(request.name, request.settings)
+          }
+          .recoverWith {
+            case error =>
+              logger.error(
+                s"Error while trying to connect from client: `${request.name}` to agent: `${request.targetId}`",
+                error
+              )
+              Future.failed(error)
+          }
+      case None =>
+        Future.failed(new RuntimeException(s"Can not find agent by ${request.targetId}"))
+    }
 
     result.map { settings =>
       clientSuccessResponse(settings)
