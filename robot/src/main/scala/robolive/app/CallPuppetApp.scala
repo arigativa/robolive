@@ -25,7 +25,7 @@ object CallPuppetApp extends App {
   }
   val robotName: String = getEnv("ROBOT_NAME", "robomachine")
   val signallingUri: String = getEnv("SIGNALLING_SIP_URI", "sip:rl.arigativa.ru:9031")
-  val stunUri: String = getEnv("STUN_URI", "stun://rl.arigativa.ru:8080")
+  val stunUri: String = getEnv("STUN_URI", "stun:rl.arigativa.ru:8080")
   val RestreamType: PipelineDescription.RestreamType = {
     val rawType = getEnv("RESTREAM_TYPE", "NONE")
     PipelineDescription.RestreamType.fromUnsafe(rawType)

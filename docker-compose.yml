@@ -77,7 +77,7 @@ services:
       SERVO_CONTROLLER: 'FAKE'
       SIGNALLING_SIP_URI: 'sip:169.28.1.1:9031' # '192.168.1.72:9031'
       SIGNALLING_HTTP_URI: 'http://169.28.1.1:9031' # '192.168.1.72:9031'
-      STUN_URI: 'stun://169.28.1.4:8080' # 'stun://192.168.1.72:8080'
+      STUN_URI: 'stun:169.28.1.4:8080' # 'stun:192.168.1.72:8080'
       TURN_URI: 'turn:rl.arigativa.ru:8080?transport=tcp' # 'turn:169.28.1.4:8080?transport=tcp'
     networks:
       testing_net:
