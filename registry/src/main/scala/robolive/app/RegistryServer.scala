@@ -60,7 +60,7 @@ object RegistryServer extends App {
     "rtmpLink" -> RTMPLink,
   )
 
-  val sipSessionsState = SessionState(new SessionStorage(SessionStatePath))
+  val sessionsState = SessionState(new SessionStorage(SessionStatePath))
   val stateManager = new AgentStateStorage(AgentStatePath)
   val agentSystem: Server.AgentSystem = Server.AgentSystem.create(ConfigMap, stateManager)
 
@@ -74,7 +74,7 @@ object RegistryServer extends App {
   }
 
   val infoEndpoint = {
-    val infoEndpointHandler = new InfoEndpointHandler(agentSystem)
+    val infoEndpointHandler = new InfoEndpointHandler(agentSystem, sessionsState)
     runServer(
       ssd = InfoEndpoint.bindService(infoEndpointHandler, implicitly[ExecutionContext]),
       port = InfoPort
@@ -86,13 +86,13 @@ object RegistryServer extends App {
     new SipChannel(
       backend = backend,
       sipUri = SignallingHttpUri,
-      sessionStorage = sipSessionsState,
+      sessionStorage = sessionsState,
       allowAll = AllowAll
     )
   }
 
   val sessionEndpoint = {
-    val sessionEndpointHandler = new SessionEndpointHandler(sipSessionsState)
+    val sessionEndpointHandler = new SessionEndpointHandler(sessionsState)
     runServer(
       ssd = SessionEndpoint.bindService(sessionEndpointHandler, implicitly[ExecutionContext]),
       port = SessionPort

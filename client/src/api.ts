@@ -18,6 +18,7 @@ export interface Agent {
   id: string
   name: string
   status: string
+  isAvailableForConnection: boolean
 }
 
 const agentViewToAgent = (agentView: AgentView.AsObject): null | Agent => {
@@ -28,13 +29,18 @@ const agentViewToAgent = (agentView: AgentView.AsObject): null | Agent => {
   return {
     id: agentView.id,
     name: agentView.name ?? 'unknown',
-    status: agentView.status ?? 'unknown'
+    status: agentView.status ?? 'unknown',
+    isAvailableForConnection: agentView.isavailableforconnection ?? false
   }
 }
 
-export const getAgentList = (): Promise<Either<string, Array<Agent>>> => {
+export const getAgentList = (options: {
+  username: string
+}): Promise<Either<string, Array<Agent>>> => {
   return new Promise(done => {
-    infoClient.agentList(new AgentListRequest(), (error, response) => {
+    const req = new AgentListRequest()
+    req.setName(options.username)
+    infoClient.agentList(req, (error, response) => {
       if (error) {
         done(Either.Left(error.message))
       }

@@ -1,11 +1,14 @@
 syntax = "proto2";
 
-message AgentListRequest {}
+message AgentListRequest {
+  required string name = 1;
+}
 
 message AgentView {
   required string status = 1;
   required string name = 2;
   required string id = 3;
+  required bool isAvailableForConnection = 4;
 }
 
 message AgentListResponse {

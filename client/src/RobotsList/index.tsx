@@ -44,13 +44,15 @@ export interface State {
   polling: boolean
 }
 
-export const init: [State, Cmd<Action>] = [
+export const init = (username: string): [State, Cmd<Action>] => [
   {
     robots: RemoteData.Loading,
     joinStatus: NotJoin,
     polling: false
   },
-  Cmd.create<Action>(done => getAgentList().then(LoadRobots).then(done))
+  Cmd.create<Action>(done =>
+    getAgentList({ username }).then(LoadRobots).then(done)
+  )
 ]
 
 // U P D A T E
@@ -64,7 +66,7 @@ const Joined: CaseCreator<Stage> = CaseOf('Joined')
 
 export type Action = ActionOf<[string, State], Stage>
 
-const ReInit = ActionOf<Action>((_, __) => Updated(init))()
+const ReInit = ActionOf<Action>((username, __) => Updated(init(username)))()
 
 const LoadRobots = ActionOf<Either<string, Array<Agent>>, Action>(
   (result, _, state) =>
@@ -118,10 +120,12 @@ const SelectRobotDone = ActionOf<
   )
 })
 
-const RunPolling = ActionOf<Action>((_, state) =>
+const RunPolling = ActionOf<Action>((username, state) =>
   Updated([
     { ...state, polling: true },
-    Cmd.create<Action>(done => getAgentList().then(LoadRobots).then(done))
+    Cmd.create<Action>(done =>
+      getAgentList({ username }).then(LoadRobots).then(done)
+    )
   ])
 )()
 
@@ -144,7 +148,8 @@ export const subscriptions = (state: State): Sub<Action> => {
 const ViewAgentItem: React.FC<{
   name: ReactNode
   status: ReactNode
-}> = ({ name, status, children }) => (
+  isAvailableForConnection: ReactNode
+}> = ({ name, status, isAvailableForConnection, children }) => (
   <Box
     p="5"
     width="100%"
@@ -159,7 +164,10 @@ const ViewAgentItem: React.FC<{
       {status}
     </Text>
 
-    <Box mt="3">{children}</Box>
+    <Text mt="3" size="sm">
+      {isAvailableForConnection}
+    </Text>
+    <Box mt="4">{children}</Box>
   </Box>
 )
 
@@ -213,7 +221,11 @@ const AgentItem = React.memo<{
   )
 
   return (
-    <ViewAgentItem name={agent.name} status={agent.status}>
+    <ViewAgentItem
+      name={agent.name}
+      status={agent.status}
+      isAvailableForConnection={String(agent.isAvailableForConnection)}
+    >
       {error && (
         <Box mb="2">
           <AlertPanel status="error" title="Joining Failure">
@@ -283,7 +295,11 @@ export const View = React.memo<{
 // S K E L E T O N
 
 const SkeletonAgentItem = React.memo(() => (
-  <ViewAgentItem name={<SkeletonText />} status={<SkeletonText />}>
+  <ViewAgentItem
+    name={<SkeletonText />}
+    status={<SkeletonText />}
+    isAvailableForConnection={<SkeletonText />}
+  >
     <SkeletonRect width="66px" height="32px" rounded="6px" />
   </ViewAgentItem>
 ))

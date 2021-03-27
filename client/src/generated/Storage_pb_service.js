@@ -2,6 +2,7 @@
 // file: Storage.proto
 
 var Storage_pb = require("./Storage_pb");
+var Common_pb = require("./Common_pb");
 var grpc = require("@improbable-eng/grpc-web").grpc;
 
 var StorageEndpoint = (function () {
@@ -19,6 +20,15 @@ StorageEndpoint.Get = {
   responseType: Storage_pb.ReadResponse
 };
 
+StorageEndpoint.Set = {
+  methodName: "Set",
+  service: StorageEndpoint,
+  requestStream: false,
+  responseStream: false,
+  requestType: Storage_pb.WriteRequest,
+  responseType: Common_pb.Empty
+};
+
 exports.StorageEndpoint = StorageEndpoint;
 
 function StorageEndpointClient(serviceHost, options) {
@@ -31,6 +41,37 @@ StorageEndpointClient.prototype.get = function get(requestMessage, metadata, cal
     callback = arguments[1];
   }
   var client = grpc.unary(StorageEndpoint.Get, {
+    request: requestMessage,
+    host: this.serviceHost,
+    metadata: metadata,
+    transport: this.options.transport,
+    debug: this.options.debug,
+    onEnd: function (response) {
+      if (callback) {
+        if (response.status !== grpc.Code.OK) {
+          var err = new Error(response.statusMessage);
+          err.code = response.status;
+          err.metadata = response.trailers;
+          callback(err, null);
+        } else {
+          callback(null, response.message);
+        }
+      }
+    }
+  });
+  return {
+    cancel: function () {
+      callback = null;
+      client.close();
+    }
+  };
+};
+
+StorageEndpointClient.prototype.set = function set(requestMessage, metadata, callback) {
+  if (arguments.length === 2) {
+    callback = arguments[1];
+  }
+  var client = grpc.unary(StorageEndpoint.Set, {
     request: requestMessage,
     host: this.serviceHost,
     metadata: metadata,

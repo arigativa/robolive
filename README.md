@@ -136,7 +136,7 @@ Will create ./client/generated folder with generated protobuf code.
 Do not change, all changes will be overwritten by protoc.  
 If you want to change something consider change .proto files in `protocols` folder  
 ```shell script
-DOCKER_BUILDKIT=1 docker build -t client_proto --output client/ -f Dockerfile.client_proto .
+DOCKER_BUILDKIT=1 docker build -t client_proto --output ./client/src/ -f Dockerfile.client_proto .
 ```
 
 How to create a session:

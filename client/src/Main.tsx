@@ -29,7 +29,7 @@ export const initial: State = LoginScreen(Login.initial)
 export type Action = ActionOf<[State], [State, Cmd<Action>]>
 
 const initRobotsList = (username: string): [State, Cmd<Action>] => {
-  const [initialRobotsList, initialCmd] = RobotsList.init
+  const [initialRobotsList, initialCmd] = RobotsList.init(username)
 
   return [
     RobotsListScreen({ username, robotsList: initialRobotsList }),

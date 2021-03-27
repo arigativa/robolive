@@ -4,6 +4,11 @@
 import * as jspb from "google-protobuf";
 
 export class AgentListRequest extends jspb.Message {
+  hasName(): boolean;
+  clearName(): void;
+  getName(): string | undefined;
+  setName(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): AgentListRequest.AsObject;
   static toObject(includeInstance: boolean, msg: AgentListRequest): AgentListRequest.AsObject;
@@ -16,6 +21,7 @@ export class AgentListRequest extends jspb.Message {
 
 export namespace AgentListRequest {
   export type AsObject = {
+    name?: string,
   }
 }
 
@@ -35,6 +41,11 @@ export class AgentView extends jspb.Message {
   getId(): string | undefined;
   setId(value: string): void;
 
+  hasIsavailableforconnection(): boolean;
+  clearIsavailableforconnection(): void;
+  getIsavailableforconnection(): boolean | undefined;
+  setIsavailableforconnection(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): AgentView.AsObject;
   static toObject(includeInstance: boolean, msg: AgentView): AgentView.AsObject;
@@ -50,6 +61,7 @@ export namespace AgentView {
     status?: string,
     name?: string,
     id?: string,
+    isavailableforconnection?: boolean,
   }
 }
 
