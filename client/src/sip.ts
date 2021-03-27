@@ -1,5 +1,11 @@
 import { WebSocketInterface, UA } from 'jssip/lib/JsSIP'
-import { CallListener, EndListener, RTCSession } from 'jssip/lib/RTCSession'
+import {
+  EndEvent,
+  IncomingInfoEvent,
+  OutgoingInfoEvent,
+  Originator,
+  RTCSession
+} from 'jssip/lib/RTCSession'
 import { debug } from 'jssip/lib/JsSIP'
 import { Functor, Router, Cmd, Sub, registerManager } from 'core'
 import { Schema, CaseOf, CaseCreator, match } from 'utils'
@@ -84,15 +90,26 @@ class Room<AppMsg> {
       }
     })
 
-    const onFailed: EndListener = event => {
-      router.sendToSelf(new FailSession(key, event.cause))
+    const onFailed = (event: EndEvent): void => {
+      router.sendToSelf(new DispatchEvent(key, OnFailure(event.cause)))
     }
 
-    const onEnded: EndListener = () => {
-      router.sendToSelf(new EndSession(key))
+    const onEnded = (): void => {
+      router.sendToSelf(new DispatchEvent(key, OnEnd))
     }
 
-    const onConfirmed: CallListener = () => {
+    const onInfo = (event: IncomingInfoEvent | OutgoingInfoEvent): void => {
+      router.sendToSelf(
+        new DispatchEvent(
+          key,
+          event.originator === Originator.LOCAL
+            ? OnOutgoingInfo(event.info.body)
+            : OnIncomingInfo(event.info.body)
+        )
+      )
+    }
+
+    const onConfirmed = (): void => {
       router.sendToSelf(new RegisterStream(key))
     }
 
@@ -100,12 +117,14 @@ class Room<AppMsg> {
       session
         .off('failed', onFailed)
         .off('ended', onEnded)
+        .off('newInfo', onInfo)
         .off('confirmed', onConfirmed)
     }
 
     session
       .on('failed', onFailed)
       .on('ended', onEnded)
+      .on('newInfo', onInfo)
       .on('confirmed', onConfirmed)
 
     return this.clone({
@@ -128,7 +147,10 @@ class Room<AppMsg> {
       return this.registerSessionDanger(router, options, userAgent)
     } catch (error) {
       router.sendToSelf(
-        new FailSession(options.key, error?.message ?? 'Unknown error')
+        new DispatchEvent(
+          options.key,
+          OnFailure(error?.message ?? 'UserAgent call failed')
+        )
       )
 
       return this
@@ -293,10 +315,10 @@ class RegisterStream<AppMsg> implements SipSelfMsg<AppMsg> {
   }
 }
 
-class FailSession<AppMsg> implements SipSelfMsg<AppMsg> {
+class DispatchEvent<AppMsg> implements SipSelfMsg<AppMsg> {
   public constructor(
     private readonly key: string,
-    private readonly reason: string
+    private readonly event: ListenEvent
   ) {}
 
   public proceed(
@@ -309,26 +331,7 @@ class FailSession<AppMsg> implements SipSelfMsg<AppMsg> {
       return state
     }
 
-    room.dispatchEvent(router, OnFailure(this.reason))
-
-    return state
-  }
-}
-
-class EndSession<AppMsg> implements SipSelfMsg<AppMsg> {
-  public constructor(private readonly key: string) {}
-
-  public proceed(
-    router: Router<AppMsg, SipSelfMsg<AppMsg>>,
-    state: State<AppMsg>
-  ): State<AppMsg> {
-    const room = state[this.key]
-
-    if (room == null) {
-      return state
-    }
-
-    room.dispatchEvent(router, OnEnd)
+    room.dispatchEvent(router, this.event)
 
     return state
   }
@@ -432,7 +435,9 @@ class ListenSub<AppMsg> implements SipSub<AppMsg> {
     })
 
     ua.once('registrationFailed', ({ response }) => {
-      router.sendToSelf(new FailSession(options.key, response.reason_phrase))
+      router.sendToSelf(
+        new DispatchEvent(options.key, OnFailure(response.reason_phrase))
+      )
     })
 
     ua.once('registered', () => {
@@ -488,17 +493,19 @@ class ListenSub<AppMsg> implements SipSub<AppMsg> {
         ListenSub.startUserAgent(router, this.options, ws)
       } catch (error) {
         router.sendToSelf(
-          new FailSession(
+          new DispatchEvent(
             key,
-            error?.message ?? 'UserAgent initialisation failed'
+            OnFailure(error?.message ?? 'UserAgent initialisation failed')
           )
         )
       }
     } catch (error) {
       router.sendToSelf(
-        new FailSession(
+        new DispatchEvent(
           key,
-          error?.message ?? 'WebSocketInterface initialisation failed'
+          OnFailure(
+            error?.message ?? 'WebSocketInterface initialisation failed'
+          )
         )
       )
     }
@@ -545,10 +552,16 @@ const sipManager = registerManager<
   }
 })
 
-export type ListenEvent = CaseOf<'OnFailure', string> | CaseOf<'OnEnd'>
+export type ListenEvent =
+  | CaseOf<'OnEnd'>
+  | CaseOf<'OnFailure', string>
+  | CaseOf<'OnIncomingInfo', string>
+  | CaseOf<'OnOutgoingInfo', string>
 
-const OnFailure: CaseCreator<ListenEvent> = CaseOf('OnFailure')
 const OnEnd: ListenEvent = CaseOf('OnEnd')()
+const OnFailure: CaseCreator<ListenEvent> = CaseOf('OnFailure')
+const OnIncomingInfo: CaseCreator<ListenEvent> = CaseOf('OnIncomingInfo')
+const OnOutgoingInfo: CaseCreator<ListenEvent> = CaseOf('OnOutgoingInfo')
 
 // eslint-disable-next-line no-shadow
 enum WebSocketProtocol {
@@ -673,8 +686,8 @@ export interface Connection {
 
   onEnd<T>(msg: T): Sub<T>
   onFailure<T>(tagger: (reason: string) => T): Sub<T>
-  // onIncomingInfo<T>(tagger: (content: string) => T): Sub<T>
-  // onOutgoingInfo<T>(tagger: (content: string) => T): Sub<T>
+  onIncomingInfo<T>(tagger: (content: string) => T): Sub<T>
+  onOutgoingInfo<T>(tagger: (content: string) => T): Sub<T>
 }
 
 class ConnectionImpl implements Connection {
@@ -710,6 +723,20 @@ class ConnectionImpl implements Connection {
   public onFailure<T>(tagger: (reason: string) => T): Sub<T> {
     return this.listen({
       OnFailure: tagger,
+      _: () => null
+    })
+  }
+
+  public onIncomingInfo<T>(tagger: (content: string) => T): Sub<T> {
+    return this.listen({
+      OnIncomingInfo: tagger,
+      _: () => null
+    })
+  }
+
+  public onOutgoingInfo<T>(tagger: (content: string) => T): Sub<T> {
+    return this.listen({
+      OnOutgoingInfo: tagger,
       _: () => null
     })
   }

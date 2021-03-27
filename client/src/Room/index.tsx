@@ -85,6 +85,18 @@ const FailConnection = ActionOf<string, Action>((reason, state) =>
   ])
 )
 
+const NewIncomingMessage = ActionOf<string, Action>((content, state) => {
+  // console.log('in', content)
+
+  return Updated([state, Cmd.none])
+})
+
+const NewOutgoingMessage = ActionOf<string, Action>((content, state) => {
+  // console.log('out', content)
+
+  return Updated([state, Cmd.none])
+})
+
 const ChangeInfo = ActionOf<string, Action>((info, state) =>
   Updated([
     {
@@ -136,7 +148,9 @@ export const subscriptions = (state: State): Sub<Action> => {
 
   return Sub.batch([
     state.connection.onEnd(GoToRobotsList),
-    state.connection.onFailure(FailConnection)
+    state.connection.onFailure(FailConnection),
+    state.connection.onIncomingInfo(NewIncomingMessage),
+    state.connection.onOutgoingInfo(NewOutgoingMessage)
   ])
 }
 
