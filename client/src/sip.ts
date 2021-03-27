@@ -62,19 +62,15 @@ class Room<AppMsg> {
     )
   }
 
-  public registerSession(
+  private registerSessionDanger(
     router: Router<AppMsg, SipSelfMsg<AppMsg>>,
     options: ConnectionOptions,
     userAgent: UA
   ): Room<AppMsg> {
-    if (this.session != null) {
-      return this
-    }
-
     const key = options.key
     const [fakeVideoStream, stopFakeStream] = makeFakeVideoStream()
 
-    const session = userAgent.call(options.uri, {
+    const session = userAgent.call(options.agentUri, {
       mediaConstraints: {
         audio: false,
         video: false
@@ -115,6 +111,26 @@ class Room<AppMsg> {
       session,
       cleanups: [stopFakeStream, stopSessionListeners]
     })
+  }
+
+  public registerSession(
+    router: Router<AppMsg, SipSelfMsg<AppMsg>>,
+    options: ConnectionOptions,
+    userAgent: UA
+  ): Room<AppMsg> {
+    if (this.session != null) {
+      return this
+    }
+
+    try {
+      return this.registerSessionDanger(router, options, userAgent)
+    } catch (error) {
+      router.sendToSelf(
+        new FailSession(options.key, error?.message ?? 'Unknown error')
+      )
+
+      return this
+    }
   }
 
   public registerStream(
@@ -403,7 +419,7 @@ class ListenSub<AppMsg> implements SipSub<AppMsg> {
     ws: WebSocketInterface
   ): void {
     const ua = new UA({
-      uri: options.uri,
+      uri: options.clientUri,
       sockets: ws,
       display_name: options.client,
       register: true
@@ -551,6 +567,15 @@ class ConnectionOptions {
     return 0
   }
 
+  // TODO no need when BE returns valid url
+  private static sanitazeIceServer(url: string): string {
+    return url
+      .replace(/^stun:\/+/, 'stun:')
+      .replace(/^stuns:\/+/, 'stuns:')
+      .replace(/^turn:\/+/, 'turn:')
+      .replace(/^turns:\/+/, 'turns:')
+  }
+
   private static extractHost(server: string): string {
     return server.replace(/(^sips?:|:\d+$)/g, '')
   }
@@ -576,7 +601,9 @@ class ConnectionOptions {
       ConnectionOptions.extractPort(options.server),
       options.agent,
       options.client,
-      options.iceServers.slice().sort(ConnectionOptions.compare)
+      options.iceServers
+        .map(ConnectionOptions.sanitazeIceServer)
+        .sort(ConnectionOptions.compare)
     )
   }
 
@@ -588,6 +615,10 @@ class ConnectionOptions {
     public readonly client: string,
     private readonly servers: Array<string>
   ) {}
+
+  private getUriFor(username: string): string {
+    return this.withPort(`${username}@${this.host}`)
+  }
 
   private withPort(path: string): string {
     if (this.port == null) {
@@ -601,8 +632,12 @@ class ConnectionOptions {
     return this.withPort(`${this.protocol}://${this.host}`)
   }
 
-  public get uri(): string {
-    return this.withPort(`${this.agent}@${this.host}`)
+  public get clientUri(): string {
+    return this.getUriFor(this.client)
+  }
+
+  public get agentUri(): string {
+    return this.getUriFor(this.agent)
   }
 
   public get key(): string {
