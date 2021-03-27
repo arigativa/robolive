@@ -2,7 +2,7 @@ import { WebSocketInterface, UA } from 'jssip/lib/JsSIP'
 import { CallListener, EndListener, RTCSession } from 'jssip/lib/RTCSession'
 import { debug } from 'jssip/lib/JsSIP'
 import { Functor, Router, Cmd, Sub, registerManager } from 'core'
-import { CaseOf, CaseCreator } from 'utils'
+import { Schema, CaseOf, CaseCreator, match } from 'utils'
 
 debug.enable('JsSIP:*')
 
@@ -14,7 +14,7 @@ class Room<AppMsg> {
   }: {
     pendingInfoToSend?: Array<string>
     streamRequests?: Array<(steram: MediaStream) => T>
-    eventListeners?: Array<(event: ListenEvent) => T>
+    eventListeners?: Array<(event: ListenEvent) => null | T>
   } = {}): Room<T> {
     return new Room(
       null,
@@ -34,7 +34,9 @@ class Room<AppMsg> {
     private readonly pendingStreamRequests: Array<
       (steram: MediaStream) => AppMsg
     >,
-    private readonly eventListeners: Array<(event: ListenEvent) => AppMsg>
+    private readonly eventListeners: Array<
+      (event: ListenEvent) => null | AppMsg
+    >
   ) {}
 
   public clone({
@@ -50,7 +52,7 @@ class Room<AppMsg> {
     cleanups?: Array<VoidFunction>
     pendingInfoToSend?: Array<string>
     pendingStreamRequests?: Array<(steram: MediaStream) => AppMsg>
-    eventListeners?: Array<(event: ListenEvent) => AppMsg>
+    eventListeners?: Array<(event: ListenEvent) => null | AppMsg>
   }): Room<AppMsg> {
     return new Room(
       userAgent,
@@ -159,7 +161,7 @@ class Room<AppMsg> {
   }
 
   public pushListener(
-    eventListener: (event: ListenEvent) => AppMsg
+    eventListener: (event: ListenEvent) => null | AppMsg
   ): Room<AppMsg> {
     return this.clone({
       eventListeners: [...this.eventListeners, eventListener]
@@ -213,7 +215,11 @@ class Room<AppMsg> {
     event: ListenEvent
   ): void {
     for (const listener of this.eventListeners) {
-      router.sendToApp(listener(event))
+      const msg = listener(event)
+
+      if (msg !== null) {
+        router.sendToApp(msg)
+      }
     }
   }
 }
@@ -438,11 +444,15 @@ class ListenSub<AppMsg> implements SipSub<AppMsg> {
 
   public constructor(
     private readonly options: ConnectionOptions,
-    private readonly onEvent: (event: ListenEvent) => AppMsg
+    private readonly onEvent: (event: ListenEvent) => null | AppMsg
   ) {}
 
   public map<R>(fn: (msg: AppMsg) => R): SipSub<R> {
-    return new ListenSub(this.options, event => fn(this.onEvent(event)))
+    return new ListenSub(this.options, event => {
+      const msg = this.onEvent(event)
+
+      return msg === null ? null : fn(msg)
+    })
   }
 
   public register(
@@ -660,11 +670,9 @@ export interface Connection {
   getStream<T>(tagger: (stream: MediaStream) => T): Cmd<T>
   sendInfo(info: string): Cmd<never>
   terminate: Cmd<never>
-  listen<T>(onEvent: (event: ListenEvent) => T): Sub<T>
 
-  //
-  // onEnd<T>(msg: T): Sub<T>
-  // onFail<T>(tagger: (reason: string) => T): Sub<T>
+  onEnd<T>(msg: T): Sub<T>
+  onFailure<T>(tagger: (reason: string) => T): Sub<T>
   // onIncomingInfo<T>(tagger: (content: string) => T): Sub<T>
   // onOutgoingInfo<T>(tagger: (content: string) => T): Sub<T>
 }
@@ -684,8 +692,26 @@ class ConnectionImpl implements Connection {
     return sipManager.createCmd(new TerminateCmd(this.options.key))
   }
 
-  public listen<T>(onEvent: (event: ListenEvent) => T): Sub<T> {
-    return sipManager.createSub(new ListenSub(this.options, onEvent))
+  private listen<T>(schema: Schema<ListenEvent, null | T>): Sub<T> {
+    return sipManager.createSub(
+      new ListenSub(this.options, event => {
+        return match<ListenEvent, null | T>(event, schema)
+      })
+    )
+  }
+
+  public onEnd<T>(msg: T): Sub<T> {
+    return this.listen({
+      OnEnd: () => msg,
+      _: () => null
+    })
+  }
+
+  public onFailure<T>(tagger: (reason: string) => T): Sub<T> {
+    return this.listen({
+      OnFailure: tagger,
+      _: () => null
+    })
   }
 }
 

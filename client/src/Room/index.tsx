@@ -16,7 +16,7 @@ import {
 import { Dispatch, Cmd, Sub } from 'core'
 import { RoomConfiguration } from 'api'
 import { Connection, createConnection } from 'sip'
-import { ActionOf, CaseOf, CaseCreator, match } from 'utils'
+import { ActionOf, CaseOf, CaseCreator } from 'utils'
 
 // S T A T E
 
@@ -134,12 +134,10 @@ export const subscriptions = (state: State): Sub<Action> => {
     return Sub.none
   }
 
-  return state.connection.listen(event =>
-    match(event, {
-      OnFailure: FailConnection,
-      OnEnd: () => GoToRobotsList
-    })
-  )
+  return Sub.batch([
+    state.connection.onEnd(GoToRobotsList),
+    state.connection.onFailure(FailConnection)
+  ])
 }
 
 // V I E W
