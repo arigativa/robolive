@@ -34,6 +34,8 @@ object WriteToSerial extends App {
         rest match {
           case "-t" :: _ =>
 
+//            println(s"${Try(serialDriver.readline())}")
+            println(s"${Try(serialDriver.read(0))}")
             serialDriver.write("first\n")
             println(s"${Try(serialDriver.readline())}")
             serialDriver.write("second\n")
