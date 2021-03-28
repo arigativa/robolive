@@ -31,8 +31,10 @@ final class SipChannel(
 
   private def deallocate(): Future[Unit] = {
     val sessionsToDeallocate = sessionStorage.getInvalidSessions
-    logger.info(s"Deallocation of sessions: `$sessionsToDeallocate`")
-    Future.sequence(sessionsToDeallocate.map(deallocate)).map(_ => ())
+    if (sessionsToDeallocate.nonEmpty) {
+      logger.info(s"Deallocation of sessions: `$sessionsToDeallocate`")
+      Future.sequence(sessionsToDeallocate.map(deallocate)).map(_ => ())
+    } else Future.unit
   }
 
   def deallocate(session: CommunicationChannelSession): Future[Unit] = {

@@ -2,13 +2,16 @@ package robolive.server
 
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+
 import Agent.AgentEndpointGrpc.AgentEndpoint
 import Agent.AgentMessage.Message
 import Agent._
 import io.grpc.stub.StreamObserver
 import org.slf4j.LoggerFactory
-
 import java.util.concurrent.atomic.AtomicReference
+
+import robolive.server.Server.Credentials
+
 import scala.concurrent.Promise
 
 final class AgentEndpointHandler(agentSystem: Server.AgentSystem) extends AgentEndpoint {
@@ -42,15 +45,18 @@ final class AgentEndpointHandler(agentSystem: Server.AgentSystem) extends AgentE
           case AgentMessage.Message.Register(message) =>
             logger.info(s"register `${message.name}")
 
-            val (login, password) = agentSystem.newConnection(
-              connectionId = connectionId,
-              name = message.name,
-              sendToAgent = responseObserver.onNext,
-              loginOpt = message.login,
-              passwordOpt = message.password,
-            )
-
-            responseObserver.onNext(registerResponse(connectionId, login, password))
+            try {
+              val (login, password) = agentSystem.newConnection(
+                connectionId = connectionId,
+                name = message.name,
+                sendToAgent = responseObserver.onNext,
+                credsOpt = message.login.zip(message.password).map { case (l, p) => Credentials(l, p) },
+              )
+              responseObserver.onNext(registerResponse(connectionId, login, password))
+            } catch {
+              case err: Exception =>
+                responseObserver.onError(err)
+            }
 
           case AgentMessage.Message.Join(message) =>
             logger.info(agentLog(s"join decision `$message`"))

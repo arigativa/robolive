@@ -4,4 +4,5 @@ robolive_dir: /opt/robolive
 registry_package_dir: /opt/robolive/registry
 registry_package: registry.zip
 registry_package_local: /opt/robolive/registry.zip
+registry_config_dir: /var/robolive/registry
 

@@ -15,6 +15,8 @@ Environment="STUN_URI=stun:rl.arigativa.ru:8080"
 Environment="TURN_URI=turn:rl.arigativa.ru:8080?transport=tcp"
 Environment="TURN_USERNAME=turn"
 Environment="TURN_PASSWORD=turn"
+Environment="SESSION_STATE_PATH={{ registry_config_dir }}/session-state.cfg"
+Environment="AGENT_STATE_PATH={{ registry_config_dir }}/agent-state.cfg"
 
 ExecStart={{ registry_package_dir }}/bin/registry -Dscala.concurrent.context.minThreads=8 -Dscala.concurrent.context.maxThreads=16 -Dscala.concurrent.context.numThreads=8
 Restart=on-failure
