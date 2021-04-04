@@ -12,17 +12,20 @@ import {
 
 import { Dispatch } from 'core'
 import { ActionOf, CaseCreator, CaseOf, hasWhitespaces } from 'utils'
+import * as TicTacToe from '../TicTacToe'
 
 // S T A T E
 
 export type State = {
   username: string
   error: Maybe<string>
+  ttt: TicTacToe.State
 }
 
 export const initial: State = {
   username: '',
-  error: Maybe.Nothing
+  error: Maybe.Nothing,
+  ttt: TicTacToe.initial
 }
 
 // U P D A T E
@@ -59,7 +62,28 @@ const ChangeUsername = ActionOf<string, Action>((username, state) =>
   })
 )
 
+const TicTacToeAction = ActionOf<TicTacToe.Action, Action>((tttAction, state) =>
+  Updated({
+    ...state,
+    ttt: tttAction.update(state.ttt)
+  })
+)
+
 // V I E W
+
+const TicTacToeView = React.memo<{
+  ttt: TicTacToe.State
+  dispatch: Dispatch<Action>
+}>(({ ttt, dispatch }) => {
+  const tttDispatch = React.useCallback(
+    (tttAction: TicTacToe.Action): void => {
+      dispatch(TicTacToeAction(tttAction))
+    },
+    [dispatch]
+  )
+
+  return <TicTacToe.View state={ttt} dispatch={tttDispatch} />
+})
 
 export const View = React.memo<{
   dispatch: Dispatch<Action>
@@ -102,5 +126,7 @@ export const View = React.memo<{
         Sign In
       </Button>
     </form>
+
+    <TicTacToeView ttt={state.ttt} dispatch={dispatch} />
   </Container>
 ))

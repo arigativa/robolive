@@ -117,7 +117,7 @@ class History<T> {
   }
 }
 
-type State = History<Board3x3>
+export type State = History<Board3x3>
 
 export const initial: State = History.init(Board3x3.empty)
 
