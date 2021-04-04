@@ -177,23 +177,29 @@ const Square: React.FC<{
 const Board = React.memo<{
   board: Board3x3
   dispatch: Dispatch<Action>
-}>(({ board, dispatch }) => (
-  <div>
-    {Array.from({ length: 3 }).map((_, row) => (
-      <div key={row}>
-        {Array.from({ length: 3 }).map((__, col) => (
-          <Square
-            key={col}
-            mark={board.getMarkAt(row, col)}
-            onClick={() => {
-              dispatch(PutCurrentPlayerMark({ row, col }))
-            }}
-          />
-        ))}
-      </div>
-    ))}
-  </div>
-))
+}>(({ board, dispatch }) => {
+  const hasWinner = board.getWinner() !== null
+
+  return (
+    <div>
+      {Array.from({ length: 3 }).map((_, row) => (
+        <div key={row}>
+          {Array.from({ length: 3 }).map((__, col) => (
+            <Square
+              key={col}
+              mark={board.getMarkAt(row, col)}
+              onClick={() => {
+                if (!hasWinner) {
+                  dispatch(PutCurrentPlayerMark({ row, col }))
+                }
+              }}
+            />
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+})
 
 const cssGameInfo = css`
   margin-left: 20px;
