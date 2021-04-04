@@ -7,7 +7,8 @@ import {
   FormHelperText,
   Input,
   Heading,
-  Button
+  Button,
+  VStack
 } from '@chakra-ui/react'
 
 import { Dispatch } from 'core'
@@ -19,13 +20,18 @@ import * as TicTacToe from '../TicTacToe'
 export type State = {
   username: string
   error: Maybe<string>
-  ttt: TicTacToe.State
+  ttt: Array<TicTacToe.State>
 }
 
 export const initial: State = {
   username: '',
   error: Maybe.Nothing,
-  ttt: TicTacToe.initial
+  ttt: [
+    TicTacToe.initial,
+    TicTacToe.initial,
+    TicTacToe.initial,
+    TicTacToe.initial
+  ]
 }
 
 // U P D A T E
@@ -62,24 +68,31 @@ const ChangeUsername = ActionOf<string, Action>((username, state) =>
   })
 )
 
-const TicTacToeAction = ActionOf<TicTacToe.Action, Action>((tttAction, state) =>
+const TicTacToeAction = ActionOf<
+  {
+    index: number
+    action: TicTacToe.Action
+  },
+  Action
+>(({ index, action }, state) =>
   Updated({
     ...state,
-    ttt: tttAction.update(state.ttt)
+    ttt: state.ttt.map((ttt, i) => (index === i ? action.update(ttt) : ttt))
   })
 )
 
 // V I E W
 
 const TicTacToeView = React.memo<{
+  index: number
   ttt: TicTacToe.State
   dispatch: Dispatch<Action>
-}>(({ ttt, dispatch }) => {
+}>(({ index, ttt, dispatch }) => {
   const tttDispatch = React.useCallback(
-    (tttAction: TicTacToe.Action): void => {
-      dispatch(TicTacToeAction(tttAction))
+    (action: TicTacToe.Action): void => {
+      dispatch(TicTacToeAction({ index, action }))
     },
-    [dispatch]
+    [index, dispatch]
   )
 
   return <TicTacToe.View state={ttt} dispatch={tttDispatch} />
@@ -127,6 +140,15 @@ export const View = React.memo<{
       </Button>
     </form>
 
-    <TicTacToeView ttt={state.ttt} dispatch={dispatch} />
+    <VStack>
+      {state.ttt.map((ttt, index) => (
+        <TicTacToeView
+          key={index}
+          ttt={ttt}
+          index={index}
+          dispatch={dispatch}
+        />
+      ))}
+    </VStack>
   </Container>
 ))
