@@ -85,7 +85,6 @@ export const OnCall: React.FC = () => {
 
 export const SendInfoText: React.FC = () => {
   const info = text('Info', 'Some useful information to send')
-  const saveOnSubmit = boolean('Save on Submit', true)
   const stream = useFakeStream()
 
   if (!stream) {
@@ -97,7 +96,6 @@ export const SendInfoText: React.FC = () => {
       state={{
         ...initialState,
         info,
-        saveOnSubmit,
         stream: RemoteData.Succeed(stream)
       }}
       dispatch={action('dispatch')}

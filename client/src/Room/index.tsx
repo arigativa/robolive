@@ -9,7 +9,6 @@ import {
   FormControl,
   FormLabel,
   FormHelperText,
-  Checkbox,
   Button,
   Textarea,
   VStack,
@@ -37,7 +36,6 @@ export interface State {
   stream: RemoteData<string, MediaStream>
   info: string
   terminating: boolean
-  saveOnSubmit: boolean
   outgoingInfoMessages: Array<OutgoingInfoMessage>
 }
 
@@ -58,7 +56,6 @@ export const init = (
       stream: RemoteData.Loading,
       info: '',
       terminating: false,
-      saveOnSubmit: true,
       outgoingInfoMessages: []
     },
     connection.getStream(Connect)
@@ -122,16 +119,6 @@ const ChangeInfo = ActionOf<string, Action>((info, state) =>
   ])
 )
 
-const SendNewInfo = ActionOf<Action>(state =>
-  Updated([
-    {
-      ...state,
-      info: state.saveOnSubmit ? state.info : ''
-    },
-    state.connection.sendInfo(state.info)
-  ])
-)()
-
 const SendInfo = ActionOf<string, Action>((content, state) =>
   Updated([state, state.connection.sendInfo(content)])
 )
@@ -147,16 +134,6 @@ const Terminate = ActionOf<Action>(state =>
 )()
 
 const GoToRobotsList = ActionOf<Action>(() => BackToList)()
-
-const SetSaveOnSubmit = ActionOf<boolean, Action>((saveOnSubmit, state) =>
-  Updated([
-    {
-      ...state,
-      saveOnSubmit
-    },
-    Cmd.none
-  ])
-)
 
 // S U B S C R I P T I O N S
 
@@ -233,9 +210,8 @@ const useFakeSubmitting = (ms: number): [boolean, VoidFunction] => {
 
 const ViewSendInfo = React.memo<{
   info: string
-  saveOnSubmit: boolean
   dispatch: Dispatch<Action>
-}>(({ info, saveOnSubmit, dispatch }) => {
+}>(({ info, dispatch }) => {
   const [submitting, fakeSubmitting] = useFakeSubmitting(400)
 
   return (
@@ -243,7 +219,7 @@ const ViewSendInfo = React.memo<{
       as="form"
       onSubmit={event => {
         fakeSubmitting()
-        dispatch(SendNewInfo)
+        dispatch(SendInfo(info))
 
         event.preventDefault()
       }}
@@ -267,26 +243,9 @@ const ViewSendInfo = React.memo<{
       </StackItem>
 
       <StackItem>
-        <Stack direction="row" align="center" spacing="4">
-          <StackItem>
-            <Button type="submit" colorScheme="teal" isLoading={submitting}>
-              Submit
-            </Button>
-          </StackItem>
-
-          <StackItem>
-            <Checkbox
-              colorScheme="teal"
-              isChecked={saveOnSubmit}
-              isReadOnly={submitting}
-              onChange={event =>
-                dispatch(SetSaveOnSubmit(event.target.checked))
-              }
-            >
-              Save on submit
-            </Checkbox>
-          </StackItem>
-        </Stack>
+        <Button type="submit" colorScheme="teal" isLoading={submitting}>
+          Submit
+        </Button>
       </StackItem>
     </Stack>
   )
@@ -362,62 +321,48 @@ const ViewOutgoingInfoMessages = React.memo<{
 const ViewSucceed = React.memo<{
   info: string
   terminating: boolean
-  saveOnSubmit: boolean
   stream: MediaStream
   outgoingInfoMessages: Array<OutgoingInfoMessage>
   dispatch: Dispatch<Action>
-}>(
-  ({
-    info,
-    terminating,
-    saveOnSubmit,
-    stream,
-    outgoingInfoMessages,
-    dispatch
-  }) => {
-    const videoRef = React.useRef<HTMLVideoElement>(null)
+}>(({ info, terminating, stream, outgoingInfoMessages, dispatch }) => {
+  const videoRef = React.useRef<HTMLVideoElement>(null)
 
-    React.useEffect(() => {
-      if (videoRef.current != null) {
-        videoRef.current.srcObject = stream.clone()
-      }
-    }, [stream])
+  React.useEffect(() => {
+    if (videoRef.current != null) {
+      videoRef.current.srcObject = stream.clone()
+    }
+  }, [stream])
 
-    return (
-      <Stack>
-        <StackItem>
-          <Button
-            variant="link"
-            colorScheme="teal"
-            isDisabled={terminating}
-            onClick={() => dispatch(Terminate)}
-          >
-            Back to Robots List
-          </Button>
-        </StackItem>
+  return (
+    <Stack>
+      <StackItem>
+        <Button
+          variant="link"
+          colorScheme="teal"
+          isDisabled={terminating}
+          onClick={() => dispatch(Terminate)}
+        >
+          Back to Robots List
+        </Button>
+      </StackItem>
 
-        <StackItem>
-          <video ref={videoRef} autoPlay />
-        </StackItem>
+      <StackItem>
+        <video ref={videoRef} autoPlay />
+      </StackItem>
 
-        <StackItem>
-          <ViewSendInfo
-            info={info}
-            saveOnSubmit={saveOnSubmit}
-            dispatch={dispatch}
-          />
-        </StackItem>
+      <StackItem>
+        <ViewSendInfo info={info} dispatch={dispatch} />
+      </StackItem>
 
-        <StackItem>
-          <ViewOutgoingInfoMessages
-            messages={outgoingInfoMessages}
-            dispatch={dispatch}
-          />
-        </StackItem>
-      </Stack>
-    )
-  }
-)
+      <StackItem>
+        <ViewOutgoingInfoMessages
+          messages={outgoingInfoMessages}
+          dispatch={dispatch}
+        />
+      </StackItem>
+    </Stack>
+  )
+})
 
 export const View = React.memo<{
   state: State
@@ -435,7 +380,6 @@ export const View = React.memo<{
         <ViewSucceed
           info={state.info}
           terminating={state.terminating}
-          saveOnSubmit={state.saveOnSubmit}
           stream={stream}
           outgoingInfoMessages={state.outgoingInfoMessages}
           dispatch={dispatch}
