@@ -211,7 +211,7 @@ const ViewFailure = React.memo<{
 ))
 
 const StyledTextarea = styled(Textarea)`
-  font-family: 'Open sans', monospace;
+  font-family: monospace;
 `
 
 const useFakeSubmitting = (ms: number): [boolean, VoidFunction] => {
@@ -292,11 +292,23 @@ const ViewSendInfo = React.memo<{
   )
 })
 
+const parseMessageContent = (content: string): string => {
+  try {
+    return JSON.stringify(JSON.parse(content), null, 4)
+  } catch {
+    return content
+  }
+}
+
 const ViewOutgoingInfoMessage = React.memo<{
   message: OutgoingInfoMessage
   dispatch: Dispatch<Action>
 }>(({ message, dispatch }) => {
   const [submitting, fakeSubmitting] = useFakeSubmitting(400)
+  const parsedContent = React.useMemo(
+    () => parseMessageContent(message.content),
+    [message.content]
+  )
 
   return (
     <Box
@@ -309,8 +321,8 @@ const ViewOutgoingInfoMessage = React.memo<{
     >
       <Heading fontSize="xl">Message #{message.id}</Heading>
 
-      <Text mt="2" size="sm">
-        {message.content}
+      <Text mt="2" size="xs">
+        <pre>{parsedContent}</pre>
       </Text>
 
       <Button
