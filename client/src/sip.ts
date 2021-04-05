@@ -3,7 +3,6 @@ import {
   EndEvent,
   IncomingInfoEvent,
   OutgoingInfoEvent,
-  Originator,
   RTCSession
 } from 'jssip/lib/RTCSession'
 import { debug } from 'jssip/lib/JsSIP'
@@ -102,7 +101,7 @@ class Room<AppMsg> {
       router.sendToSelf(
         new DispatchEvent(
           key,
-          event.originator === Originator.LOCAL
+          event.originator === 'local'
             ? OnOutgoingInfo(event.info.body)
             : OnIncomingInfo(event.info.body)
         )

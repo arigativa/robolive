@@ -3,6 +3,7 @@ import styled from '@emotion/styled'
 import RemoteData from 'frctl/RemoteData/Optional'
 import {
   Container,
+  Box,
   Stack,
   StackItem,
   FormControl,
@@ -10,7 +11,10 @@ import {
   FormHelperText,
   Checkbox,
   Button,
-  Textarea
+  Textarea,
+  VStack,
+  Heading,
+  Text
 } from '@chakra-ui/react'
 
 import { Dispatch, Cmd, Sub } from 'core'
@@ -23,12 +27,18 @@ import { ActionOf, CaseOf, CaseCreator } from 'utils'
 const IS_SECURE_SIP_CONNECTION =
   process.env.REACT_APP_IS_SECURE_SIP_CONNECTION === 'true'
 
+interface OutgoingInfoMessage {
+  id: number
+  content: string
+}
+
 export interface State {
   connection: Connection
   stream: RemoteData<string, MediaStream>
   info: string
   terminating: boolean
   saveOnSubmit: boolean
+  outgoingInfoMessages: Array<OutgoingInfoMessage>
 }
 
 export const init = (
@@ -48,7 +58,8 @@ export const init = (
       stream: RemoteData.Loading,
       info: '',
       terminating: false,
-      saveOnSubmit: true
+      saveOnSubmit: true,
+      outgoingInfoMessages: []
     },
     connection.getStream(Connect)
   ]
@@ -85,16 +96,20 @@ const FailConnection = ActionOf<string, Action>((reason, state) =>
   ])
 )
 
-const NewIncomingMessage = ActionOf<string, Action>((content, state) => {
-  // console.log('in', content)
-
-  return Updated([state, Cmd.none])
-})
-
 const NewOutgoingMessage = ActionOf<string, Action>((content, state) => {
-  // console.log('out', content)
-
-  return Updated([state, Cmd.none])
+  return Updated([
+    {
+      ...state,
+      outgoingInfoMessages: [
+        {
+          id: state.outgoingInfoMessages.length,
+          content
+        },
+        ...state.outgoingInfoMessages
+      ]
+    },
+    Cmd.none
+  ])
 })
 
 const ChangeInfo = ActionOf<string, Action>((info, state) =>
@@ -149,7 +164,6 @@ export const subscriptions = (state: State): Sub<Action> => {
   return Sub.batch([
     state.connection.onEnd(GoToRobotsList),
     state.connection.onFailure(FailConnection),
-    state.connection.onIncomingInfo(NewIncomingMessage),
     state.connection.onOutgoingInfo(NewOutgoingMessage)
   ])
 }
@@ -274,48 +288,91 @@ const ViewSendInfo = React.memo<{
   )
 })
 
+const ViewOutgoingInfoMessage = React.memo<{
+  message: OutgoingInfoMessage
+}>(({ message }) => (
+  <Box
+    p="5"
+    width="100%"
+    shadow="md"
+    borderWidth="1"
+    borderRadius="md"
+    wordBreak="break-all"
+  >
+    <Heading fontSize="xl">Message #{message.id}</Heading>
+
+    <Text mt="2" size="sm">
+      {message.content}
+    </Text>
+  </Box>
+))
+
+const ViewOutgoingInfoMessages = React.memo<{
+  messages: Array<OutgoingInfoMessage>
+}>(({ messages }) => (
+  <VStack>
+    {messages.map(message => (
+      <ViewOutgoingInfoMessage key={message.id} message={message} />
+    ))}
+  </VStack>
+))
+
 const ViewSucceed = React.memo<{
   info: string
   terminating: boolean
   saveOnSubmit: boolean
   stream: MediaStream
+  outgoingInfoMessages: Array<OutgoingInfoMessage>
   dispatch: Dispatch<Action>
-}>(({ info, terminating, saveOnSubmit, stream, dispatch }) => {
-  const videoRef = React.useRef<HTMLVideoElement>(null)
+}>(
+  ({
+    info,
+    terminating,
+    saveOnSubmit,
+    stream,
+    outgoingInfoMessages,
+    dispatch
+  }) => {
+    const videoRef = React.useRef<HTMLVideoElement>(null)
 
-  React.useEffect(() => {
-    if (videoRef.current != null) {
-      videoRef.current.srcObject = stream.clone()
-    }
-  }, [stream])
+    React.useEffect(() => {
+      if (videoRef.current != null) {
+        videoRef.current.srcObject = stream.clone()
+      }
+    }, [stream])
 
-  return (
-    <Stack>
-      <StackItem>
-        <Button
-          variant="link"
-          colorScheme="teal"
-          isDisabled={terminating}
-          onClick={() => dispatch(Terminate)}
-        >
-          Back to Robots List
-        </Button>
-      </StackItem>
+    return (
+      <Stack>
+        <StackItem>
+          <Button
+            variant="link"
+            colorScheme="teal"
+            isDisabled={terminating}
+            onClick={() => dispatch(Terminate)}
+          >
+            Back to Robots List
+          </Button>
+        </StackItem>
 
-      <StackItem>
-        <video ref={videoRef} autoPlay />
-      </StackItem>
+        <StackItem>
+          <video ref={videoRef} autoPlay />
+        </StackItem>
 
-      <StackItem>
-        <ViewSendInfo
-          info={info}
-          saveOnSubmit={saveOnSubmit}
-          dispatch={dispatch}
-        />
-      </StackItem>
-    </Stack>
-  )
-})
+        <StackItem>
+          <ViewSendInfo
+            info={info}
+            saveOnSubmit={saveOnSubmit}
+            dispatch={dispatch}
+          />
+        </StackItem>
+
+        <StackItem>
+          <ViewOutgoingInfoMessages messages={outgoingInfoMessages} />
+        </StackItem>
+      </Stack>
+    )
+  }
+)
 
 export const View = React.memo<{
   state: State
@@ -335,6 +392,7 @@ export const View = React.memo<{
           terminating={state.terminating}
           saveOnSubmit={state.saveOnSubmit}
           stream={stream}
+          outgoingInfoMessages={state.outgoingInfoMessages}
           dispatch={dispatch}
         />
       )
