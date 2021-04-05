@@ -122,7 +122,7 @@ const ChangeInfo = ActionOf<string, Action>((info, state) =>
   ])
 )
 
-const SendInfo = ActionOf<Action>(state =>
+const SendNewInfo = ActionOf<Action>(state =>
   Updated([
     {
       ...state,
@@ -131,6 +131,10 @@ const SendInfo = ActionOf<Action>(state =>
     state.connection.sendInfo(state.info)
   ])
 )()
+
+const SendInfo = ActionOf<string, Action>((content, state) =>
+  Updated([state, state.connection.sendInfo(content)])
+)
 
 const Terminate = ActionOf<Action>(state =>
   Updated([
@@ -239,7 +243,7 @@ const ViewSendInfo = React.memo<{
       as="form"
       onSubmit={event => {
         fakeSubmitting()
-        dispatch(SendInfo)
+        dispatch(SendNewInfo)
 
         event.preventDefault()
       }}
@@ -290,29 +294,52 @@ const ViewSendInfo = React.memo<{
 
 const ViewOutgoingInfoMessage = React.memo<{
   message: OutgoingInfoMessage
-}>(({ message }) => (
-  <Box
-    p="5"
-    width="100%"
-    shadow="md"
-    borderWidth="1"
-    borderRadius="md"
-    wordBreak="break-all"
-  >
-    <Heading fontSize="xl">Message #{message.id}</Heading>
+  dispatch: Dispatch<Action>
+}>(({ message, dispatch }) => {
+  const [submitting, fakeSubmitting] = useFakeSubmitting(400)
 
-    <Text mt="2" size="sm">
-      {message.content}
-    </Text>
-  </Box>
-))
+  return (
+    <Box
+      p="5"
+      width="100%"
+      shadow="md"
+      borderWidth="1"
+      borderRadius="md"
+      wordBreak="break-all"
+    >
+      <Heading fontSize="xl">Message #{message.id}</Heading>
+
+      <Text mt="2" size="sm">
+        {message.content}
+      </Text>
+
+      <Button
+        mt="2"
+        type="submit"
+        colorScheme="teal"
+        isLoading={submitting}
+        onClick={() => {
+          fakeSubmitting()
+          dispatch(SendInfo(message.content))
+        }}
+      >
+        Send again
+      </Button>
+    </Box>
+  )
+})
 
 const ViewOutgoingInfoMessages = React.memo<{
   messages: Array<OutgoingInfoMessage>
-}>(({ messages }) => (
+  dispatch: Dispatch<Action>
+}>(({ messages, dispatch }) => (
   <VStack>
     {messages.map(message => (
-      <ViewOutgoingInfoMessage key={message.id} message={message} />
+      <ViewOutgoingInfoMessage
+        key={message.id}
+        message={message}
+        dispatch={dispatch}
+      />
     ))}
   </VStack>
 ))
@@ -367,7 +394,10 @@ const ViewSucceed = React.memo<{
         </StackItem>
 
         <StackItem>
-          <ViewOutgoingInfoMessages messages={outgoingInfoMessages} />
+          <ViewOutgoingInfoMessages
+            messages={outgoingInfoMessages}
+            dispatch={dispatch}
+          />
         </StackItem>
       </Stack>
     )
