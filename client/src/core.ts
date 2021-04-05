@@ -297,7 +297,7 @@ class Manager<
     ) => Promise<State>,
 
     onSelfMsg: (
-      sendToApp: (actions: Array<AppMsg>) => void,
+      router: Router<AppMsg, SelfMsg>,
       selfMsg: SelfMsg,
       state: State
     ) => Promise<State>
@@ -306,7 +306,7 @@ class Manager<
       sendToApp: action => dispatch([action]),
       sendToSelf: selfMsg => {
         this.chainState = this.chainState.then(state =>
-          onSelfMsg(dispatch, selfMsg, state)
+          onSelfMsg(this.router, selfMsg, state)
         )
       }
     }
@@ -342,7 +342,7 @@ export const registerManager = <
   ): State | Promise<State>
 
   onSelfMsg(
-    sendToApp: (actions: Array<AppMsg>) => void,
+    router: Router<AppMsg, SelfMsg>,
     selfMsg: SelfMsg,
     state: State
   ): State | Promise<State>
@@ -398,7 +398,7 @@ interface CoreState<AppMsg> {
 
 interface CoreSelfMsg<AppMsg> {
   execute(
-    sendToApp: (actions: Array<AppMsg>) => void,
+    router: Router<AppMsg, CoreSelfMsg<AppMsg>>,
     state: CoreState<AppMsg>
   ): CoreState<AppMsg>
 }
@@ -407,7 +407,7 @@ class CoreClearCancelSelfMsg<AppMsg> implements CoreSelfMsg<AppMsg> {
   public constructor(private readonly key: string) {}
 
   public execute(
-    sendToApp: (actions: Array<AppMsg>) => void,
+    router: Router<AppMsg, CoreSelfMsg<AppMsg>>,
     state: CoreState<AppMsg>
   ): CoreState<AppMsg> {
     if (this.key in state.commands) {
@@ -430,7 +430,7 @@ class CoreTickSelfMsg<AppMsg> implements CoreSelfMsg<AppMsg> {
   ) {}
 
   public execute(
-    sendToApp: (actions: Array<AppMsg>) => void,
+    router: Router<AppMsg, CoreSelfMsg<AppMsg>>,
     state: CoreState<AppMsg>
   ): CoreState<AppMsg> {
     const bag = state.subscriptions[this.key]
@@ -439,7 +439,9 @@ class CoreTickSelfMsg<AppMsg> implements CoreSelfMsg<AppMsg> {
       return state
     }
 
-    sendToApp(bag.mailbox.map(action => action(this.args)))
+    for (const letter of bag.mailbox) {
+      router.sendToApp(letter(this.args))
+    }
 
     return state
   }

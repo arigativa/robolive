@@ -1,85 +1,248 @@
 import { WebSocketInterface, UA } from 'jssip/lib/JsSIP'
-import { RTCSession } from 'jssip/lib/RTCSession'
+import {
+  EndEvent,
+  IncomingInfoEvent,
+  OutgoingInfoEvent,
+  RTCSession
+} from 'jssip/lib/RTCSession'
 import { debug } from 'jssip/lib/JsSIP'
 import { Functor, Router, Cmd, Sub, registerManager } from 'core'
-import { CaseOf, CaseCreator } from 'utils'
+import { Schema, CaseOf, CaseCreator, match } from 'utils'
 
 debug.enable('JsSIP:*')
 
-// eslint-disable-next-line no-shadow
-enum WebSocketProtocol {
-  WS = 'ws',
-  WSS = 'wss'
-}
-
-const buildWebSocketUrl = (
-  protocol: WebSocketProtocol,
-  host: string,
-  port: null | string
-): string => {
-  const url = `${protocol}://${host}`
-
-  if (port == null) {
-    return url
+class Room<AppMsg> {
+  public static init<T>({
+    pendingInfoToSend = [],
+    streamRequests = [],
+    eventListeners = []
+  }: {
+    pendingInfoToSend?: Array<string>
+    streamRequests?: Array<(steram: MediaStream) => T>
+    eventListeners?: Array<(event: ListenEvent) => null | T>
+  } = {}): Room<T> {
+    return new Room(
+      null,
+      null,
+      [],
+      pendingInfoToSend,
+      streamRequests,
+      eventListeners
+    )
   }
 
-  return `${url}:${port}`
-}
+  private constructor(
+    private readonly userAgent: null | UA,
+    private readonly session: null | RTCSession,
+    private readonly cleanups: Array<VoidFunction>,
+    private readonly pendingSendInfo: Array<string>,
+    private readonly pendingStreamRequests: Array<
+      (steram: MediaStream) => AppMsg
+    >,
+    private readonly eventListeners: Array<
+      (event: ListenEvent) => null | AppMsg
+    >
+  ) {}
 
-const extractHost = (server: string): string => {
-  return server.replace(/(^sips?:|:\d+$)/g, '')
-}
-
-const extractPort = (server: string): string | null => {
-  return server.replace(/^.+:/, '') || null
-}
-
-const buildUri = (
-  username: string,
-  host: string,
-  port: null | string
-): string => {
-  const uri = `${username}@${host}`
-
-  if (port === null) {
-    return uri
+  public clone({
+    userAgent = this.userAgent,
+    session = this.session,
+    pendingInfoToSend = this.pendingSendInfo,
+    cleanups = this.cleanups,
+    pendingStreamRequests = this.pendingStreamRequests,
+    eventListeners = this.eventListeners
+  }: {
+    userAgent?: null | UA
+    session?: null | RTCSession
+    cleanups?: Array<VoidFunction>
+    pendingInfoToSend?: Array<string>
+    pendingStreamRequests?: Array<(steram: MediaStream) => AppMsg>
+    eventListeners?: Array<(event: ListenEvent) => null | AppMsg>
+  }): Room<AppMsg> {
+    return new Room(
+      userAgent,
+      session,
+      cleanups,
+      pendingInfoToSend,
+      pendingStreamRequests,
+      eventListeners
+    )
   }
 
-  return `${uri}:${port}`
-}
+  private registerSessionDanger(
+    router: Router<AppMsg, SipSelfMsg<AppMsg>>,
+    options: ConnectionOptions,
+    userAgent: UA
+  ): Room<AppMsg> {
+    const key = options.key
+    const [fakeVideoStream, stopFakeStream] = makeFakeVideoStream()
 
-const compare = <T extends string | number>(left: T, right: T): number => {
-  if (left < right) {
-    return -1
+    const session = userAgent.call(options.agentUri, {
+      mediaConstraints: {
+        audio: false,
+        video: false
+      },
+      mediaStream: fakeVideoStream,
+      pcConfig: {
+        rtcpMuxPolicy: 'negotiate',
+        iceServers: options.iceServers
+      }
+    })
+
+    const onFailed = (event: EndEvent): void => {
+      router.sendToSelf(new DispatchEvent(key, OnFailure(event.cause)))
+    }
+
+    const onEnded = (): void => {
+      router.sendToSelf(new DispatchEvent(key, OnEnd))
+    }
+
+    const onInfo = (event: IncomingInfoEvent | OutgoingInfoEvent): void => {
+      router.sendToSelf(
+        new DispatchEvent(
+          key,
+          event.originator === 'local'
+            ? OnOutgoingInfo(event.info.body)
+            : OnIncomingInfo(event.info.body)
+        )
+      )
+    }
+
+    const onConfirmed = (): void => {
+      router.sendToSelf(new RegisterStream(key))
+    }
+
+    const stopSessionListeners = (): void => {
+      session
+        .off('failed', onFailed)
+        .off('ended', onEnded)
+        .off('newInfo', onInfo)
+        .off('confirmed', onConfirmed)
+    }
+
+    session
+      .on('failed', onFailed)
+      .on('ended', onEnded)
+      .on('newInfo', onInfo)
+      .on('confirmed', onConfirmed)
+
+    return this.clone({
+      userAgent,
+      session,
+      cleanups: [stopFakeStream, stopSessionListeners]
+    })
   }
 
-  if (left > right) {
-    return 1
+  public registerSession(
+    router: Router<AppMsg, SipSelfMsg<AppMsg>>,
+    options: ConnectionOptions,
+    userAgent: UA
+  ): Room<AppMsg> {
+    if (this.session != null) {
+      return this
+    }
+
+    try {
+      return this.registerSessionDanger(router, options, userAgent)
+    } catch (error) {
+      router.sendToSelf(
+        new DispatchEvent(
+          options.key,
+          OnFailure(error?.message ?? 'UserAgent call failed')
+        )
+      )
+
+      return this
+    }
   }
 
-  return 0
-}
+  public registerStream(
+    router: Router<AppMsg, SipSelfMsg<AppMsg>>
+  ): Room<AppMsg> {
+    if (this.session == null) {
+      return this
+    }
 
-const generateKey = (options: ConnectionOptions): string => {
-  return [
-    options.protocol,
-    options.host,
-    options.port,
-    options.agent,
-    options.client,
-    options.iceServers.sort(compare)
-  ].join('|')
-}
+    const streams = this.session.connection.getRemoteStreams()
 
-type Listeners<AppMsg> = Array<(event: ListenEvent) => AppMsg>
+    if (streams.length > 0) {
+      for (const letter of this.pendingStreamRequests) {
+        router.sendToApp(letter(streams[0]))
+      }
+    }
 
-interface Room<AppMsg> {
-  ua: null | UA
-  session: null | RTCSession
-  stopFakeStream: null | VoidFunction
-  infoToSend: Array<string>
-  streamListeners: Array<(stream: MediaStream) => AppMsg>
-  eventListeners: Array<(event: ListenEvent) => AppMsg>
+    for (const info of this.pendingSendInfo) {
+      this.session.sendInfo('text/plain', info)
+    }
+
+    return this.clone({
+      pendingInfoToSend: [],
+      pendingStreamRequests: []
+    })
+  }
+
+  public pushListener(
+    eventListener: (event: ListenEvent) => null | AppMsg
+  ): Room<AppMsg> {
+    return this.clone({
+      eventListeners: [...this.eventListeners, eventListener]
+    })
+  }
+
+  public close(): void {
+    if (this.session?.isEstablished()) {
+      this.session.terminate()
+    }
+
+    if (this.userAgent?.isConnected()) {
+      this.userAgent.stop()
+    }
+
+    for (const cleanup of this.cleanups) {
+      cleanup()
+    }
+  }
+
+  public sendInfo(info: string): Room<AppMsg> {
+    if (this.session == null) {
+      return this.clone({
+        pendingInfoToSend: [...this.pendingSendInfo, info]
+      })
+    }
+
+    this.session.sendInfo('text/plain', info)
+
+    return this
+  }
+
+  public dispatchStream(tagger: (stream: MediaStream) => AppMsg): Room<AppMsg> {
+    if (this.session == null) {
+      return this.clone({
+        pendingStreamRequests: [...this.pendingStreamRequests, tagger]
+      })
+    }
+
+    const streams = this.session.connection.getRemoteStreams()
+
+    if (streams.length > 0) {
+      tagger(streams[0])
+    }
+
+    return this
+  }
+
+  public dispatchEvent(
+    router: Router<AppMsg, SipSelfMsg<AppMsg>>,
+    event: ListenEvent
+  ): void {
+    for (const listener of this.eventListeners) {
+      const msg = listener(event)
+
+      if (msg !== null) {
+        router.sendToApp(msg)
+      }
+    }
+  }
 }
 
 interface CanvasElement extends HTMLCanvasElement {
@@ -98,74 +261,44 @@ const makeFakeVideoStream = (): [MediaStream, VoidFunction] => {
   ]
 }
 
-const closeRoom = <AppMsg>(room: Room<AppMsg>): void => {
-  if (room.session?.isEstablished()) {
-    room.session.terminate()
-  }
-
-  if (room.ua?.isConnected()) {
-    room.ua.stop()
-  }
-
-  room.stopFakeStream?.()
-}
-
 type State<AppMsg> = Record<string, undefined | Room<AppMsg>>
 
 interface SipSelfMsg<AppMsg> {
   proceed(
-    sendToApp: (msgs: Array<AppMsg>) => void,
+    router: Router<AppMsg, SipSelfMsg<AppMsg>>,
     state: State<AppMsg>
   ): State<AppMsg>
 }
 
 class RegisterSession<AppMsg> implements SipSelfMsg<AppMsg> {
   public constructor(
-    private readonly key: string,
-    private readonly session: RTCSession,
-    private readonly stopFakeStream: VoidFunction
+    private readonly userAgent: UA,
+    private readonly options: ConnectionOptions
   ) {}
 
   public proceed(
-    sendToApp: (msgs: Array<AppMsg>) => void,
+    router: Router<AppMsg, SipSelfMsg<AppMsg>>,
     state: State<AppMsg>
   ): State<AppMsg> {
-    const room = state[this.key]
+    const key = this.options.key
+    const room = state[key]
 
     if (room == null) {
       return state
     }
 
-    const streams = this.session.connection.getRemoteStreams()
-
-    if (streams.length > 0) {
-      sendToApp(room.streamListeners.map(letter => letter(streams[0])))
-    }
-
-    for (const info of room.infoToSend) {
-      room.session?.sendInfo('text/plain', info)
-    }
-
     return {
       ...state,
-      [this.key]: {
-        ...room,
-        streamListeners: [],
-        session: this.session,
-        stopFakeStream: this.stopFakeStream
-      }
+      [key]: room.registerSession(router, this.options, this.userAgent)
     }
   }
 }
 
-class FailSession implements SipSelfMsg<never> {
-  public constructor(
-    private readonly key: string,
-    private readonly reason: string
-  ) {}
+class RegisterStream<AppMsg> implements SipSelfMsg<AppMsg> {
+  public constructor(private readonly key: string) {}
 
   public proceed(
-    sendToApp: (msgs: Array<never>) => void,
+    router: Router<AppMsg, SipSelfMsg<AppMsg>>,
     state: State<never>
   ): State<never> {
     const room = state[this.key]
@@ -174,34 +307,32 @@ class FailSession implements SipSelfMsg<never> {
       return state
     }
 
-    closeRoom(room)
-    sendToApp(room.eventListeners.map(letter => letter(OnFailure(this.reason))))
-
-    const { [this.key]: _, ...nextState } = state
-
-    return nextState
+    return {
+      ...state,
+      [this.key]: room.registerStream(router)
+    }
   }
 }
 
-class EndSession<AppMsg> implements SipSelfMsg<AppMsg> {
-  public constructor(private readonly key: string) {}
+class DispatchEvent<AppMsg> implements SipSelfMsg<AppMsg> {
+  public constructor(
+    private readonly key: string,
+    private readonly event: ListenEvent
+  ) {}
 
   public proceed(
-    sendToApp: (msgs: Array<AppMsg>) => void,
-    state: State<AppMsg>
-  ): State<AppMsg> {
+    router: Router<AppMsg, SipSelfMsg<AppMsg>>,
+    state: State<never>
+  ): State<never> {
     const room = state[this.key]
 
     if (room == null) {
       return state
     }
 
-    closeRoom(room)
-    sendToApp(room.eventListeners.map(letter => letter(OnEnd)))
+    room.dispatchEvent(router, this.event)
 
-    const { [this.key]: _, ...nextState } = state
-
-    return nextState
+    return state
   }
 }
 
@@ -225,31 +356,15 @@ class GetStreamCmd<AppMsg> implements SipCmd<AppMsg> {
     if (room == null) {
       return {
         ...state,
-        [this.key]: {
-          ua: null,
-          session: null,
-          stopFakeStream: null,
-          infoToSend: [],
-          eventListeners: [],
-          streamListeners: [this.tagger]
-        }
+        [this.key]: Room.init({
+          streamRequests: [this.tagger]
+        })
       }
-    }
-
-    const streams = room.session?.connection.getRemoteStreams() ?? []
-
-    if (streams.length > 0) {
-      this.tagger(streams[0])
-
-      return state
     }
 
     return {
       ...state,
-      [this.key]: {
-        ...room,
-        streamListeners: [...room.streamListeners, this.tagger]
-      }
+      [this.key]: room.dispatchStream(this.tagger)
     }
   }
 }
@@ -270,29 +385,15 @@ class SendInfoCmd implements SipCmd<never> {
     if (room == null) {
       return {
         ...state,
-        [this.key]: {
-          ua: null,
-          session: null,
-          stopFakeStream: null,
-          infoToSend: [this.info],
-          eventListeners: [],
-          streamListeners: []
-        }
+        [this.key]: Room.init({
+          pendingInfoToSend: [this.info]
+        })
       }
-    }
-
-    if (room.session != null) {
-      room.session.sendInfo('text/plain', this.info)
-
-      return state
     }
 
     return {
       ...state,
-      [this.key]: {
-        ...room,
-        infoToSend: [...room.infoToSend, this.info]
-      }
+      [this.key]: room.sendInfo(this.info)
     }
   }
 }
@@ -305,11 +406,7 @@ class TerminateCmd implements SipCmd<never> {
   }
 
   public execute(state: State<never>): State<never> {
-    const room = state[this.key]
-
-    if (room?.session?.isEstablished()) {
-      room.session.terminate()
-    }
+    state[this.key]?.close()
 
     return state
   }
@@ -323,23 +420,43 @@ interface SipSub<AppMsg> extends Functor<AppMsg> {
   ): void
 }
 
-const pushListeners = <AppMsg>(
-  onEvent: (event: ListenEvent) => AppMsg,
-  listeners: Listeners<AppMsg> = []
-): Listeners<AppMsg> => {
-  listeners.push(onEvent)
-
-  return listeners
-}
-
 class ListenSub<AppMsg> implements SipSub<AppMsg> {
+  private static startUserAgent<T>(
+    router: Router<T, SipSelfMsg<T>>,
+    options: ConnectionOptions,
+    ws: WebSocketInterface
+  ): void {
+    const ua = new UA({
+      uri: options.clientUri,
+      sockets: ws,
+      display_name: options.client,
+      register: true
+    })
+
+    ua.once('registrationFailed', ({ response }) => {
+      router.sendToSelf(
+        new DispatchEvent(options.key, OnFailure(response.reason_phrase))
+      )
+    })
+
+    ua.once('registered', () => {
+      router.sendToSelf(new RegisterSession(ua, options))
+    })
+
+    ua.start()
+  }
+
   public constructor(
     private readonly options: ConnectionOptions,
-    private readonly onEvent: (event: ListenEvent) => AppMsg
+    private readonly onEvent: (event: ListenEvent) => null | AppMsg
   ) {}
 
   public map<R>(fn: (msg: AppMsg) => R): SipSub<R> {
-    return new ListenSub(this.options, event => fn(this.onEvent(event)))
+    return new ListenSub(this.options, event => {
+      const msg = this.onEvent(event)
+
+      return msg === null ? null : fn(msg)
+    })
   }
 
   public register(
@@ -347,16 +464,13 @@ class ListenSub<AppMsg> implements SipSub<AppMsg> {
     prevState: State<AppMsg>,
     nextState: State<AppMsg>
   ): void {
-    const key = generateKey(this.options)
+    const key = this.options.key
 
     const newRoom = nextState[key]
 
     // the room has been defined in the current register tick
     if (newRoom != null) {
-      newRoom.eventListeners = pushListeners(
-        this.onEvent,
-        newRoom.eventListeners
-      )
+      nextState[key] = newRoom.pushListener(this.onEvent)
 
       return
     }
@@ -364,135 +478,40 @@ class ListenSub<AppMsg> implements SipSub<AppMsg> {
     const oldRoom = prevState[key]
 
     if (oldRoom != null) {
-      nextState[key] = {
-        ...oldRoom,
-        eventListeners: pushListeners(this.onEvent)
-      }
-
-      return
-    }
-
-    const webSocketUrl = buildWebSocketUrl(
-      this.options.protocol,
-      this.options.host,
-      this.options.port
-    )
-
-    let ws: null | WebSocketInterface = null
-
-    try {
-      ws = new WebSocketInterface(webSocketUrl)
-    } catch (error) {
-      router.sendToSelf(
-        new FailSession(
-          key,
-          error?.message ?? 'WebSocketInterface initialisation failed'
-        )
-      )
-
-      nextState[key] = {
-        ua: null,
-        session: null,
-        stopFakeStream: null,
-        infoToSend: [],
-        eventListeners: pushListeners(this.onEvent),
-        streamListeners: []
-      }
-
-      return
-    }
-
-    let ua: null | UA = null
-
-    try {
-      ua = new UA({
-        uri: buildUri(
-          this.options.client,
-          this.options.host,
-          this.options.port
-        ),
-        sockets: ws,
-        display_name: this.options.client,
-        register: true
+      nextState[key] = oldRoom.clone({
+        eventListeners: [this.onEvent]
       })
-    } catch (error) {
-      router.sendToSelf(
-        new FailSession(
-          key,
-          error?.message ?? 'UserAgent initialisation failed'
-        )
-      )
-
-      nextState[key] = {
-        ua: null,
-        session: null,
-        stopFakeStream: null,
-        infoToSend: [],
-        eventListeners: pushListeners(this.onEvent),
-        streamListeners: []
-      }
 
       return
     }
 
-    ua.on('registrationFailed', ({ response }) => {
-      router.sendToSelf(new FailSession(key, response.reason_phrase))
-    })
+    try {
+      const ws = new WebSocketInterface(this.options.webSocketUrl)
 
-    ua.on('registered', () => {
       try {
-        const [fakeVideoStream, stopFakeStream] = makeFakeVideoStream()
-        const session = ua?.call(
-          buildUri(this.options.agent, this.options.host, this.options.port),
-          {
-            mediaConstraints: {
-              audio: false,
-              video: false
-            },
-            mediaStream: fakeVideoStream,
-            pcConfig: {
-              rtcpMuxPolicy: 'negotiate',
-              iceServers: this.options.iceServers.map(url => {
-                return /^turns?:/.test(url)
-                  ? {
-                      urls: url,
-                      username: 'turn',
-                      credential: 'turn'
-                    }
-                  : { urls: url }
-              })
-            }
-          }
-        )
-
-        session?.once('failed', event => {
-          router.sendToSelf(new FailSession(key, event.cause))
-        })
-
-        session?.once('ended', () => {
-          router.sendToSelf(new EndSession(key))
-        })
-
-        session?.once('confirmed', () => {
-          router.sendToSelf(new RegisterSession(key, session, stopFakeStream))
-        })
+        ListenSub.startUserAgent(router, this.options, ws)
       } catch (error) {
         router.sendToSelf(
-          new FailSession(key, error?.message ?? 'Unknown error')
+          new DispatchEvent(
+            key,
+            OnFailure(error?.message ?? 'UserAgent initialisation failed')
+          )
         )
       }
-    })
-
-    ua.start()
-
-    nextState[key] = {
-      ua,
-      session: null,
-      stopFakeStream: null,
-      infoToSend: [],
-      eventListeners: pushListeners(this.onEvent),
-      streamListeners: []
+    } catch (error) {
+      router.sendToSelf(
+        new DispatchEvent(
+          key,
+          OnFailure(
+            error?.message ?? 'WebSocketInterface initialisation failed'
+          )
+        )
+      )
     }
+
+    nextState[key] = Room.init({
+      eventListeners: [this.onEvent]
+    })
   }
 }
 
@@ -514,11 +533,9 @@ const sipManager = registerManager<
       sub.register(router, prevState, nextState)
     }
 
-    for (const key in prevState) {
+    for (const key of Object.keys(prevState)) {
       if (!(key in nextState)) {
-        const room = prevState[key]
-
-        room && closeRoom(room)
+        prevState[key]?.close()
       }
     }
 
@@ -529,68 +546,205 @@ const sipManager = registerManager<
     return nextState
   },
 
-  onSelfMsg(sendToApp, msg, state) {
-    return msg.proceed(sendToApp, state)
+  onSelfMsg(router, msg, state) {
+    return msg.proceed(router, state)
   }
 })
 
-export type ListenEvent = CaseOf<'OnFailure', string> | CaseOf<'OnEnd'>
+export type ListenEvent =
+  | CaseOf<'OnEnd'>
+  | CaseOf<'OnFailure', string>
+  | CaseOf<'OnIncomingInfo', string>
+  | CaseOf<'OnOutgoingInfo', string>
 
-const OnFailure: CaseCreator<ListenEvent> = CaseOf('OnFailure')
 const OnEnd: ListenEvent = CaseOf('OnEnd')()
+const OnFailure: CaseCreator<ListenEvent> = CaseOf('OnFailure')
+const OnIncomingInfo: CaseCreator<ListenEvent> = CaseOf('OnIncomingInfo')
+const OnOutgoingInfo: CaseCreator<ListenEvent> = CaseOf('OnOutgoingInfo')
+
+// eslint-disable-next-line no-shadow
+enum WebSocketProtocol {
+  WS = 'ws',
+  WSS = 'wss'
+}
+
+export interface CreateConnectionOptions {
+  secure?: boolean
+  server: string
+  agent: string
+  client: string
+  iceServers: Array<string>
+}
+
+class ConnectionOptions {
+  private static compare(left: string, right: string): number {
+    if (left < right) {
+      return -1
+    }
+
+    if (left > right) {
+      return 1
+    }
+
+    return 0
+  }
+
+  // TODO no need when BE returns valid url
+  private static sanitazeIceServer(url: string): string {
+    return url
+      .replace(/^stun:\/+/, 'stun:')
+      .replace(/^stuns:\/+/, 'stuns:')
+      .replace(/^turn:\/+/, 'turn:')
+      .replace(/^turns:\/+/, 'turns:')
+  }
+
+  private static extractHost(server: string): string {
+    return server.replace(/(^sips?:|:\d+$)/g, '')
+  }
+
+  private static extractPort(server: string): string | null {
+    return server.replace(/^.+:/, '') || null
+  }
+
+  private static urlToIceServer(url: string): RTCIceServer {
+    return /^turns?:/.test(url)
+      ? {
+          urls: url,
+          username: 'turn',
+          credential: 'turn'
+        }
+      : { urls: url }
+  }
+
+  public static create(options: CreateConnectionOptions): ConnectionOptions {
+    return new ConnectionOptions(
+      options.secure ? WebSocketProtocol.WSS : WebSocketProtocol.WS,
+      ConnectionOptions.extractHost(options.server),
+      ConnectionOptions.extractPort(options.server),
+      options.agent,
+      options.client,
+      options.iceServers
+        .map(ConnectionOptions.sanitazeIceServer)
+        .sort(ConnectionOptions.compare)
+    )
+  }
+
+  private constructor(
+    private readonly protocol: WebSocketProtocol,
+    private readonly host: string,
+    private readonly port: null | string,
+    private readonly agent: string,
+    public readonly client: string,
+    private readonly servers: Array<string>
+  ) {}
+
+  private getUriFor(username: string): string {
+    return this.withPort(`${username}@${this.host}`)
+  }
+
+  private withPort(path: string): string {
+    if (this.port == null) {
+      return path
+    }
+
+    return `${path}:${this.port}`
+  }
+
+  public get webSocketUrl(): string {
+    return this.withPort(`${this.protocol}://${this.host}`)
+  }
+
+  public get clientUri(): string {
+    return this.getUriFor(this.client)
+  }
+
+  public get agentUri(): string {
+    return this.getUriFor(this.agent)
+  }
+
+  public get key(): string {
+    return [
+      this.protocol,
+      this.host,
+      this.port,
+      this.agent,
+      this.client,
+      this.servers.join(',')
+    ].join('|')
+  }
+
+  public get iceServers(): Array<RTCIceServer> {
+    return this.servers.map(ConnectionOptions.urlToIceServer)
+  }
+}
 
 export interface Connection {
   getStream<T>(tagger: (stream: MediaStream) => T): Cmd<T>
   sendInfo(info: string): Cmd<never>
   terminate: Cmd<never>
-  listen<T>(onEvent: (event: ListenEvent) => T): Sub<T>
+
+  onEnd<T>(msg: T): Sub<T>
+  onFailure<T>(tagger: (reason: string) => T): Sub<T>
+  onIncomingInfo<T>(tagger: (content: string) => T): Sub<T>
+  onOutgoingInfo<T>(tagger: (content: string) => T): Sub<T>
 }
 
-interface ConnectionOptions {
-  protocol: WebSocketProtocol
-  host: string
-  port: null | string
-  agent: string
-  client: string
-  iceServers: Array<string>
-}
 class ConnectionImpl implements Connection {
   public constructor(private readonly options: ConnectionOptions) {}
 
-  private get key(): string {
-    return generateKey(this.options)
-  }
-
   public getStream<T>(tagger: (stream: MediaStream) => T): Cmd<T> {
-    return sipManager.createCmd(new GetStreamCmd(this.key, tagger))
+    return sipManager.createCmd(new GetStreamCmd(this.options.key, tagger))
   }
 
   public sendInfo(info: string): Cmd<never> {
-    return sipManager.createCmd(new SendInfoCmd(this.key, info))
+    return sipManager.createCmd(new SendInfoCmd(this.options.key, info))
   }
 
   public get terminate(): Cmd<never> {
-    return sipManager.createCmd(new TerminateCmd(this.key))
+    return sipManager.createCmd(new TerminateCmd(this.options.key))
   }
 
-  public listen<T>(onEvent: (event: ListenEvent) => T): Sub<T> {
-    return sipManager.createSub(new ListenSub(this.options, onEvent))
+  private listen<T>(schema: Schema<ListenEvent, null | T>): Sub<T> {
+    return sipManager.createSub(
+      new ListenSub(this.options, event => {
+        return match<ListenEvent, null | T>(event, schema)
+      })
+    )
+  }
+
+  public onEnd<T>(msg: T): Sub<T> {
+    return this.listen({
+      OnEnd: () => msg,
+      _: () => null
+    })
+  }
+
+  public onFailure<T>(tagger: (reason: string) => T): Sub<T> {
+    return this.listen({
+      OnFailure: tagger,
+      _: () => null
+    })
+  }
+
+  public onIncomingInfo<T>(tagger: (content: string) => T): Sub<T> {
+    return this.listen({
+      OnIncomingInfo: tagger,
+      _: () => null
+    })
+  }
+
+  public onOutgoingInfo<T>(tagger: (content: string) => T): Sub<T> {
+    return this.listen({
+      OnOutgoingInfo: tagger,
+      _: () => null
+    })
   }
 }
 
-export const createConnection = (options: {
-  secure: boolean
-  server: string
-  agent: string
-  client: string
-  iceServers: Array<string>
-}): Connection => {
-  return new ConnectionImpl({
-    protocol: options.secure ? WebSocketProtocol.WSS : WebSocketProtocol.WS,
-    host: extractHost(options.server),
-    port: extractPort(options.server),
-    agent: options.agent,
-    client: options.client,
-    iceServers: options.iceServers
-  })
+export const createConnection = (
+  options: CreateConnectionOptions
+): Connection => {
+  const connectionOptions = ConnectionOptions.create(options)
+
+  return new ConnectionImpl(connectionOptions)
 }

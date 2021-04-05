@@ -3,39 +3,47 @@ import styled from '@emotion/styled'
 import RemoteData from 'frctl/RemoteData/Optional'
 import {
   Container,
+  Box,
   Stack,
   StackItem,
   FormControl,
   FormLabel,
   FormHelperText,
-  Checkbox,
   Button,
-  Textarea
+  Textarea,
+  VStack,
+  Heading,
+  Text
 } from '@chakra-ui/react'
 
 import { Dispatch, Cmd, Sub } from 'core'
 import { RoomConfiguration } from 'api'
 import { Connection, createConnection } from 'sip'
-import { ActionOf, CaseOf, CaseCreator, match } from 'utils'
+import { ActionOf, CaseOf, CaseCreator } from 'utils'
 
 // S T A T E
 
-const REACT_APP_IS_SECURE_SIP_CONNECTION =
+const IS_SECURE_SIP_CONNECTION =
   process.env.REACT_APP_IS_SECURE_SIP_CONNECTION === 'true'
+
+interface OutgoingInfoMessage {
+  id: number
+  content: string
+}
 
 export interface State {
   connection: Connection
   stream: RemoteData<string, MediaStream>
   info: string
   terminating: boolean
-  saveOnSubmit: boolean
+  outgoingInfoMessages: Array<OutgoingInfoMessage>
 }
 
 export const init = (
   configuration: RoomConfiguration
 ): [State, Cmd<Action>] => {
   const connection = createConnection({
-    secure: REACT_APP_IS_SECURE_SIP_CONNECTION,
+    secure: IS_SECURE_SIP_CONNECTION,
     server: configuration.signallingUri,
     agent: configuration.sipAgentName,
     client: configuration.sipClientName,
@@ -48,7 +56,7 @@ export const init = (
       stream: RemoteData.Loading,
       info: '',
       terminating: false,
-      saveOnSubmit: true
+      outgoingInfoMessages: []
     },
     connection.getStream(Connect)
   ]
@@ -85,6 +93,22 @@ const FailConnection = ActionOf<string, Action>((reason, state) =>
   ])
 )
 
+const NewOutgoingMessage = ActionOf<string, Action>((content, state) => {
+  return Updated([
+    {
+      ...state,
+      outgoingInfoMessages: [
+        {
+          id: state.outgoingInfoMessages.length,
+          content
+        },
+        ...state.outgoingInfoMessages
+      ]
+    },
+    Cmd.none
+  ])
+})
+
 const ChangeInfo = ActionOf<string, Action>((info, state) =>
   Updated([
     {
@@ -95,15 +119,9 @@ const ChangeInfo = ActionOf<string, Action>((info, state) =>
   ])
 )
 
-const SendInfo = ActionOf<Action>(state =>
-  Updated([
-    {
-      ...state,
-      info: state.saveOnSubmit ? state.info : ''
-    },
-    state.connection.sendInfo(state.info)
-  ])
-)()
+const SendInfo = ActionOf<string, Action>((content, state) =>
+  Updated([state, state.connection.sendInfo(content)])
+)
 
 const Terminate = ActionOf<Action>(state =>
   Updated([
@@ -117,16 +135,6 @@ const Terminate = ActionOf<Action>(state =>
 
 const GoToRobotsList = ActionOf<Action>(() => BackToList)()
 
-const SetSaveOnSubmit = ActionOf<boolean, Action>((saveOnSubmit, state) =>
-  Updated([
-    {
-      ...state,
-      saveOnSubmit
-    },
-    Cmd.none
-  ])
-)
-
 // S U B S C R I P T I O N S
 
 export const subscriptions = (state: State): Sub<Action> => {
@@ -134,12 +142,11 @@ export const subscriptions = (state: State): Sub<Action> => {
     return Sub.none
   }
 
-  return state.connection.listen(event =>
-    match(event, {
-      OnFailure: FailConnection,
-      OnEnd: () => GoToRobotsList
-    })
-  )
+  return Sub.batch([
+    state.connection.onEnd(GoToRobotsList),
+    state.connection.onFailure(FailConnection),
+    state.connection.onOutgoingInfo(NewOutgoingMessage)
+  ])
 }
 
 // V I E W
@@ -181,7 +188,7 @@ const ViewFailure = React.memo<{
 ))
 
 const StyledTextarea = styled(Textarea)`
-  font-family: 'Open sans', monospace;
+  font-family: monospace;
 `
 
 const useFakeSubmitting = (ms: number): [boolean, VoidFunction] => {
@@ -203,9 +210,8 @@ const useFakeSubmitting = (ms: number): [boolean, VoidFunction] => {
 
 const ViewSendInfo = React.memo<{
   info: string
-  saveOnSubmit: boolean
   dispatch: Dispatch<Action>
-}>(({ info, saveOnSubmit, dispatch }) => {
+}>(({ info, dispatch }) => {
   const [submitting, fakeSubmitting] = useFakeSubmitting(400)
 
   return (
@@ -213,7 +219,7 @@ const ViewSendInfo = React.memo<{
       as="form"
       onSubmit={event => {
         fakeSubmitting()
-        dispatch(SendInfo)
+        dispatch(SendInfo(info))
 
         event.preventDefault()
       }}
@@ -237,38 +243,88 @@ const ViewSendInfo = React.memo<{
       </StackItem>
 
       <StackItem>
-        <Stack direction="row" align="center" spacing="4">
-          <StackItem>
-            <Button type="submit" colorScheme="teal" isLoading={submitting}>
-              Submit
-            </Button>
-          </StackItem>
-
-          <StackItem>
-            <Checkbox
-              colorScheme="teal"
-              isChecked={saveOnSubmit}
-              isReadOnly={submitting}
-              onChange={event =>
-                dispatch(SetSaveOnSubmit(event.target.checked))
-              }
-            >
-              Save on submit
-            </Checkbox>
-          </StackItem>
-        </Stack>
+        <Button type="submit" colorScheme="teal" isLoading={submitting}>
+          Submit
+        </Button>
       </StackItem>
     </Stack>
   )
 })
 
+const parseMessageContent = (content: string): string => {
+  try {
+    return JSON.stringify(JSON.parse(content), null, 4)
+  } catch {
+    return content
+  }
+}
+
+const ViewOutgoingInfoMessage = React.memo<{
+  message: OutgoingInfoMessage
+  dispatch: Dispatch<Action>
+}>(({ message, dispatch }) => {
+  const [submitting, fakeSubmitting] = useFakeSubmitting(400)
+  const parsedContent = React.useMemo(
+    () => parseMessageContent(message.content),
+    [message.content]
+  )
+
+  return (
+    <Box
+      p="5"
+      width="100%"
+      shadow="md"
+      borderWidth="1"
+      borderRadius="md"
+      wordBreak="break-all"
+    >
+      <Heading fontSize="xl">Message #{message.id}</Heading>
+
+      <Box mt="2" p="3" width="100%" borderRadius="sm" bg="gray.50">
+        <Text fontSize="sm" as="pre">
+          {parsedContent}
+        </Text>
+      </Box>
+
+      <Button
+        mt="2"
+        size="xs"
+        type="submit"
+        colorScheme="teal"
+        isLoading={submitting}
+        onClick={() => {
+          fakeSubmitting()
+          dispatch(SendInfo(message.content))
+        }}
+      >
+        Send again
+      </Button>
+    </Box>
+  )
+})
+
+const ViewOutgoingInfoMessages = React.memo<{
+  messages: Array<OutgoingInfoMessage>
+  dispatch: Dispatch<Action>
+}>(({ messages, dispatch }) => (
+  <VStack>
+    {messages.map(message => (
+      <ViewOutgoingInfoMessage
+        key={message.id}
+        message={message}
+        dispatch={dispatch}
+      />
+    ))}
+  </VStack>
+))
+
 const ViewSucceed = React.memo<{
   info: string
   terminating: boolean
-  saveOnSubmit: boolean
   stream: MediaStream
+  outgoingInfoMessages: Array<OutgoingInfoMessage>
   dispatch: Dispatch<Action>
-}>(({ info, terminating, saveOnSubmit, stream, dispatch }) => {
+}>(({ info, terminating, stream, outgoingInfoMessages, dispatch }) => {
   const videoRef = React.useRef<HTMLVideoElement>(null)
 
   React.useEffect(() => {
@@ -295,9 +351,12 @@ const ViewSucceed = React.memo<{
       </StackItem>
 
       <StackItem>
-        <ViewSendInfo
-          info={info}
-          saveOnSubmit={saveOnSubmit}
+        <ViewSendInfo info={info} dispatch={dispatch} />
+      </StackItem>
+
+      <StackItem>
+        <ViewOutgoingInfoMessages
+          messages={outgoingInfoMessages}
           dispatch={dispatch}
         />
       </StackItem>
@@ -321,8 +380,8 @@ export const View = React.memo<{
         <ViewSucceed
           info={state.info}
           terminating={state.terminating}
-          saveOnSubmit={state.saveOnSubmit}
           stream={stream}
+          outgoingInfoMessages={state.outgoingInfoMessages}
           dispatch={dispatch}
         />
       )
