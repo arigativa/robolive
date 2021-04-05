@@ -321,12 +321,15 @@ const ViewOutgoingInfoMessage = React.memo<{
     >
       <Heading fontSize="xl">Message #{message.id}</Heading>
 
-      <Text mt="2" size="xs">
-        <pre>{parsedContent}</pre>
-      </Text>
+      <Box mt="2" p="3" width="100%" borderRadius="sm" bg="gray.50">
+        <Text fontSize="sm" as="pre">
+          {parsedContent}
+        </Text>
+      </Box>
 
       <Button
         mt="2"
+        size="xs"
         type="submit"
         colorScheme="teal"
         isLoading={submitting}
