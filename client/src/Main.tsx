@@ -22,7 +22,13 @@ const LoginScreen: CaseCreator<State> = CaseOf('LoginScreen')
 const RobotsListScreen: CaseCreator<State> = CaseOf('RobotsListScreen')
 const RoomScreen: CaseCreator<State> = CaseOf('RoomScreen')
 
-export const initial: State = LoginScreen(Login.initial)
+export const getInitial: () => [State, Cmd<Action>] = () => {
+  const [initialState, initialCmd] = Login.initial
+
+  const autofillCmd = initialCmd.map(action => LoginAction(action))
+
+  return [LoginScreen(initialState), autofillCmd]
+}
 
 // U P D A T E
 

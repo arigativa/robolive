@@ -10,13 +10,13 @@ export default {
 }
 
 export const Initial: React.FC = () => (
-  <Login.View state={Login.initial} dispatch={action('dispatch')} />
+  <Login.View state={Login.initial[0]} dispatch={action('dispatch')} />
 )
 
 export const Empty: React.FC = () => (
   <Login.View
     state={{
-      ...Login.initial,
+      ...Login.initial[0],
       username: ''
     }}
     dispatch={action('dispatch')}
@@ -26,7 +26,7 @@ export const Empty: React.FC = () => (
 export const WithValues: React.FC = () => (
   <Login.View
     state={{
-      ...Login.initial,
+      ...Login.initial[0],
       username: text('Username', 'user_cat')
     }}
     dispatch={action('dispatch')}
@@ -39,7 +39,7 @@ export const Failure: React.FC = () => {
   return (
     <Login.View
       state={{
-        ...Login.initial,
+        ...Login.initial[0],
         error: message.length === 0 ? Maybe.Nothing : Maybe.Just(message)
       }}
       dispatch={action('dispatch')}

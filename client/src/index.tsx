@@ -10,7 +10,7 @@ import { Cmd } from 'core'
 
 import * as Main from 'Main'
 
-const init: [Main.State, Cmd<Main.Action>] = [Main.initial, Cmd.none]
+const init: [Main.State, Cmd<Main.Action>] = Main.getInitial()
 
 const update = (
   action: Main.Action,
