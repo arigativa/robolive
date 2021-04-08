@@ -10,7 +10,7 @@ import {
   Button
 } from '@chakra-ui/react'
 
-import { Dispatch } from 'core'
+import { Cmd, Dispatch } from 'core'
 import { ActionOf, CaseCreator, CaseOf, hasWhitespaces } from 'utils'
 
 // S T A T E
@@ -20,10 +20,15 @@ export type State = {
   error: Maybe<string>
 }
 
-export const initial: State = {
-  username: '',
-  error: Maybe.Nothing
-}
+export const initial: [State, Cmd<Action>] = [
+  {
+    username: '',
+    error: Maybe.Nothing
+  },
+  Cmd.create<Action>(done => {
+    done(ChangeUsername(window.location.pathname.slice(1)))
+  })
+]
 
 // U P D A T E
 

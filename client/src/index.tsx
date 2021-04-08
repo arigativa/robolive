@@ -10,8 +10,6 @@ import { Cmd } from 'core'
 
 import * as Main from 'Main'
 
-const init: [Main.State, Cmd<Main.Action>] = [Main.initial, Cmd.none]
-
 const update = (
   action: Main.Action,
   state: Main.State
@@ -19,7 +17,7 @@ const update = (
 
 const Root = React.memo(() => {
   const [state, dispatch] = useStore({
-    init,
+    init: Main.initial,
     update,
     subscriptions: Main.subscriptions
   })
