@@ -20,16 +20,14 @@ export type State = {
   error: Maybe<string>
 }
 
-const initialCmd: Cmd<Action> = Cmd.create<Action>(done => {
-  done(ChangeUsername(window.location.pathname.slice(1)))
-})
-
 export const initial: [State, Cmd<Action>] = [
   {
     username: '',
     error: Maybe.Nothing
   },
-  initialCmd
+  Cmd.create<Action>(done => {
+    done(ChangeUsername(window.location.pathname.slice(1)))
+  })
 ]
 
 // U P D A T E
