@@ -26,9 +26,9 @@ jobs:
 
     - uses: actions/setup-node@v1
 
-    - run: yarn
+    - run: CI=false yarn
 
-    - run: yarn build
+    - run: CI=false yarn build
 
     - name: Package the build
       run: tar -czf /tmp/webclient.tar.gz -C ./build/ .
