@@ -13,6 +13,8 @@ export default {
 
 const [initialState] = RobotsList.init('test')
 
+export const Skeleton: React.FC = () => <RobotsList.Skeleton />
+
 export const Loading: React.FC = () => (
   <RobotsList.View
     state={{

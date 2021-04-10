@@ -313,3 +313,9 @@ const SkeletonAgentList = React.memo<{
     ))}
   </ViewAgentList>
 ))
+
+export const Skeleton = React.memo(() => (
+  <Container>
+    <SkeletonAgentList />
+  </Container>
+))
