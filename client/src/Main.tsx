@@ -24,7 +24,7 @@ const RoomScreen: CaseCreator<State> = CaseOf('RoomScreen')
 export const initial: [State, Cmd<Action>] = [
   AuthScreen,
   Cmd.create<Action>(done => {
-    done(ParseUsername(window.location.pathname.slice(1)))
+    done(InitRobotsList(window.location.pathname.slice(1)))
   })
 ]
 
@@ -32,17 +32,13 @@ export const initial: [State, Cmd<Action>] = [
 
 export type Action = ActionOf<[State], [State, Cmd<Action>]>
 
-const initRobotsList = (username: string): [State, Cmd<Action>] => {
+const InitRobotsList = ActionOf<string, Action>(username => {
   const [initialRobotsList, initialCmd] = RobotsList.init(username)
 
   return [
     RobotsListScreen({ username, robotsList: initialRobotsList }),
     initialCmd.map(RobotsListAction)
   ]
-}
-
-const ParseUsername = ActionOf<string, Action>(username => {
-  return initRobotsList(username)
 })
 
 const RobotsListAction = ActionOf<RobotsList.Action, Action>((action, state) =>
@@ -78,7 +74,7 @@ const RoomAction = ActionOf<Room.Action, Action>((action, state) =>
           cmd.map(RoomAction)
         ],
 
-        BackToList: () => initRobotsList(username)
+        BackToList: () => InitRobotsList(username).update(state)
       })
     },
 
