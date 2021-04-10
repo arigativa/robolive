@@ -17,7 +17,7 @@ const update = (
 
 const Root = React.memo(() => {
   const [state, dispatch] = useStore({
-    init: Main.initRobotsList(),
+    init: Main.initial,
     update,
     subscriptions: Main.subscriptions
   })
