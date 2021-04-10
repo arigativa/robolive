@@ -13,7 +13,6 @@ final class Puppet(
   sipAgentName: String,
   signallingUri: String,
   rawStunUri: String,
-  enableUserVideo: Boolean,
   clientInputInterpreter: ClientInputInterpreter,
   eventListener: Puppet.PuppetEventListener,
 )(implicit ec: ExecutionContext) {
@@ -24,7 +23,6 @@ final class Puppet(
     new WebRTCController(
       pipeline = pipeline,
       stunServerUrl = stunUri,
-      enableUserVideo = enableUserVideo,
     )
 
   private val sipClient = {

@@ -13,7 +13,6 @@ import scala.concurrent.{ExecutionContext, Future}
 final class WebRTCController(
   pipeline: Pipeline,
   stunServerUrl: String,
-  enableUserVideo: Boolean,
 )(implicit gst: GstManaged.GSTInit.type) {
   import WebRTCController._
 
@@ -43,7 +42,7 @@ final class WebRTCController(
       webRTCBin = WebRTCBinManaged("sendrecv")
 
       webRTCBin.setStunServer(stunServerUrl)
-      webRTCBin.onPadAdded(onIncomingStream(_, rtpPipeline))
+      webRTCBin.onPadAdded(fakeSink(_, rtpPipeline))
 
       rtpPipeline.add(webRTCBin.underlying)
 
@@ -84,62 +83,16 @@ final class WebRTCController(
     state = WebRTCControllerPlayState.Wait
   }
 
-  private def onIncomingStream(pad: Pad, pipeline: Pipeline): Unit = {
+  private def fakeSink(pad: Pad, pipeline: Pipeline): Unit = {
     if (pad.getDirection != PadDirection.SRC) {
       logger.error("Error incoming stream: pad direction incorrect")
     } else {
-      val decodebin = ElementFactory.make("decodebin", "inDecodeBin")
-      decodebin.connect(new Element.PAD_ADDED {
-        override def padAdded(
-          element: Element,
-          pad: Pad
-        ): Unit = onIncomingDecodebinStream(pad, pipeline)
-      })
-      pipeline.add(decodebin)
-      decodebin.syncStateWithParent()
-      webRTCBin.link(decodebin)
-    }
-  }
+      logger.info("Route incoming WebRTC stream into fakesink")
+      val fakesink = ElementFactory.make("fakesink", "incomingFakeSink")
 
-  private def onIncomingDecodebinStream(pad: Pad, pipeline: Pipeline) = {
-    logger.info(s"onIncomingDecodebinStream(${pad.getName})")
-    if (!pad.hasCurrentCaps) {
-      logger.error(s"Error incoming stream ${pad.getName}: pad has no caps")
-    } else {
-      val caps = pad.getCurrentCaps
-      if (caps.size() <= 0) {
-        logger.error(s"Error incoming stream ${pad.getName}: pad has no caps")
-      } else {
-        val structure = caps.getStructure(0)
-        val name = structure.getName()
-        val receiverName = "video"
-        if (name.startsWith(receiverName)) {
-          val queue = ElementFactory.make("queue", "incomingBuffer")
-          val convert = ElementFactory.make("videoconvert", "videoconvert")
-          val sink = {
-            if (enableUserVideo) {
-              ElementFactory.make("autovideosink", "autovideosink")
-            } else {
-              val sink = ElementFactory.make("filesink", "filesink")
-              sink.set("location", "/dev/null")
-              sink
-            }
-          }
-          pipeline.add(queue)
-          pipeline.add(convert)
-          pipeline.add(sink)
-          queue.syncStateWithParent()
-          convert.syncStateWithParent()
-          sink.syncStateWithParent()
-          pad.link(queue.getStaticPad("sink"))
-          queue.link(convert)
-          convert.link(sink)
-        } else {
-          logger.error(
-            s"Error incoming stream ${pad.getName}: no supported $receiverName receiver, found: $name"
-          )
-        }
-      }
+      pipeline.add(fakesink)
+      fakesink.syncStateWithParent()
+      webRTCBin.link(fakesink)
     }
   }
 
@@ -257,8 +210,8 @@ object WebRTCController {
 
   def description(rtcType: Int): String = {
     s"""queue name=vpEncoder ! vp8enc deadline=1 ! rtpvp8pay pt=$rtcType !
-                         | application/x-rtp,media=video,encoding-name=VP8,payload=$rtcType !
-                         | queue name=encodedVideoSrc""".stripMargin
+       | application/x-rtp,media=video,encoding-name=VP8,payload=$rtcType !
+       | queue name=encodedVideoSrc""".stripMargin
 
   }
 }

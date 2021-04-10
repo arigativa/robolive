@@ -31,7 +31,6 @@ object CallPuppetApp extends App {
     PipelineDescription.RestreamType.fromUnsafe(rawType)
   }
   val RTMPLink: Option[String] = getEnv("RTMP_LINK")
-  val enableUserVideo: Boolean = sys.env.contains("ENABLE_USER_VIDEO")
   val servoControllerType: String = getEnv("SERVO_CONTROLLER", default = "FAKE")
   val servoController = getEnv("SERVO_CONTROLLER_TYPE", "FAKE") match {
     case "SERIAL" =>
@@ -54,7 +53,6 @@ object CallPuppetApp extends App {
     sipAgentName = robotName,
     signallingUri = signallingUri,
     rawStunUri = stunUri,
-    enableUserVideo = enableUserVideo,
     clientInputInterpreter = servoController,
     eventListener = () => (),
     gstInit = gstInit,

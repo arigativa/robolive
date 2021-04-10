@@ -134,14 +134,12 @@ object AgentState {
   ) extends AgentState {
     private val SignallingUri = "signallingUri"
     private val StunUri = "stunUri"
-    private val EnableUserVideo = "enableUserVideo"
     private val ServoControllerType = "servoControllerType"
     private val TurnUri = "turnUri"
 
     private val puppetConfigurationKeys = Seq(
       SignallingUri,
       StunUri,
-      EnableUserVideo,
       ServoControllerType,
       TurnUri
     )
@@ -171,7 +169,6 @@ object AgentState {
             val sipClientName = clientConnectionRequest.name
             val signallingUri = settings("signallingUri").get
             val stunUri = settings("stunUri").get
-            val enableUserVideo = settings("enableUserVideo").getOrElse("false").toBoolean
 
             val freeRunningPuppet = new Puppet.PuppetEventListener {
               def stop(): Unit = {
@@ -201,7 +198,6 @@ object AgentState {
                 sipAgentName = connectionId,
                 signallingUri = signallingUri,
                 rawStunUri = stunUri,
-                enableUserVideo = enableUserVideo,
                 clientInputInterpreter = deps.servoController,
                 eventListener = freeRunningPuppet,
                 gstInit = gstInit
