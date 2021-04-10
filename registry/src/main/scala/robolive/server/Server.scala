@@ -17,6 +17,7 @@ object Server {
   type Reason = String
   type Login = String
   type Password = String
+  case class Credentials(login: Login, password: Password)
 
   object AgentSystem {
 
@@ -91,22 +92,17 @@ object Server {
       connectionId: ConnectionId,
       name: String,
       sendToAgent: RegistryMessage => Unit,
-      loginOpt: Option[Login],
-      passwordOpt: Option[Password],
+      credsOpt: Option[Credentials],
     ): (Login, Password) = {
-      val credentials = for {
-        login <- loginOpt
-        password <- passwordOpt
-      } yield {
-        (login, password)
-      }
-
-      val agentState = credentials match {
-        case Some((login, password)) =>
+      val agentState = credsOpt match {
+        case Some(Credentials(login, password)) =>
           val agentData = agentDatas.get((login, password))
           if (agentData == null) {
-            generateData(name)
+            throw new Exception("login/password mismatch")
           } else {
+            if (getConnectionByLogin(login).nonEmpty) {
+              throw new Exception(s"robot with username ${login} is already connected")
+            }
             agentData.copy(name = name)
           }
 

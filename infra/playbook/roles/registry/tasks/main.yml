@@ -28,6 +28,16 @@
   tags:
     - registry
 
+- name: Ensure config directory
+  file:
+    path: "{{ registry_config_dir }}"
+    state: directory
+    mode: '0755'
+    owner: '{{ registry_user }}'
+    group: '{{ registry_group }}'
+  tags:
+    - registry
+
 - name: Copy registry package
   copy:
     src: "{{ registry_package }}"
