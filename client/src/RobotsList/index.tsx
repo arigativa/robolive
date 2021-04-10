@@ -44,14 +44,12 @@ export interface State {
   polling: boolean
 }
 
-export const initial: State = {
-  robots: RemoteData.Loading,
-  joinStatus: NotJoin,
-  polling: false
-}
-
 export const init = (username: string): [State, Cmd<Action>] => [
-  initial,
+  {
+    robots: RemoteData.Loading,
+    joinStatus: NotJoin,
+    polling: false
+  },
   Cmd.create<Action>(done =>
     getAgentList({ username }).then(LoadRobots).then(done)
   )
