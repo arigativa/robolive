@@ -8,7 +8,6 @@ import * as Room from 'Room'
 // S T A T E
 
 export type State =
-  | CaseOf<'AuthScreen'>
   | CaseOf<
       'RobotsListScreen',
       ScreenWithUsername<{ robotsList: RobotsList.State }>
@@ -17,29 +16,21 @@ export type State =
 
 type ScreenWithUsername<T> = T & { username: string }
 
-const AuthScreen: State = CaseOf('AuthScreen')()
 const RobotsListScreen: CaseCreator<State> = CaseOf('RobotsListScreen')
 const RoomScreen: CaseCreator<State> = CaseOf('RoomScreen')
-
-export const initial: [State, Cmd<Action>] = [
-  AuthScreen,
-  Cmd.create<Action>(done => {
-    done(InitRobotsList(window.location.pathname.slice(1)))
-  })
-]
 
 // U P D A T E
 
 export type Action = ActionOf<[State], [State, Cmd<Action>]>
 
-const InitRobotsList = ActionOf<string, Action>(username => {
-  const [initialRobotsList, initialCmd] = RobotsList.init(username)
+export const initRobotsList: () => [State, Cmd<Action>] = () => {
+  const [initialRobotsList, initialCmd] = RobotsList.init
 
   return [
-    RobotsListScreen({ username, robotsList: initialRobotsList }),
+    RobotsListScreen({ username: '', robotsList: initialRobotsList }),
     initialCmd.map(RobotsListAction)
   ]
-})
+}
 
 const RobotsListAction = ActionOf<RobotsList.Action, Action>((action, state) =>
   match<State, [State, Cmd<Action>]>(state, {
@@ -74,7 +65,7 @@ const RoomAction = ActionOf<Room.Action, Action>((action, state) =>
           cmd.map(RoomAction)
         ],
 
-        BackToList: () => InitRobotsList(username).update(state)
+        BackToList: () => initRobotsList()
       })
     },
 
@@ -99,7 +90,6 @@ export const subscriptions = (state: State): Sub<Action> => {
 }
 
 // V I E W
-
 const ViewRobotsList = React.memo<{
   robotsList: RobotsList.State
   dispatch: Dispatch<Action>
@@ -129,8 +119,6 @@ export const View = React.memo<{
   dispatch: Dispatch<Action>
 }>(({ state, dispatch }) => {
   return match(state, {
-    AuthScreen: () => <RobotsList.Skeleton />,
-
     RobotsListScreen: ({ robotsList }) => (
       <ViewRobotsList robotsList={robotsList} dispatch={dispatch} />
     ),

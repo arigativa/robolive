@@ -44,15 +44,26 @@ export interface State {
   polling: boolean
 }
 
-export const init = (username: string): [State, Cmd<Action>] => [
-  {
-    robots: RemoteData.Loading,
-    joinStatus: NotJoin,
-    polling: false
-  },
-  Cmd.create<Action>(done =>
-    getAgentList({ username }).then(LoadRobots).then(done)
-  )
+const defaultState = {
+  robots: RemoteData.Loading,
+  joinStatus: NotJoin,
+  polling: false
+}
+
+export const init: [State, Cmd<Action>] = [
+  defaultState,
+  Cmd.create<Action>(done => {
+    const usernameOrGet: string = window.location.pathname.slice(1)
+
+    getAgentList({ username: usernameOrGet }).then(LoadRobots).then(done)
+  })
+]
+
+export const reInit = (username: string): [State, Cmd<Action>] => [
+  defaultState,
+  Cmd.create<Action>(done => {
+    getAgentList({ username: username }).then(LoadRobots).then(done)
+  })
 ]
 
 // U P D A T E
@@ -66,7 +77,7 @@ const Joined: CaseCreator<Stage> = CaseOf('Joined')
 
 export type Action = ActionOf<[string, State], Stage>
 
-const ReInit = ActionOf<Action>((username, __) => Updated(init(username)))()
+const ReInit = ActionOf<Action>((username, __) => Updated(reInit(username)))()
 
 const LoadRobots = ActionOf<Either<string, Array<Agent>>, Action>(
   (result, _, state) =>

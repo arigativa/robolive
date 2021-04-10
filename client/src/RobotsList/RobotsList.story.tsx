@@ -11,7 +11,7 @@ export default {
   title: 'RobotsList'
 }
 
-const [initialState] = RobotsList.init('test')
+const [initialState] = RobotsList.reInit('test')
 
 export const Skeleton: React.FC = () => <RobotsList.Skeleton />
 
