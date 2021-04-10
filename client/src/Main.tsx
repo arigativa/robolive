@@ -2,14 +2,13 @@ import React from 'react'
 
 import { Dispatch, Cmd, Sub } from 'core'
 import { ActionOf, CaseOf, CaseCreator, match } from 'utils'
-import * as Login from 'Login'
 import * as RobotsList from 'RobotsList'
 import * as Room from 'Room'
 
 // S T A T E
 
 export type State =
-  | CaseOf<'LoginScreen', Login.State>
+  | CaseOf<'AuthScreen'>
   | CaseOf<
       'RobotsListScreen',
       ScreenWithUsername<{ robotsList: RobotsList.State }>
@@ -18,15 +17,15 @@ export type State =
 
 type ScreenWithUsername<T> = T & { username: string }
 
-const LoginScreen: CaseCreator<State> = CaseOf('LoginScreen')
+const AuthScreen: State = CaseOf('AuthScreen')()
 const RobotsListScreen: CaseCreator<State> = CaseOf('RobotsListScreen')
 const RoomScreen: CaseCreator<State> = CaseOf('RoomScreen')
 
-const [initialLogin, initialLoginCmd] = Login.initial
-
 export const initial: [State, Cmd<Action>] = [
-  LoginScreen(initialLogin),
-  initialLoginCmd.map(action => LoginAction(action))
+  AuthScreen,
+  Cmd.create<Action>(done => {
+    done(ParseUsername(window.location.pathname.slice(1)))
+  })
 ]
 
 // U P D A T E
@@ -42,18 +41,9 @@ const initRobotsList = (username: string): [State, Cmd<Action>] => {
   ]
 }
 
-const LoginAction = ActionOf<Login.Action, Action>((action, state) =>
-  match<State, [State, Cmd<Action>]>(state, {
-    LoginScreen: login =>
-      match(action.update(login), {
-        Updated: nextLogin => [LoginScreen(nextLogin), Cmd.none],
-
-        Registered: initRobotsList
-      }),
-
-    _: () => [state, Cmd.none]
-  })
-)
+const ParseUsername = ActionOf<string, Action>(username => {
+  return initRobotsList(username)
+})
 
 const RobotsListAction = ActionOf<RobotsList.Action, Action>((action, state) =>
   match<State, [State, Cmd<Action>]>(state, {
@@ -114,18 +104,6 @@ export const subscriptions = (state: State): Sub<Action> => {
 
 // V I E W
 
-const ViewLogin = React.memo<{
-  login: Login.State
-  dispatch: Dispatch<Action>
-}>(({ login, dispatch }) => {
-  const loginDispatch = React.useCallback(
-    (action: Login.Action) => dispatch(LoginAction(action)),
-    [dispatch]
-  )
-
-  return <Login.View state={login} dispatch={loginDispatch} />
-})
-
 const ViewRobotsList = React.memo<{
   robotsList: RobotsList.State
   dispatch: Dispatch<Action>
@@ -155,7 +133,7 @@ export const View = React.memo<{
   dispatch: Dispatch<Action>
 }>(({ state, dispatch }) => {
   return match(state, {
-    LoginScreen: login => <ViewLogin login={login} dispatch={dispatch} />,
+    AuthScreen: () => <RobotsList.Skeleton />,
 
     RobotsListScreen: ({ robotsList }) => (
       <ViewRobotsList robotsList={robotsList} dispatch={dispatch} />

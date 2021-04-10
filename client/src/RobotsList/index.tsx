@@ -44,12 +44,14 @@ export interface State {
   polling: boolean
 }
 
+export const initial: State = {
+  robots: RemoteData.Loading,
+  joinStatus: NotJoin,
+  polling: false
+}
+
 export const init = (username: string): [State, Cmd<Action>] => [
-  {
-    robots: RemoteData.Loading,
-    joinStatus: NotJoin,
-    polling: false
-  },
+  initial,
   Cmd.create<Action>(done =>
     getAgentList({ username }).then(LoadRobots).then(done)
   )
@@ -312,4 +314,10 @@ const SkeletonAgentList = React.memo<{
       <SkeletonAgentItem key={index} />
     ))}
   </ViewAgentList>
+))
+
+export const Skeleton = React.memo(() => (
+  <Container>
+    <SkeletonAgentList />
+  </Container>
 ))

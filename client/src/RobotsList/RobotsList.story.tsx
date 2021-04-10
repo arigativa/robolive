@@ -11,12 +11,12 @@ export default {
   title: 'RobotsList'
 }
 
-const [initialState] = RobotsList.init('test')
+export const Skeleton: React.FC = () => <RobotsList.Skeleton />
 
 export const Loading: React.FC = () => (
   <RobotsList.View
     state={{
-      ...initialState,
+      ...RobotsList.initial,
       robots: RemoteData.Loading
     }}
     dispatch={action('dispatch')}
@@ -26,7 +26,7 @@ export const Loading: React.FC = () => (
 export const Failure: React.FC = () => (
   <RobotsList.View
     state={{
-      ...initialState,
+      ...RobotsList.initial,
       robots: RemoteData.Failure(text('Error message', 'Information not found'))
     }}
     dispatch={action('dispatch')}
@@ -36,7 +36,7 @@ export const Failure: React.FC = () => (
 export const EmptyAgentList: React.FC = () => (
   <RobotsList.View
     state={{
-      ...initialState,
+      ...RobotsList.initial,
       robots: RemoteData.Succeed([])
     }}
     dispatch={action('dispatch')}
@@ -64,7 +64,7 @@ export const AgentList: React.FC = () => {
   return (
     <RobotsList.View
       state={{
-        ...initialState,
+        ...RobotsList.initial,
         robots: RemoteData.Succeed(range(N).map(createAgent))
       }}
       dispatch={action('dispatch')}
@@ -92,7 +92,7 @@ export const Joining: React.FC = () => {
   return (
     <RobotsList.View
       state={{
-        ...initialState,
+        ...RobotsList.initial,
         joinStatus: { type: 'Joining', payload: robotId },
         robots: RemoteData.Succeed(range(3).map(createAgent))
       }}
@@ -111,7 +111,7 @@ export const JoinFail: React.FC = () => {
   return (
     <RobotsList.View
       state={{
-        ...initialState,
+        ...RobotsList.initial,
         joinStatus: {
           type: 'JoinFail',
           payload: { robotId, message }
