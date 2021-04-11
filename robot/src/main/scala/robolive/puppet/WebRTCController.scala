@@ -31,7 +31,7 @@ final class WebRTCController(
       log("start")
       val rtpPipeline = PipelineManaged("rtpPipeline", description(rtcType), logger)
       log("rtpPipeline instantiation")
-      val encodedVideoSrc = rtpPipeline.getElementByName("encodedVideoSrc")
+      val outputRTPStream = rtpPipeline.getElementByName("outputRTPStream")
 
       webRTCBin = WebRTCBinManaged("sendrecv")
 
@@ -41,12 +41,18 @@ final class WebRTCController(
       rtpPipeline.add(webRTCBin.underlying)
       log("rtpPipeline + webRTCBin")
 
-      val isLinked = encodedVideoSrc.link(webRTCBin.underlying)
+      val isSynced = webRTCBin.underlying.syncStateWithParent()
+      assert(isSynced, "Error: webRTCBin failed to sync with rtcPipeline")
+
+      val isLinked = outputRTPStream.link(webRTCBin.underlying)
       log("rtpPipeline ! webRTCBin")
-      assert(isLinked, "Error: encodedVideoSrc ! sendrecv")
+      assert(isLinked, "Error: outputRTPStream ! sendrecv")
 
       pipeline.add(rtpPipeline)
       log("pipeline + rtpPipeline")
+
+      val isRTPVideoSrcToVpEncoderSynced = rtpPipeline.syncStateWithParent()
+      assert(isRTPVideoSrcToVpEncoderSynced, "Error: RTPPipeline failed to sync with video stream pipeline")
 
       val tee = pipeline.getElementByName("t")
       val vp8EncoderSync = rtpPipeline.getElementByName("vpEncoder")
@@ -67,12 +73,6 @@ final class WebRTCController(
         rtpPipeline.dispose()
         webRTCBin = null
       }
-
-      val isSynced = webRTCBin.underlying.syncStateWithParent()
-      assert(isSynced, "Error: webRTCBin failed to sync with rtcPipeline")
-
-      val isRTPVideoSrcToVpEncoderSynced = rtpPipeline.syncStateWithParent()
-      assert(isRTPVideoSrcToVpEncoderSynced, "Error: RTPPipeline failed to sync with video stream pipeline")
 
       log(s"rtpPipeline playing: ${rtpPipeline.isPlaying}")
 
@@ -222,7 +222,7 @@ object WebRTCController {
   def description(rtcType: Int): String = {
     s"""queue name=vpEncoder ! vp8enc deadline=1 ! rtpvp8pay pt=$rtcType !
        | application/x-rtp,media=video,encoding-name=VP8,payload=$rtcType !
-       | queue name=encodedVideoSrc""".stripMargin
+       | queue name=outputRTPStream""".stripMargin
 
   }
 }
