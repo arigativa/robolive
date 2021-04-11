@@ -221,13 +221,7 @@ object WebRTCBinManaged {
 
   def apply(name: String): WebRTCBinManaged = {
     val bin = ElementFactory.make("webrtcbin", name).asInstanceOf[WebRTCBin]
-    new WebRTCBinManaged(bin)
-  }
 
-  def apply(pipeline: Pipeline, name: String)(
-    implicit ev: GSTInit.type
-  ): WebRTCBinManaged = {
-    val webRTCBin = pipeline.getElementByName(name).asInstanceOf[WebRTCBin]
-    new WebRTCBinManaged(webRTCBin)
+    new WebRTCBinManaged(bin)
   }
 }

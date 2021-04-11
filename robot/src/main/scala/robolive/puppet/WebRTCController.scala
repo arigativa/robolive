@@ -22,21 +22,15 @@ final class WebRTCController(
   private var disposeRtpPipeline: () => () = _
   private var state: WebRTCControllerPlayState = WebRTCControllerPlayState.Wait
 
+  private def log(value: String) = {
+    logger.info(s"Assembling call pipeline: $value")
+  }
+
   private def start(rtcType: Int): StateChangeReturn = synchronized {
     try {
+      log("start")
       val rtpPipeline = PipelineManaged("rtpPipeline", description(rtcType), logger)
-
-      pipeline.add(rtpPipeline)
-
-      val tee = pipeline.getElementByName("t")
-      val vp8EncoderSync = rtpPipeline.getElementByName("vpEncoder")
-
-      val isRTPVideoSrcToVpEncoderLinked = tee.link(vp8EncoderSync)
-      assert(isRTPVideoSrcToVpEncoderLinked, s"Error: tee ! vpEncoder")
-
-      val isRTPVideoSrcToVpEncoderSynced = rtpPipeline.syncStateWithParent()
-      assert(isRTPVideoSrcToVpEncoderSynced, "Error: RTPPipeline failed to sync with video stream pipeline")
-
+      log("rtpPipeline instantiation")
       val encodedVideoSrc = rtpPipeline.getElementByName("encodedVideoSrc")
 
       webRTCBin = WebRTCBinManaged("sendrecv")
@@ -45,11 +39,24 @@ final class WebRTCController(
       webRTCBin.onPadAdded(fakeSink(_, rtpPipeline))
 
       rtpPipeline.add(webRTCBin.underlying)
+      log("rtpPipeline + webRTCBin")
 
       val isLinked = encodedVideoSrc.link(webRTCBin.underlying)
+      log("rtpPipeline ! webRTCBin")
       assert(isLinked, "Error: encodedVideoSrc ! sendrecv")
 
+      pipeline.add(rtpPipeline)
+      log("pipeline + rtpPipeline")
+
+      val tee = pipeline.getElementByName("t")
+      val vp8EncoderSync = rtpPipeline.getElementByName("vpEncoder")
+
+      val isRTPVideoSrcToVpEncoderLinked = tee.link(vp8EncoderSync)
+      log("pipeline(t) ! vpEncoder(rtpInput)")
+      assert(isRTPVideoSrcToVpEncoderLinked, s"Error: tee ! vpEncoder")
+
       disposeRtpPipeline = () => {
+        logger.info("Disposing rtpPipeline ! webRTCBin")
         rtpPipeline.remove(webRTCBin.underlying)
         pipeline.remove(rtpPipeline)
         rtpPipeline.pause()
@@ -62,11 +69,16 @@ final class WebRTCController(
       }
 
       val isSynced = webRTCBin.underlying.syncStateWithParent()
-      if (isSynced) {
-        StateChangeReturn.SUCCESS
-      } else {
-        StateChangeReturn.FAILURE
-      }
+      assert(isSynced, "Error: webRTCBin failed to sync with rtcPipeline")
+
+      val isRTPVideoSrcToVpEncoderSynced = rtpPipeline.syncStateWithParent()
+      assert(isRTPVideoSrcToVpEncoderSynced, "Error: RTPPipeline failed to sync with video stream pipeline")
+
+      log(s"rtpPipeline playing: ${rtpPipeline.isPlaying}")
+
+      log(s"Pipeline playing: ${pipeline.isPlaying}")
+
+      StateChangeReturn.SUCCESS
     } catch {
       case err: Throwable =>
         logger.error("Error: fail to start pipeline", err)
@@ -84,9 +96,8 @@ final class WebRTCController(
   }
 
   private def fakeSink(pad: Pad, pipeline: Pipeline): Unit = {
-    if (pad.getDirection != PadDirection.SRC) {
-      logger.error("Error incoming stream: pad direction incorrect")
-    } else {
+    logger.info(s"WebRTCBin: pad added: ${pad.getDirection} allowedCaps: ${pad.getAllowedCaps} currentCaps: ${pad.getCurrentCaps}")
+    if (pad.getDirection == PadDirection.SRC) {
       logger.info("Route incoming WebRTC stream into fakesink")
       val fakesink = ElementFactory.make("fakesink", "incomingFakeSink")
 
@@ -105,7 +116,7 @@ final class WebRTCController(
 
         getRtpTypeForVP8Media(remoteSdp) match {
           case Right(rtpType) =>
-            logger.debug(s"Extracted rtpType: $rtpType")
+            logger.info(s"Extracted rtpType: $rtpType")
 
             val stateChange = start(rtpType)
             if (stateChange == StateChangeReturn.SUCCESS || stateChange == StateChangeReturn.ASYNC) {
