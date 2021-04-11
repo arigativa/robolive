@@ -9,6 +9,7 @@ import sdp.SdpMessage.RawValueAttribute
 import sdp.{Attributes, SdpMessage}
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.control.NonFatal
 
 final class WebRTCController(
   pipeline: Pipeline,
@@ -26,11 +27,31 @@ final class WebRTCController(
     logger.info(s"Assembling call pipeline: $value")
   }
 
+  private def mkDispose(rtpPipeline: Pipeline): Unit = {
+    try {
+      logger.info("Disposing rtpPipeline ! webRTCBin")
+      rtpPipeline.remove(webRTCBin.underlying)
+      pipeline.remove(rtpPipeline)
+      rtpPipeline.pause()
+      rtpPipeline.stop()
+      webRTCBin.pause()
+      webRTCBin.stop()
+      webRTCBin.dispose()
+      rtpPipeline.dispose()
+      webRTCBin = null
+    } catch {
+      case NonFatal(exception) =>
+        logger.error("Error: fail to free pipeline resources", exception)
+    }
+  }
+
   private def start(rtcType: Int): StateChangeReturn = synchronized {
     try {
       log("start")
       val rtpPipeline = PipelineManaged("rtpPipeline", description(rtcType), logger)
-      log("rtpPipeline instantiation")
+      log("rtpPipeline instantiated")
+      disposeRtpPipeline = () => mkDispose(rtpPipeline)
+
       val outputRTPStream = rtpPipeline.getElementByName("outputRTPStream")
 
       webRTCBin = WebRTCBinManaged("sendrecv")
@@ -41,9 +62,6 @@ final class WebRTCController(
       rtpPipeline.add(webRTCBin.underlying)
       log("rtpPipeline + webRTCBin")
 
-      val isSynced = webRTCBin.underlying.syncStateWithParent()
-      assert(isSynced, "Error: webRTCBin failed to sync with rtcPipeline")
-
       val isLinked = outputRTPStream.link(webRTCBin.underlying)
       log("rtpPipeline ! webRTCBin")
       assert(isLinked, "Error: outputRTPStream ! sendrecv")
@@ -51,7 +69,9 @@ final class WebRTCController(
       pipeline.add(rtpPipeline)
       log("pipeline + rtpPipeline")
 
+      log(s"rtpPipeline state before sync: ${rtpPipeline.getState}")
       val isRTPVideoSrcToVpEncoderSynced = rtpPipeline.syncStateWithParent()
+      log(s"rtpPipeline state after sync: ${rtpPipeline.getState}")
       assert(isRTPVideoSrcToVpEncoderSynced, "Error: RTPPipeline failed to sync with video stream pipeline")
 
       val tee = pipeline.getElementByName("t")
@@ -61,22 +81,7 @@ final class WebRTCController(
       log("pipeline(t) ! vpEncoder(rtpInput)")
       assert(isRTPVideoSrcToVpEncoderLinked, s"Error: tee ! vpEncoder")
 
-      disposeRtpPipeline = () => {
-        logger.info("Disposing rtpPipeline ! webRTCBin")
-        rtpPipeline.remove(webRTCBin.underlying)
-        pipeline.remove(rtpPipeline)
-        rtpPipeline.pause()
-        rtpPipeline.stop()
-        webRTCBin.pause()
-        webRTCBin.stop()
-        webRTCBin.dispose()
-        rtpPipeline.dispose()
-        webRTCBin = null
-      }
-
-      log(s"rtpPipeline playing: ${rtpPipeline.isPlaying}")
-
-      log(s"Pipeline playing: ${pipeline.isPlaying}")
+      log(s"The Pipeline state: ${pipeline.getState}")
 
       StateChangeReturn.SUCCESS
     } catch {
