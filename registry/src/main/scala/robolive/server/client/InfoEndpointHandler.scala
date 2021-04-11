@@ -1,7 +1,9 @@
-package robolive.server
+package robolive.server.client
 
 import Info.InfoEndpointGrpc.InfoEndpoint
 import Info.{AgentListRequest, AgentListResponse, AgentView}
+import robolive.server.Server
+import robolive.server.sip.SessionState
 
 import scala.concurrent.{ExecutionContext, Future}
 

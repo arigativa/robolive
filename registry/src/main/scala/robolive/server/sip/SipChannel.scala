@@ -1,8 +1,8 @@
-package robolive.server
+package robolive.server.sip
 
 import org.slf4j.LoggerFactory
-import robolive.server.SessionState.CommunicationChannelSession
-import robolive.server.SipChannel.{allocateRequestBody, deallocateRequestBody}
+import robolive.server.sip.SessionState.CommunicationChannelSession
+import robolive.server.sip.SipChannel._
 import sttp.client._
 import sttp.client.asynchttpclient.WebSocketHandler
 
