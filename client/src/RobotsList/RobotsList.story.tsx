@@ -95,7 +95,7 @@ export const Joining: React.FC = () => {
     <RobotsList.View
       state={{
         ...initialState,
-        joinStatus: { type: 'Joining', payload: robotId },
+        joinStatus: RobotsList.Joining(robotId),
         robots: RemoteData.Succeed(range(3).map(createAgent))
       }}
       dispatch={action('dispatch')}
@@ -114,10 +114,7 @@ export const JoinFail: React.FC = () => {
     <RobotsList.View
       state={{
         ...initialState,
-        joinStatus: {
-          type: 'JoinFail',
-          payload: { robotId, message }
-        },
+        joinStatus: RobotsList.JoinFail({ robotId, message }),
         robots: RemoteData.Succeed(range(3).map(createAgent))
       }}
       dispatch={action('dispatch')}

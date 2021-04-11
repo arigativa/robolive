@@ -19,7 +19,7 @@ import {
 import { Dispatch, Cmd, Sub } from 'core'
 import { RoomConfiguration } from 'api'
 import { Connection, createConnection } from 'sip'
-import { ActionOf, CaseOf, CaseCreator } from 'utils'
+import { ActionOf, CaseOf } from 'utils'
 
 // S T A T E
 
@@ -70,8 +70,8 @@ export type Stage =
   | CaseOf<'Updated', [State, Cmd<Action>]>
   | CaseOf<'BackToList'>
 
-const Updated: CaseCreator<Stage> = CaseOf('Updated')
-const BackToList: Stage = CaseOf('BackToList')()
+const Updated = CaseOf.of<Stage, 'Updated'>('Updated')
+const BackToList = CaseOf.of<Stage, 'BackToList'>('BackToList')
 
 const Connect = ActionOf<MediaStream, Action>((stream, state) =>
   Updated([

@@ -7,7 +7,7 @@ import {
 } from 'jssip/lib/RTCSession'
 import { debug } from 'jssip/lib/JsSIP'
 import { Functor, Router, Cmd, Sub, registerManager } from 'core'
-import { Schema, CaseOf, CaseCreator, match } from 'utils'
+import { Schema, CaseOf } from 'utils'
 
 debug.enable('JsSIP:*')
 
@@ -557,10 +557,14 @@ export type ListenEvent =
   | CaseOf<'OnIncomingInfo', string>
   | CaseOf<'OnOutgoingInfo', string>
 
-const OnEnd: ListenEvent = CaseOf('OnEnd')()
-const OnFailure: CaseCreator<ListenEvent> = CaseOf('OnFailure')
-const OnIncomingInfo: CaseCreator<ListenEvent> = CaseOf('OnIncomingInfo')
-const OnOutgoingInfo: CaseCreator<ListenEvent> = CaseOf('OnOutgoingInfo')
+const OnEnd = CaseOf.of<'OnEnd', ListenEvent>('OnEnd')
+const OnFailure = CaseOf.of<'OnFailure', ListenEvent>('OnFailure')
+const OnIncomingInfo = CaseOf.of<'OnIncomingInfo', ListenEvent>(
+  'OnIncomingInfo'
+)
+const OnOutgoingInfo = CaseOf.of<'OnOutgoingInfo', ListenEvent>(
+  'OnOutgoingInfo'
+)
 
 // eslint-disable-next-line no-shadow
 enum WebSocketProtocol {
@@ -707,7 +711,7 @@ class ConnectionImpl implements Connection {
   private listen<T>(schema: Schema<ListenEvent, null | T>): Sub<T> {
     return sipManager.createSub(
       new ListenSub(this.options, event => {
-        return match<ListenEvent, null | T>(event, schema)
+        return event.match<null | T>(schema)
       })
     )
   }

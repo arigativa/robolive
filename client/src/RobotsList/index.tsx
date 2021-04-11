@@ -18,7 +18,7 @@ import RemoteData from 'frctl/RemoteData'
 import { Cmd, Sub, Dispatch } from 'core'
 import { Agent, RoomConfiguration, getAgentList, joinRoom } from 'api'
 import { SkeletonText, SkeletonRect } from 'Skeleton'
-import { ActionOf, CaseOf, CaseCreator, range, match, every } from 'utils'
+import { ActionOf, CaseOf, range, every } from 'utils'
 
 // S T A T E
 
@@ -27,16 +27,9 @@ type JoinStatus =
   | CaseOf<'Joining', string>
   | CaseOf<'JoinFail', { robotId: string; message: string }>
 
-const NotJoin: JoinStatus = CaseOf('NotJoin')()
-const Joining: CaseCreator<JoinStatus> = CaseOf('Joining')
-const JoinFail: CaseCreator<JoinStatus> = CaseOf('JoinFail')
-
-const isJoining = (joinStatus: JoinStatus): boolean => {
-  return match(joinStatus, {
-    Joining: () => true,
-    _: () => false
-  })
-}
+export const NotJoin = CaseOf.of<JoinStatus, 'NotJoin'>('NotJoin')
+export const Joining = CaseOf.of<JoinStatus, 'Joining'>('Joining')
+export const JoinFail = CaseOf.of<JoinStatus, 'JoinFail'>('JoinFail')
 
 export interface State {
   robots: RemoteData<string, Array<Agent>>
@@ -61,8 +54,8 @@ export type Stage =
   | CaseOf<'Updated', [State, Cmd<Action>]>
   | CaseOf<'Joined', RoomConfiguration>
 
-const Updated: CaseCreator<Stage> = CaseOf('Updated')
-const Joined: CaseCreator<Stage> = CaseOf('Joined')
+const Updated = CaseOf.of<Stage, 'Updated'>('Updated')
+const Joined = CaseOf.of<Stage, 'Joined'>('Joined')
 
 export type Action = ActionOf<[string, State], Stage>
 
@@ -134,7 +127,7 @@ const RunPolling = ActionOf<Action>((username, state) =>
 export const subscriptions = (state: State): Sub<Action> => {
   if (
     state.polling ||
-    isJoining(state.joinStatus) ||
+    state.joinStatus.is(Joining) ||
     state.robots.getOrElse([]).length === 0
   ) {
     return Sub.none
@@ -207,18 +200,17 @@ const AgentItem = React.memo<{
   agent: Agent
   dispatch: Dispatch<Action>
 }>(({ joinStatus, agent, dispatch }) => {
-  const [disabled, loading, error]: [boolean, boolean, null | string] = match(
-    joinStatus,
-    {
-      NotJoin: () => [false, false, null],
-      Joining: robotId => [true, agent.id === robotId, null],
-      JoinFail: ({ robotId, message }) => [
-        false,
-        false,
-        agent.id === robotId ? message : null
-      ]
-    }
-  )
+  const [disabled, loading, error] = joinStatus.match<
+    [boolean, boolean, null | string]
+  >({
+    NotJoin: () => [false, false, null],
+    Joining: robotId => [true, agent.id === robotId, null],
+    JoinFail: ({ robotId, message }) => [
+      false,
+      false,
+      agent.id === robotId ? message : null
+    ]
+  })
 
   return (
     <ViewAgentItem

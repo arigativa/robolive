@@ -41,19 +41,8 @@ export function ActionOf<T, A extends Array<unknown>, R>(
       : new ActionWithPayload(payload, handler)
 }
 
-export interface CaseOf<T extends string = string, P = never> {
-  type: T
-  payload: P
-}
-
-interface CreateCaseWithoutPayload<T extends string = string> {
-  type: T
-  (): CaseOf<T>
-}
-
-interface CreateCaseWithPayload<T extends string = string, P = never> {
-  type: T
-  (payload: P): CaseOf<T, P>
+type CaseOfSchema<A extends CaseOf<string, unknown>, R> = {
+  [K in A['type']]: (payload: Extract<A, { type: K }>['payload']) => R
 }
 
 type ExtractPayloadFor<
@@ -61,46 +50,53 @@ type ExtractPayloadFor<
   A extends CaseOf<string, unknown>
 > = Extract<A, { type: K }>['payload']
 
-export type CaseCreator<A extends CaseOf<string, unknown>> = {
-  [K in A['type']]: [ExtractPayloadFor<K, A>] extends [never]
-    ? CreateCaseWithoutPayload<K>
-    : CreateCaseWithPayload<K, ExtractPayloadFor<K, A>>
-}[A['type']]
-
-export function CaseOf<T extends string>(type: T): CreateCaseWithoutPayload<T>
-export function CaseOf<T extends string, P>(
-  type: T
-): CreateCaseWithPayload<T, P>
-// eslint-disable-next-line @typescript-eslint/no-redeclare
-export function CaseOf<T extends string, P>(
-  type: T
-): CreateCaseWithPayload<T, P> {
-  const creator = (payload: P): CaseOf<T, P> => ({ type, payload })
-
-  creator.type = type
-
-  return creator
-}
-
-type CaseOfSchema<A extends CaseOf<string, unknown>, R> = {
-  [K in A['type']]: (payload: Extract<A, { type: K }>['payload']) => R
-}
-
 export type Schema<A extends CaseOf<string, unknown>, R> =
   | CaseOfSchema<A, R>
   | (Partial<CaseOfSchema<A, R>> & { _(): R })
 
-export const match = <A extends CaseOf<string, unknown>, R>(
-  case_: A,
-  schema: Schema<A, R>
-): R => {
-  if (case_.type in schema) {
-    return (schema as Record<string, (payload: unknown) => R>)[case_.type](
-      case_.payload
-    )
+// rename to Case and create -> of
+export class CaseOf<T extends string, P = never> {
+  public static of<C extends CaseOf<string, unknown>, TT extends C['type']>(
+    type: TT
+  ): [ExtractPayloadFor<TT, C>] extends [never]
+    ? C
+    : CreateCaseWithPayload<TT, ExtractPayloadFor<TT, C>>
+  public static of<TT extends C['type'], C extends CaseOf<string, unknown>>(
+    type: TT
+  ): [ExtractPayloadFor<TT, C>] extends [never]
+    ? C
+    : CreateCaseWithPayload<TT, ExtractPayloadFor<TT, C>>
+  public static of<TT extends string, PP>(
+    type: TT
+  ): CreateCaseWithPayload<TT, PP> {
+    const creator = (payload: PP): CaseOf<TT, PP> => new CaseOf(type, payload)
+
+    creator.type = type
+
+    return creator
   }
 
-  return (schema as { _(): R })._()
+  private constructor(public readonly type: T, public readonly payload: P) {}
+
+  public match<R>(schema: Schema<CaseOf<T, P>, R>): R
+  public match<R>(schema: { [K in T]: (payload: P) => R } & { _(): R }): R {
+    if (this.type in schema) {
+      return schema[this.type](this.payload)
+    }
+
+    return schema._()
+  }
+
+  public is<TT extends string, RR>(
+    probe: CaseOf<TT, RR> | CreateCaseWithPayload<TT, RR>
+  ): this is CaseOf<TT, RR> {
+    return (probe.type as string) === this.type
+  }
+}
+
+interface CreateCaseWithPayload<T extends string, P> {
+  type: T
+  (payload: P): CaseOf<T, P>
 }
 
 export const hasWhitespaces = (input: string): boolean => {
