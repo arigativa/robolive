@@ -8,18 +8,14 @@ import Storage.StorageEndpointGrpc.StorageEndpoint
 import io.grpc.{ServerBuilder, ServerServiceDefinition}
 import org.slf4j.LoggerFactory
 import robolive.meta.BuildInfo
-import robolive.server.{
-  AgentEndpointHandler,
-  AgentStateStorage,
+import robolive.server.client.{
   ClientEndpointHandler,
   InfoEndpointHandler,
-  Server,
-  SessionEndpointHandler,
-  SessionState,
-  SessionStorage,
-  SipChannel,
-  StorageEndpointHandler
+  UserDataStorage,
+  UserState
 }
+import robolive.server.sip.{SessionEndpointHandler, SessionState, SessionStorage, SipChannel}
+import robolive.server.{AgentEndpointHandler, AgentStateStorage, Server, StorageEndpointHandler}
 import sttp.client.SttpBackend
 import sttp.client.asynchttpclient.WebSocketHandler
 import sttp.client.asynchttpclient.future.AsyncHttpClientFutureBackend
@@ -49,6 +45,7 @@ object RegistryServer extends App {
   val RTMPLink: String = getEnv("RTMP_LINK", "NONE")
   val AgentStatePath: String = getEnv("AGENT_STATE_PATH", "./agent_state.cfg")
   val SessionStatePath: String = getEnv("SESSION_STATE_PATH", "./session_state.cfg")
+  val UserStatePath: String = getEnv("USER_STATE_PATH", "./user_state.cfg")
 
   val ConfigMap = Map(
     "signallingUri" -> SignallingSipEndpointUri,
@@ -60,6 +57,7 @@ object RegistryServer extends App {
     "rtmpLink" -> RTMPLink,
   )
 
+  val userState = UserState(new UserDataStorage(UserStatePath))
   val sessionsState = SessionState(new SessionStorage(SessionStatePath))
   val stateManager = new AgentStateStorage(AgentStatePath)
   val agentSystem: Server.AgentSystem = Server.AgentSystem.create(ConfigMap, stateManager)
@@ -100,7 +98,7 @@ object RegistryServer extends App {
   }
 
   val clientEndpoint = {
-    val clientEndpointHandler = new ClientEndpointHandler(agentSystem, sipChannel)
+    val clientEndpointHandler = new ClientEndpointHandler(userState, agentSystem, sipChannel)
     runServer(
       ssd = ClientEndpoint.bindService(clientEndpointHandler, implicitly[ExecutionContext]),
       port = ClientPort

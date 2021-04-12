@@ -1,5 +1,7 @@
 syntax = "proto2";
 
+import "Common.proto";
+
 message JoinRequest {
   required string name = 1;
   required string targetId = 2;
@@ -20,6 +22,30 @@ message JoinResponse {
   }
 }
 
+message Button {
+  required string name = 1;
+  required string template = 2;
+}
+
+message UIDescription {
+  repeated Button buttons = 1;
+}
+
+message AddUIDescriptionRequest {
+  required string name = 1;
+  required string targetId = 2;
+  required UIDescription uiDescription = 3;
+}
+
+message GetUIDescriptionRequest {
+  required string name = 1;
+  required string targetId = 2;
+}
+
 service ClientEndpoint {
   rpc Join(JoinRequest) returns (JoinResponse);
+
+  rpc AddUiDescription(AddUIDescriptionRequest) returns (Empty);
+
+  rpc GetUiDescription(GetUIDescriptionRequest) returns (UIDescription);
 }

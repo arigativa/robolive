@@ -1,10 +1,15 @@
-package robolive.server
+package robolive.server.sip
 
-import robolive.server.SessionState._
+import robolive.server.sip.SessionState.{
+  AllowedSessionView,
+  CommunicationChannelSession,
+  FiniteSession,
+  OngoingSessionView
+}
 
 import java.io.FileNotFoundException
-import scala.concurrent.duration.FiniteDuration
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
+import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success}
 

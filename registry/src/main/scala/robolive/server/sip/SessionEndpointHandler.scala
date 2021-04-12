@@ -1,17 +1,8 @@
-package robolive.server
+package robolive.server.sip
 
-import Session.{
-  AllowSession,
-  AllowedSession,
-  AllowedSessions,
-  EvictSession,
-  EvictedSession,
-  EvictedSessions,
-  OngoingSession,
-  OngoingSessions
-}
 import Common.Empty
-import robolive.server.SessionState.CommunicationChannelSession
+import Session._
+import robolive.server.sip.SessionState.CommunicationChannelSession
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.Future

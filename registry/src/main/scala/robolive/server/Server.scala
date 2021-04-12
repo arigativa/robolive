@@ -138,7 +138,7 @@ object Server {
     name: String,
     login: String,
     password: String,
-    private val settings: ConcurrentHashMap[String, String]
+    private val settings: ConcurrentHashMap[String, String],
   ) {
     def getSettings(keys: String*): Map[String, String] = {
       keys.flatMap(k => Option(settings.get(k)).map(k -> _)).toMap

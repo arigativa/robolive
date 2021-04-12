@@ -1,4 +1,5 @@
-package robolive.server
+package robolive.server.sip
+
 import io.circe.{parser, Decoder, Encoder}
 
 import scala.util.Using
@@ -17,8 +18,9 @@ final class SessionStorage(path: String) {
   }
 
   def write(agentState: SessionStorageData): scala.util.Try[Unit] = {
-    import java.io.PrintWriter
     import io.circe.syntax._
+
+    import java.io.PrintWriter
 
     Using(new PrintWriter(path)) { writer =>
       writer.write(agentState.asJson.spaces2SortKeys)
@@ -27,8 +29,8 @@ final class SessionStorage(path: String) {
 }
 
 object SessionStorage {
-  import io.circe.generic.extras.semiauto._
   import io.circe.generic.extras.Configuration
+  import io.circe.generic.extras.semiauto._
 
   implicit val config: Configuration = Configuration.default
 
