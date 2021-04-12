@@ -2,14 +2,14 @@ package robolive.server
 
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
-
 import Agent.AgentEndpointGrpc.AgentEndpoint
 import Agent.AgentMessage.Message
 import Agent._
+import io.grpc.Status
 import io.grpc.stub.StreamObserver
 import org.slf4j.LoggerFactory
-import java.util.concurrent.atomic.AtomicReference
 
+import java.util.concurrent.atomic.AtomicReference
 import robolive.server.Server.Credentials
 
 import scala.concurrent.Promise
@@ -50,12 +50,17 @@ final class AgentEndpointHandler(agentSystem: Server.AgentSystem) extends AgentE
                 connectionId = connectionId,
                 name = message.name,
                 sendToAgent = responseObserver.onNext,
-                credsOpt = message.login.zip(message.password).map { case (l, p) => Credentials(l, p) },
+                credsOpt =
+                  message.login.zip(message.password).map { case (l, p) => Credentials(l, p) },
               )
               responseObserver.onNext(registerResponse(connectionId, login, password))
             } catch {
               case err: Exception =>
-                responseObserver.onError(err)
+                logger.warn(agentLog(err.getMessage))
+
+                responseObserver.onError(
+                  Status.PERMISSION_DENIED.withDescription(err.getMessage).asRuntimeException()
+                )
             }
 
           case AgentMessage.Message.Join(message) =>
