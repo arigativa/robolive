@@ -33,6 +33,9 @@
         index: "index.html"
         state: "present"
         extra_parameters: |
+          location / {
+              try_files $uri $uri/ /index.html;
+          }
           location /sip/ {
               root /opt/robolive/frontend-sip;
           }
