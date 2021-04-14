@@ -1,7 +1,7 @@
 import React from 'react'
 
 import { Dispatch, Cmd, Sub } from 'core'
-import { ActionOf, Case } from 'utils'
+import { Case } from 'utils'
 import * as RobotsList from 'RobotsList'
 import * as Room from 'Room'
 
@@ -30,80 +30,86 @@ export const initial: [State, Cmd<Action>] = [
 
 // U P D A T E
 
-export type Action = ActionOf<[State], [State, Cmd<Action>]>
+export type Action =
+  | Case<'InitRobotsList', string>
+  | Case<'RobotsListAction', RobotsList.Action>
+  | Case<'RoomAction', Room.Action>
 
-const InitRobotsList = ActionOf<string, Action>(username => {
+const InitRobotsList = Case.of<Action, 'InitRobotsList'>('InitRobotsList')
+const RobotsListAction = Case.of<Action, 'RobotsListAction'>('RobotsListAction')
+const RoomAction = Case.of<Action, 'RoomAction'>('RoomAction')
+
+const initRobotsList = (username: string): [State, Cmd<Action>] => {
   const [initialRobotsList, initialCmd] = RobotsList.init(username)
 
   return [
     RobotsListScreen({ username, robotsList: initialRobotsList }),
     initialCmd.map(RobotsListAction)
   ]
-})
+}
 
-const RobotsListAction = ActionOf<RobotsList.Action, Action>((action, state): [
-  State,
-  Cmd<Action>
-] => {
-  if (!state.is(RobotsListScreen)) {
-    return [state, Cmd.none]
+export const update = (action: Action, state: State): [State, Cmd<Action>] => {
+  if (action.is(InitRobotsList)) {
+    return initRobotsList(action.payload)
   }
 
-  const { username, robotsList } = state.payload
+  // R O B O T S   L I S T
 
-  return RobotsList.update(action, username, robotsList).match<
-    [State, Cmd<Action>]
-  >({
-    Updated: ([nextRobotsList, cmd]) => [
-      RobotsListScreen({ username, robotsList: nextRobotsList }),
-      cmd.map(RobotsListAction)
-    ],
+  if (action.is(RobotsListAction) && state.is(RobotsListScreen)) {
+    const { username, robotsList } = state.payload
+    const stage = RobotsList.update(action.payload, username, robotsList)
 
-    Joined: configuration => {
-      const [initialRoom, initialCmd] = Room.init(configuration)
+    if (stage.is('Joined')) {
+      const [initialRoom, initialCmd] = Room.init(stage.payload)
 
       return [
         RoomScreen({ username, room: initialRoom }),
         initialCmd.map(RoomAction)
       ]
     }
-  })
-})
 
-const RoomAction = ActionOf<Room.Action, Action>((action, state): [
-  State,
-  Cmd<Action>
-] => {
-  if (!state.is(RoomScreen)) {
-    return [state, Cmd.none]
+    const [nextRobotsList, cmd] = stage.payload
+
+    return [
+      RobotsListScreen({ username, robotsList: nextRobotsList }),
+      cmd.map(RobotsListAction)
+    ]
   }
 
-  const { username, room } = state.payload
+  // R O O M
 
-  return Room.update(action, room).match({
-    Updated: ([nextRoom, cmd]) => [
-      RoomScreen({ username, room: nextRoom }),
-      cmd.map(RoomAction)
-    ],
+  if (action.is(RoomAction) && state.is(RoomScreen)) {
+    const { username, room } = state.payload
 
-    BackToList: () => InitRobotsList(username).update(state)
-  })
-})
+    return Room.update(action.payload, room).match({
+      Updated: ([nextRoom, cmd]) => [
+        RoomScreen({ username, room: nextRoom }),
+        cmd.map(RoomAction)
+      ],
+
+      BackToList: () => initRobotsList(username)
+    })
+  }
+
+  // U N M A T C H E D
+
+  return [state, Cmd.none]
+}
 
 // S U B S C R I P T I O N S
 
 export const subscriptions = (state: State): Sub<Action> => {
-  return state.match({
-    RoomScreen: ({ room }) => {
-      return Room.subscriptions(room).map(RoomAction)
-    },
+  if (state.is(RoomScreen)) {
+    return Room.subscriptions(state.payload.room).map(RoomAction)
+  }
 
-    RobotsListScreen: ({ robotsList }) => {
-      return RobotsList.subscriptions(robotsList).map(RobotsListAction)
-    },
+  if (state.is(RobotsListScreen)) {
+    return RobotsList.subscriptions(state.payload.robotsList).map(
+      RobotsListAction
+    )
+  }
 
-    _: () => Sub.none
-  })
+  return Sub.none
 }
 
 // V I E W

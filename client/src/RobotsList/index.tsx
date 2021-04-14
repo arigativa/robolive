@@ -217,17 +217,12 @@ const AgentItem = React.memo<{
   agent: Agent
   dispatch: Dispatch<Action>
 }>(({ joinStatus, agent, dispatch }) => {
-  const [disabled, loading, error] = joinStatus.match<
-    [boolean, boolean, null | string]
-  >({
-    NotJoin: () => [false, false, null],
-    Joining: robotId => [true, agent.id === robotId, null],
-    JoinFail: ({ robotId, message }) => [
-      false,
-      false,
-      agent.id === robotId ? message : null
-    ]
-  })
+  const disabled = joinStatus.is(Joining)
+  const loading = joinStatus.is(Joining) && joinStatus.payload === agent.id
+  const error =
+    joinStatus.is(JoinFail) && joinStatus.payload.robotId === agent.id
+      ? joinStatus.payload.message
+      : null
 
   return (
     <ViewAgentItem

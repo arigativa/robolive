@@ -68,8 +68,12 @@ export class Case<T extends string, P = never> {
   }
 
   public is<TT extends string, RR>(
-    probe: Case<TT, RR> | CaseCreatorWithPayload<TT, RR>
+    probe: TT | Case<TT, RR> | CaseCreatorWithPayload<TT, RR>
   ): this is Case<TT, RR> {
+    if (typeof probe === 'string') {
+      return (probe as string) === this.type
+    }
+
     return (probe.type as string) === this.type
   }
 }
