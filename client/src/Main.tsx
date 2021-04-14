@@ -80,7 +80,7 @@ const RoomAction = ActionOf<Room.Action, Action>((action, state): [
 
   const { username, room } = state.payload
 
-  return action.update(room).match({
+  return Room.update(action, room).match({
     Updated: ([nextRoom, cmd]) => [
       RoomScreen({ username, room: nextRoom }),
       cmd.map(RoomAction)
