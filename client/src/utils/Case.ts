@@ -47,6 +47,17 @@ export class Case<T extends string, P = never> {
 
   private constructor(public readonly type: T, public readonly payload: P) {}
 
+  protected toString(): string {
+    return this.type
+  }
+
+  protected toJSON(): unknown {
+    return {
+      type: this.type,
+      payload: this.payload
+    }
+  }
+
   public match<R>(schema: CaseMatchSchema<Case<T, P>, R>): R
   public match<R>(schema: { [K in T]: (payload: P) => R } & { _(): R }): R {
     if (this.type in schema) {

@@ -51,7 +51,9 @@ const RobotsListAction = ActionOf<RobotsList.Action, Action>((action, state): [
 
   const { username, robotsList } = state.payload
 
-  return action.update(username, robotsList).match<[State, Cmd<Action>]>({
+  return RobotsList.update(action, username, robotsList).match<
+    [State, Cmd<Action>]
+  >({
     Updated: ([nextRobotsList, cmd]) => [
       RobotsListScreen({ username, robotsList: nextRobotsList }),
       cmd.map(RobotsListAction)

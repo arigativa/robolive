@@ -18,7 +18,7 @@ import RemoteData from 'frctl/RemoteData'
 import { Cmd, Sub, Dispatch } from 'core'
 import { Agent, RoomConfiguration, getAgentList, joinRoom } from 'api'
 import { SkeletonText, SkeletonRect } from 'Skeleton'
-import { ActionOf, Case, range, every } from 'utils'
+import { Case, range, every } from 'utils'
 
 // S T A T E
 
@@ -57,70 +57,87 @@ export type Stage =
 const Updated = Case.of<Stage, 'Updated'>('Updated')
 const Joined = Case.of<Stage, 'Joined'>('Joined')
 
-export type Action = ActionOf<[string, State], Stage>
+export type Action =
+  | Case<'ReInit'>
+  | Case<'RunPolling'>
+  | Case<'LoadRobots', Either<string, Array<Agent>>>
+  | Case<'SelectRobot', string>
+  | Case<
+      'SelectRobotDone',
+      Either<{ robotId: string; message: string }, RoomConfiguration>
+    >
 
-const ReInit = ActionOf<Action>((username, __) => Updated(init(username)))()
+const ReInit = Case.of<Action, 'ReInit'>('ReInit')()
+const RunPolling = Case.of<Action, 'RunPolling'>('RunPolling')()
+const LoadRobots = Case.of<Action, 'LoadRobots'>('LoadRobots')
+const SelectRobot = Case.of<Action, 'SelectRobot'>('SelectRobot')
+const SelectRobotDone = Case.of<Action, 'SelectRobotDone'>('SelectRobotDone')
 
-const LoadRobots = ActionOf<Either<string, Array<Agent>>, Action>(
-  (result, _, state) =>
-    Updated([
-      {
-        ...state,
-        polling: false,
-        robots:
-          state.polling && result.isLeft()
-            ? state.robots
-            : RemoteData.fromEither(result)
-      },
-      Cmd.none
-    ])
-)
+export const update = (
+  action: Action,
+  username: string,
+  state: State
+): Stage => {
+  switch (action.type) {
+    case ReInit.type: {
+      return Updated(init(username))
+    }
 
-const SelectRobot = ActionOf<string, Action>((robotId, username, state) =>
-  Updated([
-    {
-      ...state,
-      joinStatus: Joining(robotId)
-    },
-    Cmd.create<Action>(done => {
-      joinRoom({ username, robotId }).then(result =>
-        done(SelectRobotDone(result.mapLeft(message => ({ robotId, message }))))
-      )
-    })
-  ])
-)
+    case RunPolling.type: {
+      return Updated([
+        { ...state, polling: true },
+        Cmd.create<Action>(done =>
+          getAgentList({ username }).then(LoadRobots).then(done)
+        )
+      ])
+    }
 
-const SelectRobotDone = ActionOf<
-  Either<
-    {
-      robotId: string
-      message: string
-    },
-    RoomConfiguration
-  >,
-  Action
->((result, _, state) => {
-  return result.fold<Stage>(
-    error =>
-      Updated([
+    case LoadRobots.type: {
+      return Updated([
         {
           ...state,
-          joinStatus: JoinFail(error)
+          polling: false,
+          robots:
+            state.polling && action.payload.isLeft()
+              ? state.robots
+              : RemoteData.fromEither(action.payload)
         },
         Cmd.none
-      ]),
-    Joined
-  )
-})
+      ])
+    }
 
-const RunPolling = ActionOf<Action>((username, state) =>
-  Updated([
-    { ...state, polling: true },
-    Cmd.create<Action>(done =>
-      getAgentList({ username }).then(LoadRobots).then(done)
-    )
-  ])
-)()
+    case SelectRobot.type: {
+      const robotId = action.payload
+
+      return Updated([
+        {
+          ...state,
+          joinStatus: Joining(robotId)
+        },
+        Cmd.create<Action>(done => {
+          joinRoom({ username, robotId })
+            .then(result => result.mapLeft(message => ({ robotId, message })))
+            .then(SelectRobotDone)
+            .then(done)
+        })
+      ])
+    }
+
+    case SelectRobotDone.type: {
+      return action.payload.fold<Stage>(
+        error =>
+          Updated([
+            {
+              ...state,
+              joinStatus: JoinFail(error)
+            },
+            Cmd.none
+          ]),
+        Joined
+      )
+    }
+  }
+}
 
 // S U B S C R I P T I O N S
 
