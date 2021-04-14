@@ -18,18 +18,18 @@ import RemoteData from 'frctl/RemoteData'
 import { Cmd, Sub, Dispatch } from 'core'
 import { Agent, RoomConfiguration, getAgentList, joinRoom } from 'api'
 import { SkeletonText, SkeletonRect } from 'Skeleton'
-import { ActionOf, CaseOf, range, every } from 'utils'
+import { ActionOf, Case, range, every } from 'utils'
 
 // S T A T E
 
 type JoinStatus =
-  | CaseOf<'NotJoin'>
-  | CaseOf<'Joining', string>
-  | CaseOf<'JoinFail', { robotId: string; message: string }>
+  | Case<'NotJoin'>
+  | Case<'Joining', string>
+  | Case<'JoinFail', { robotId: string; message: string }>
 
-export const NotJoin = CaseOf.of<JoinStatus, 'NotJoin'>('NotJoin')
-export const Joining = CaseOf.of<JoinStatus, 'Joining'>('Joining')
-export const JoinFail = CaseOf.of<JoinStatus, 'JoinFail'>('JoinFail')
+export const NotJoin = Case.of<JoinStatus, 'NotJoin'>('NotJoin')()
+export const Joining = Case.of<JoinStatus, 'Joining'>('Joining')
+export const JoinFail = Case.of<JoinStatus, 'JoinFail'>('JoinFail')
 
 export interface State {
   robots: RemoteData<string, Array<Agent>>
@@ -51,11 +51,11 @@ export const init = (username: string): [State, Cmd<Action>] => [
 // U P D A T E
 
 export type Stage =
-  | CaseOf<'Updated', [State, Cmd<Action>]>
-  | CaseOf<'Joined', RoomConfiguration>
+  | Case<'Updated', [State, Cmd<Action>]>
+  | Case<'Joined', RoomConfiguration>
 
-const Updated = CaseOf.of<Stage, 'Updated'>('Updated')
-const Joined = CaseOf.of<Stage, 'Joined'>('Joined')
+const Updated = Case.of<Stage, 'Updated'>('Updated')
+const Joined = Case.of<Stage, 'Joined'>('Joined')
 
 export type Action = ActionOf<[string, State], Stage>
 

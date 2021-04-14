@@ -1,27 +1,25 @@
 import React from 'react'
 
 import { Dispatch, Cmd, Sub } from 'core'
-import { ActionOf, CaseOf } from 'utils'
+import { ActionOf, Case } from 'utils'
 import * as RobotsList from 'RobotsList'
 import * as Room from 'Room'
 
 // S T A T E
 
 export type State =
-  | CaseOf<'AuthScreen'>
-  | CaseOf<
+  | Case<'AuthScreen'>
+  | Case<
       'RobotsListScreen',
       ScreenWithUsername<{ robotsList: RobotsList.State }>
     >
-  | CaseOf<'RoomScreen', ScreenWithUsername<{ room: Room.State }>>
+  | Case<'RoomScreen', ScreenWithUsername<{ room: Room.State }>>
 
 type ScreenWithUsername<T> = T & { username: string }
 
-const AuthScreen = CaseOf.of<State, 'AuthScreen'>('AuthScreen')
-const RobotsListScreen = CaseOf.of<State, 'RobotsListScreen'>(
-  'RobotsListScreen'
-)
-const RoomScreen = CaseOf.of<State, 'RoomScreen'>('RoomScreen')
+const AuthScreen = Case.of<State, 'AuthScreen'>('AuthScreen')()
+const RobotsListScreen = Case.of<State, 'RobotsListScreen'>('RobotsListScreen')
+const RoomScreen = Case.of<State, 'RoomScreen'>('RoomScreen')
 
 export const initial: [State, Cmd<Action>] = [
   AuthScreen,
