@@ -67,13 +67,16 @@ export class Case<T extends string, P = never> {
     return schema._()
   }
 
-  public is<TT extends string, RR>(
-    probe: TT | Case<TT, RR> | CaseCreatorWithPayload<TT, RR>
-  ): this is Case<TT, RR> {
-    if (typeof probe === 'string') {
-      return (probe as string) === this.type
-    }
+  public is<TT extends string>(probe: TT): this is Case<TT, unknown>
+  public is<C extends CaseCreatorWithPayload<string, unknown>>(
+    probe: C
+  ): this is Case<C['type'], unknown>
+  public is<C extends Case<string, unknown>>(probe: C): this is C
+  public is<TT extends string>(
+    probe: TT | Case<TT, unknown>
+  ): this is Case<TT, unknown> {
+    const type = typeof probe === 'string' ? probe : probe.type
 
-    return (probe.type as string) === this.type
+    return type === this.type.toString()
   }
 }

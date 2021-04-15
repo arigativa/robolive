@@ -59,7 +59,7 @@ export const update = (action: Action, state: State): [State, Cmd<Action>] => {
     const { username, robotsList } = state.payload
     const stage = RobotsList.update(action.payload, username, robotsList)
 
-    if (stage.is('Joined')) {
+    if (stage.type === 'Joined') {
       const [initialRoom, initialCmd] = Room.init(stage.payload)
 
       return [
