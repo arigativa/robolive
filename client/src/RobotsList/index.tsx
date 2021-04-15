@@ -124,17 +124,15 @@ export const update = (
     }
 
     case SelectRobotDone.type: {
-      return action.payload.fold<Stage>(
-        error =>
-          Updated([
-            {
-              ...state,
-              joinStatus: JoinFail(error)
-            },
-            Cmd.none
-          ]),
-        Joined
-      )
+      return action.payload.fold<Stage>(error => {
+        return Updated([
+          {
+            ...state,
+            joinStatus: JoinFail(error)
+          },
+          Cmd.none
+        ])
+      }, Joined)
     }
   }
 }
