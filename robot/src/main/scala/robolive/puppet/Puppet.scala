@@ -21,7 +21,7 @@ final class Puppet(
   private val stunUri = rawStunUri.replaceAll("stun:", "stun://")
   private val controller =
     new WebRTCController(
-      pipeline = pipeline,
+      videoSourcePipeline = pipeline,
       stunServerUrl = stunUri,
     )
 

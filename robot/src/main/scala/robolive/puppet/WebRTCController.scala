@@ -12,7 +12,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 
 final class WebRTCController(
-  pipeline: Pipeline,
+  videoSourcePipeline: Pipeline,
   stunServerUrl: String,
 )(implicit gst: GstManaged.GSTInit.type) {
   import WebRTCController._
@@ -31,7 +31,7 @@ final class WebRTCController(
     try {
       logger.info("Disposing rtpPipeline ! webRTCBin")
       rtpPipeline.remove(webRTCBin.underlying)
-      pipeline.remove(rtpPipeline)
+      videoSourcePipeline.remove(rtpPipeline)
       rtpPipeline.pause()
       rtpPipeline.stop()
       webRTCBin.pause()
@@ -48,6 +48,9 @@ final class WebRTCController(
   private def start(rtcType: Int): StateChangeReturn = synchronized {
     try {
       log("start")
+
+//      log(s"video source pipeline paused: ${videoSourcePipeline.pause()}")
+
       val rtpPipeline = PipelineManaged("rtpPipeline", description(rtcType), logger)
       log("rtpPipeline instantiated")
       disposeRtpPipeline = () => mkDispose(rtpPipeline)
@@ -66,7 +69,7 @@ final class WebRTCController(
       log("rtpPipeline ! webRTCBin")
       assert(isLinked, "Error: outputRTPStream ! sendrecv")
 
-      pipeline.add(rtpPipeline)
+      videoSourcePipeline.add(rtpPipeline)
       log("pipeline + rtpPipeline")
 
       log(s"rtpPipeline state before sync: ${rtpPipeline.getState}")
@@ -74,14 +77,16 @@ final class WebRTCController(
       log(s"rtpPipeline state after sync: ${rtpPipeline.getState}")
       assert(isRTPVideoSrcToVpEncoderSynced, "Error: RTPPipeline failed to sync with video stream pipeline")
 
-      val tee = pipeline.getElementByName("t")
+      val tee = videoSourcePipeline.getElementByName("t")
       val vp8EncoderSync = rtpPipeline.getElementByName("vpEncoder")
 
       val isRTPVideoSrcToVpEncoderLinked = tee.link(vp8EncoderSync)
       log("pipeline(t) ! vpEncoder(rtpInput)")
       assert(isRTPVideoSrcToVpEncoderLinked, s"Error: tee ! vpEncoder")
 
-      log(s"The Pipeline state: ${pipeline.getState}")
+      log(s"The Pipeline state: ${videoSourcePipeline.getState}")
+//      log(s"source video pipeline play: ${videoSourcePipeline.play()}")
+//      log(s"The Pipeline state: ${videoSourcePipeline.getState}")
 
       StateChangeReturn.SUCCESS
     } catch {

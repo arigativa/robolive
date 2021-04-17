@@ -104,6 +104,8 @@ object AgentState {
               val pipelineDescription =
                 PipelineDescription.description(restreamType, Some(rtmpLink), videoSource)
 
+              deps.logger.info(s"running pipeline: $pipelineDescription")
+
               val pipeline = PipelineManaged(
                 name = "robolive-robot-pipeline",
                 description = pipelineDescription,
@@ -112,6 +114,8 @@ object AgentState {
 
               pipeline.ready()
               pipeline.play()
+
+              deps.logger.info(s"pipeline state: ${pipeline.getState}")
 
               deps.sendMessage(statusUpdate("Registered"))
 

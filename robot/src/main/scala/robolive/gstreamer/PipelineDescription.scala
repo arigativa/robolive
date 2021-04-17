@@ -15,13 +15,13 @@ object PipelineDescription {
       case RestreamType.RTMP =>
         assert(
           rtmpLink.nonEmpty,
-          "Can not start RTPM restream without link. Provide: `RTPM_LINK` environment variable."
+          "Can not start RTMP restream without link. Provide: `RTMP_LINK` environment variable."
         )
-        s"""t. ! queue ! 
-           |  x264enc bitrate=2000 byte-stream=false key-int-max=60 bframes=0 aud=true tune=zerolatency !
-           |  video/x-h264,profile=main !
-           |  flvmux streamable=true name=mux !
-           |  rtmpsink location="${rtmpLink.get} app=live2"
+        s"""t. ! queue name=rtmp_sink_queue
+           |  ! x264enc bitrate=2000 byte-stream=false key-int-max=60 bframes=0 aud=true tune=zerolatency
+           |  ! video/x-h264,profile=main
+           |  ! flvmux streamable=true name=mux
+           |  ! rtmpsink location="${rtmpLink.get} app=live2"
            |audiotestsrc !
            |  voaacenc bitrate=128000 !
            |  mux.""".stripMargin
