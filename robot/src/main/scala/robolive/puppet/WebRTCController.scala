@@ -230,7 +230,7 @@ object WebRTCController {
   }
 
   def description(rtcType: Int): String = {
-    s"""queue name=vpEncoder ! vp8enc deadline=1 ! rtpvp8pay pt=$rtcType !
+    s"""queue name=vpEncoder ! rtpvp8pay pt=$rtcType !
        | application/x-rtp,media=video,encoding-name=VP8,payload=$rtcType !
        | queue name=outputRTPStream""".stripMargin
 

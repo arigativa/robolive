@@ -17,7 +17,7 @@ object PipelineDescription {
           rtmpLink.nonEmpty,
           "Can not start RTMP restream without link. Provide: `RTMP_LINK` environment variable."
         )
-        s"""t. ! queue name=rtmp_sink_queue
+        s"""t. ! queue name=rtmp_sink_queue ! vp8dec
            |  ! x264enc bitrate=2000 byte-stream=false key-int-max=60 bframes=0 aud=true tune=zerolatency
            |  ! video/x-h264,profile=main
            |  ! flvmux streamable=true name=mux
@@ -26,7 +26,7 @@ object PipelineDescription {
            |  voaacenc bitrate=128000 !
            |  mux.""".stripMargin
     }
-    s"""$videoSource ! queue ! tee name=t
+    s"""$videoSource ! queue ! vp8enc deadline=1 ! tee name=t
        |$restreamDescription""".stripMargin
   }
 
