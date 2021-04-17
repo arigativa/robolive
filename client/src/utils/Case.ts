@@ -1,6 +1,7 @@
-type FullSchema<A extends Case<string, unknown>, R> = {
-  [K in A['type']]: (payload: Extract<A, { type: K }>['payload']) => R
-}
+type FullSchema<A extends Case<string, unknown>, R> = Record<
+  A['type'],
+  (payload: A['payload']) => R
+>
 
 export type CaseMatchSchema<A extends Case<string, unknown>, R> =
   | FullSchema<A, R>
