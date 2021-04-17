@@ -20,7 +20,7 @@ local function destroy(user)
 
     KSR.pv.seti("$shtex(dialogs=>username:"..user..")",1)
     
-    local uDecoded = json.decode(base64.decode(id))
+    local uDecoded = json.decode(base64.decode(u))
 
     KSR.jsonrpcs.exec(jsonrpc.requestBody("dlg","terminate_dlg",u))
 
