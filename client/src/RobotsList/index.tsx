@@ -18,25 +18,18 @@ import RemoteData from 'frctl/RemoteData'
 import { Cmd, Sub, Dispatch } from 'core'
 import { Agent, RoomConfiguration, getAgentList, joinRoom } from 'api'
 import { SkeletonText, SkeletonRect } from 'Skeleton'
-import { ActionOf, CaseOf, CaseCreator, range, match, every } from 'utils'
+import { Case, range, every } from 'utils'
 
 // S T A T E
 
 type JoinStatus =
-  | CaseOf<'NotJoin'>
-  | CaseOf<'Joining', string>
-  | CaseOf<'JoinFail', { robotId: string; message: string }>
+  | Case<'NotJoin'>
+  | Case<'Joining', string>
+  | Case<'JoinFail', { robotId: string; message: string }>
 
-const NotJoin: JoinStatus = CaseOf('NotJoin')()
-const Joining: CaseCreator<JoinStatus> = CaseOf('Joining')
-const JoinFail: CaseCreator<JoinStatus> = CaseOf('JoinFail')
-
-const isJoining = (joinStatus: JoinStatus): boolean => {
-  return match(joinStatus, {
-    Joining: () => true,
-    _: () => false
-  })
-}
+export const NotJoin = Case.of<JoinStatus, 'NotJoin'>('NotJoin')()
+export const Joining = Case.of<JoinStatus, 'Joining'>('Joining')
+export const JoinFail = Case.of<JoinStatus, 'JoinFail'>('JoinFail')
 
 export interface State {
   robots: RemoteData<string, Array<Agent>>
@@ -58,83 +51,98 @@ export const init = (username: string): [State, Cmd<Action>] => [
 // U P D A T E
 
 export type Stage =
-  | CaseOf<'Updated', [State, Cmd<Action>]>
-  | CaseOf<'Joined', RoomConfiguration>
+  | Case<'Updated', [State, Cmd<Action>]>
+  | Case<'Joined', RoomConfiguration>
 
-const Updated: CaseCreator<Stage> = CaseOf('Updated')
-const Joined: CaseCreator<Stage> = CaseOf('Joined')
+const Updated = Case.of<Stage, 'Updated'>('Updated')
+const Joined = Case.of<Stage, 'Joined'>('Joined')
 
-export type Action = ActionOf<[string, State], Stage>
+export type Action =
+  | Case<'ReInit'>
+  | Case<'RunPolling'>
+  | Case<'LoadRobots', Either<string, Array<Agent>>>
+  | Case<'SelectRobot', string>
+  | Case<
+      'SelectRobotDone',
+      Either<{ robotId: string; message: string }, RoomConfiguration>
+    >
 
-const ReInit = ActionOf<Action>((username, __) => Updated(init(username)))()
+const ReInit = Case.of<Action, 'ReInit'>('ReInit')()
+const RunPolling = Case.of<Action, 'RunPolling'>('RunPolling')()
+const LoadRobots = Case.of<Action, 'LoadRobots'>('LoadRobots')
+const SelectRobot = Case.of<Action, 'SelectRobot'>('SelectRobot')
+const SelectRobotDone = Case.of<Action, 'SelectRobotDone'>('SelectRobotDone')
 
-const LoadRobots = ActionOf<Either<string, Array<Agent>>, Action>(
-  (result, _, state) =>
-    Updated([
-      {
-        ...state,
-        polling: false,
-        robots:
-          state.polling && result.isLeft()
-            ? state.robots
-            : RemoteData.fromEither(result)
-      },
-      Cmd.none
-    ])
-)
+export const update = (
+  action: Action,
+  username: string,
+  state: State
+): Stage => {
+  switch (action.type) {
+    case 'ReInit': {
+      return Updated(init(username))
+    }
 
-const SelectRobot = ActionOf<string, Action>((robotId, username, state) =>
-  Updated([
-    {
-      ...state,
-      joinStatus: Joining(robotId)
-    },
-    Cmd.create<Action>(done => {
-      joinRoom({ username, robotId }).then(result =>
-        done(SelectRobotDone(result.mapLeft(message => ({ robotId, message }))))
-      )
-    })
-  ])
-)
+    case 'RunPolling': {
+      return Updated([
+        { ...state, polling: true },
+        Cmd.create<Action>(done =>
+          getAgentList({ username }).then(LoadRobots).then(done)
+        )
+      ])
+    }
 
-const SelectRobotDone = ActionOf<
-  Either<
-    {
-      robotId: string
-      message: string
-    },
-    RoomConfiguration
-  >,
-  Action
->((result, _, state) => {
-  return result.fold<Stage>(
-    error =>
-      Updated([
+    case 'LoadRobots': {
+      return Updated([
         {
           ...state,
-          joinStatus: JoinFail(error)
+          polling: false,
+          robots:
+            state.polling && action.payload.isLeft()
+              ? state.robots
+              : RemoteData.fromEither(action.payload)
         },
         Cmd.none
-      ]),
-    Joined
-  )
-})
+      ])
+    }
 
-const RunPolling = ActionOf<Action>((username, state) =>
-  Updated([
-    { ...state, polling: true },
-    Cmd.create<Action>(done =>
-      getAgentList({ username }).then(LoadRobots).then(done)
-    )
-  ])
-)()
+    case 'SelectRobot': {
+      const robotId = action.payload
+
+      return Updated([
+        {
+          ...state,
+          joinStatus: Joining(robotId)
+        },
+        Cmd.create<Action>(done => {
+          joinRoom({ username, robotId })
+            .then(result => result.mapLeft(message => ({ robotId, message })))
+            .then(SelectRobotDone)
+            .then(done)
+        })
+      ])
+    }
+
+    case 'SelectRobotDone': {
+      return action.payload.fold<Stage>(error => {
+        return Updated([
+          {
+            ...state,
+            joinStatus: JoinFail(error)
+          },
+          Cmd.none
+        ])
+      }, Joined)
+    }
+  }
+}
 
 // S U B S C R I P T I O N S
 
 export const subscriptions = (state: State): Sub<Action> => {
   if (
     state.polling ||
-    isJoining(state.joinStatus) ||
+    state.joinStatus.type === 'Joining' ||
     state.robots.getOrElse([]).length === 0
   ) {
     return Sub.none
@@ -207,18 +215,13 @@ const AgentItem = React.memo<{
   agent: Agent
   dispatch: Dispatch<Action>
 }>(({ joinStatus, agent, dispatch }) => {
-  const [disabled, loading, error]: [boolean, boolean, null | string] = match(
-    joinStatus,
-    {
-      NotJoin: () => [false, false, null],
-      Joining: robotId => [true, agent.id === robotId, null],
-      JoinFail: ({ robotId, message }) => [
-        false,
-        false,
-        agent.id === robotId ? message : null
-      ]
-    }
-  )
+  const disabled = joinStatus.type === 'Joining'
+  const loading =
+    joinStatus.type === 'Joining' && joinStatus.payload === agent.id
+  const error =
+    joinStatus.type === 'JoinFail' && joinStatus.payload.robotId === agent.id
+      ? joinStatus.payload.message
+      : null
 
   return (
     <ViewAgentItem

@@ -19,7 +19,7 @@ import {
 import { Dispatch, Cmd, Sub } from 'core'
 import { RoomConfiguration } from 'api'
 import { Connection, createConnection } from 'sip'
-import { ActionOf, CaseOf, CaseCreator } from 'utils'
+import { Case } from 'utils'
 
 // S T A T E
 
@@ -64,76 +64,99 @@ export const init = (
 
 // U P D A T E
 
-export type Action = ActionOf<[State], Stage>
+// export type Action = ActionOf<[State], Stage>
 
-export type Stage =
-  | CaseOf<'Updated', [State, Cmd<Action>]>
-  | CaseOf<'BackToList'>
+export type Stage = Case<'Updated', [State, Cmd<Action>]> | Case<'BackToList'>
 
-const Updated: CaseCreator<Stage> = CaseOf('Updated')
-const BackToList: Stage = CaseOf('BackToList')()
+const Updated = Case.of<Stage, 'Updated'>('Updated')
+const BackToList = Case.of<Stage, 'BackToList'>('BackToList')()
 
-const Connect = ActionOf<MediaStream, Action>((stream, state) =>
-  Updated([
-    {
-      ...state,
-      stream: RemoteData.Succeed(stream)
-    },
-    Cmd.none
-  ])
+export type Action =
+  | Case<'Connect', MediaStream>
+  | Case<'FailConnection', string>
+  | Case<'NewOutgoingMessage', string>
+  | Case<'ChangeInfo', string>
+  | Case<'SendInfo', string>
+  | Case<'Terminate'>
+  | Case<'GoToRobotsList'>
+
+const Connect = Case.of<Action, 'Connect'>('Connect')
+const FailConnection = Case.of<Action, 'FailConnection'>('FailConnection')
+const NewOutgoingMessage = Case.of<Action, 'NewOutgoingMessage'>(
+  'NewOutgoingMessage'
 )
+const ChangeInfo = Case.of<Action, 'ChangeInfo'>('ChangeInfo')
+const SendInfo = Case.of<Action, 'SendInfo'>('SendInfo')
+const Terminate = Case.of<Action, 'Terminate'>('Terminate')()
+const GoToRobotsList = Case.of<Action, 'GoToRobotsList'>('GoToRobotsList')()
 
-const FailConnection = ActionOf<string, Action>((reason, state) =>
-  Updated([
-    {
-      ...state,
-      stream: RemoteData.Failure(reason)
-    },
-    Cmd.none
-  ])
-)
-
-const NewOutgoingMessage = ActionOf<string, Action>((content, state) => {
-  return Updated([
-    {
-      ...state,
-      outgoingInfoMessages: [
+export const update = (action: Action, state: State): Stage => {
+  switch (action.type) {
+    case 'Connect': {
+      return Updated([
         {
-          id: state.outgoingInfoMessages.length,
-          content
+          ...state,
+          stream: RemoteData.Succeed(action.payload)
         },
-        ...state.outgoingInfoMessages
-      ]
-    },
-    Cmd.none
-  ])
-})
+        Cmd.none
+      ])
+    }
 
-const ChangeInfo = ActionOf<string, Action>((info, state) =>
-  Updated([
-    {
-      ...state,
-      info
-    },
-    Cmd.none
-  ])
-)
+    case 'FailConnection': {
+      return Updated([
+        {
+          ...state,
+          stream: RemoteData.Failure(action.payload)
+        },
+        Cmd.none
+      ])
+    }
 
-const SendInfo = ActionOf<string, Action>((content, state) =>
-  Updated([state, state.connection.sendInfo(content)])
-)
+    case 'NewOutgoingMessage': {
+      return Updated([
+        {
+          ...state,
+          outgoingInfoMessages: [
+            {
+              id: state.outgoingInfoMessages.length,
+              content: action.payload
+            },
+            ...state.outgoingInfoMessages
+          ]
+        },
+        Cmd.none
+      ])
+    }
 
-const Terminate = ActionOf<Action>(state =>
-  Updated([
-    {
-      ...state,
-      terminating: true
-    },
-    state.connection.terminate
-  ])
-)()
+    case 'ChangeInfo': {
+      return Updated([
+        {
+          ...state,
+          info: action.payload
+        },
+        Cmd.none
+      ])
+    }
 
-const GoToRobotsList = ActionOf<Action>(() => BackToList)()
+    case 'SendInfo': {
+      return Updated([state, state.connection.sendInfo(action.payload)])
+    }
+
+    case 'Terminate': {
+      return Updated([
+        {
+          ...state,
+          terminating: true
+        },
+        state.connection.terminate
+      ])
+    }
+
+    case 'GoToRobotsList': {
+      return BackToList
+    }
+  }
+}
 
 // S U B S C R I P T I O N S
 
@@ -142,7 +165,7 @@ export const subscriptions = (state: State): Sub<Action> => {
     return Sub.none
   }
 
-  return Sub.batch([
+  return Sub.batch<Action>([
     state.connection.onEnd(GoToRobotsList),
     state.connection.onFailure(FailConnection),
     state.connection.onOutgoingInfo(NewOutgoingMessage)

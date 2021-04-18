@@ -6,19 +6,13 @@ import { CSSReset, ThemeProvider, theme } from '@chakra-ui/react'
 
 import * as serviceWorker from 'serviceWorker'
 import { useStore } from 'store'
-import { Cmd } from 'core'
 
 import * as Main from 'Main'
-
-const update = (
-  action: Main.Action,
-  state: Main.State
-): [Main.State, Cmd<Main.Action>] => action.update(state)
 
 const Root = React.memo(() => {
   const [state, dispatch] = useStore({
     init: Main.initial,
-    update,
+    update: Main.update,
     subscriptions: Main.subscriptions
   })
 
