@@ -12,14 +12,17 @@ import {
   Button,
   Textarea,
   VStack,
+  HStack,
   Heading,
   Text
 } from '@chakra-ui/react'
 
-import { Dispatch, Cmd, Sub } from 'core'
+import { Dispatch, Cmd, Sub, useMapDispatch } from 'core'
 import { RoomConfiguration } from 'api'
 import { Connection, createConnection } from 'sip'
 import { Case } from 'utils'
+
+import * as SaveTemplate from './SaveTemplate'
 
 // S T A T E
 
@@ -37,6 +40,7 @@ export interface State {
   info: string
   terminating: boolean
   outgoingInfoMessages: Array<OutgoingInfoMessage>
+  saveTemplate: null | SaveTemplate.State
 }
 
 export const init = (
@@ -56,15 +60,14 @@ export const init = (
       stream: RemoteData.Loading,
       info: '',
       terminating: false,
-      outgoingInfoMessages: []
+      outgoingInfoMessages: [],
+      saveTemplate: null
     },
     connection.getStream(Connect)
   ]
 }
 
 // U P D A T E
-
-// export type Action = ActionOf<[State], Stage>
 
 export type Stage = Case<'Updated', [State, Cmd<Action>]> | Case<'BackToList'>
 
@@ -79,6 +82,8 @@ export type Action =
   | Case<'SendInfo', string>
   | Case<'Terminate'>
   | Case<'GoToRobotsList'>
+  | Case<'ShowSaveTemplate'>
+  | Case<'SaveTemplateAction', SaveTemplate.Action>
 
 const Connect = Case.of<Action, 'Connect'>('Connect')
 const FailConnection = Case.of<Action, 'FailConnection'>('FailConnection')
@@ -89,6 +94,12 @@ const ChangeInfo = Case.of<Action, 'ChangeInfo'>('ChangeInfo')
 const SendInfo = Case.of<Action, 'SendInfo'>('SendInfo')
 const Terminate = Case.of<Action, 'Terminate'>('Terminate')()
 const GoToRobotsList = Case.of<Action, 'GoToRobotsList'>('GoToRobotsList')()
+const ShowSaveTemplate = Case.of<Action, 'ShowSaveTemplate'>(
+  'ShowSaveTemplate'
+)()
+const SaveTemplateAction = Case.of<Action, 'SaveTemplateAction'>(
+  'SaveTemplateAction'
+)
 
 export const update = (action: Action, state: State): Stage => {
   switch (action.type) {
@@ -154,6 +165,54 @@ export const update = (action: Action, state: State): Stage => {
 
     case 'GoToRobotsList': {
       return BackToList
+    }
+
+    case 'ShowSaveTemplate': {
+      return Updated([
+        {
+          ...state,
+          saveTemplate: SaveTemplate.initial
+        },
+        Cmd.none
+      ])
+    }
+
+    case 'SaveTemplateAction': {
+      if (state.saveTemplate == null) {
+        return Updated([state, Cmd.none])
+      }
+
+      return SaveTemplate.update(action.payload, state.saveTemplate).match({
+        Updated: ([nextSaveTemplate, cmd]) => {
+          return Updated([
+            {
+              ...state,
+              saveTemplate: nextSaveTemplate
+            },
+            cmd.map(SaveTemplateAction)
+          ])
+        },
+
+        Saved: () => {
+          return Updated([
+            {
+              ...state,
+              saveTemplate: null
+            },
+            Cmd.none
+          ])
+        },
+
+        Canceled: () => {
+          return Updated([
+            {
+              ...state,
+              saveTemplate: null
+            },
+            Cmd.none
+          ])
+        }
+      })
     }
   }
 }
@@ -231,10 +290,24 @@ const useFakeSubmitting = (ms: number): [boolean, VoidFunction] => {
   return [submitting, fakeSubmitting]
 }
 
+const ViewSaveTemplate = React.memo<{
+  template: string
+  saveTemplate: SaveTemplate.State
+  dispatch: Dispatch<Action>
+}>(({ template, saveTemplate, dispatch }) => (
+  <SaveTemplate.View
+    autoFocus
+    template={template}
+    state={saveTemplate}
+    dispatch={useMapDispatch(SaveTemplateAction, dispatch)}
+  />
+))
+
 const ViewSendInfo = React.memo<{
   info: string
+  saveTemplate: null | SaveTemplate.State
   dispatch: Dispatch<Action>
-}>(({ info, dispatch }) => {
+}>(({ info, saveTemplate, dispatch }) => {
   const [submitting, fakeSubmitting] = useFakeSubmitting(400)
 
   return (
@@ -260,15 +333,33 @@ const ViewSendInfo = React.memo<{
           />
 
           <FormHelperText>
-            You can submit both plain text and JSON
+            You can submit both plain text and JSON or save it as a Button
           </FormHelperText>
         </FormControl>
       </StackItem>
 
       <StackItem>
-        <Button type="submit" colorScheme="teal" isLoading={submitting}>
-          Submit
-        </Button>
+        {saveTemplate == null ? (
+          <HStack>
+            <Button type="submit" colorScheme="teal" isLoading={submitting}>
+              Submit
+            </Button>
+
+            <Button
+              variant="outline"
+              colorScheme="teal"
+              onClick={() => dispatch(ShowSaveTemplate)}
+            >
+              Save as Button
+            </Button>
+          </HStack>
+        ) : (
+          <ViewSaveTemplate
+            template={info}
+            saveTemplate={saveTemplate}
+            dispatch={dispatch}
+          />
+        )}
       </StackItem>
     </Stack>
   )
@@ -286,7 +377,6 @@ const ViewOutgoingInfoMessage = React.memo<{
   message: OutgoingInfoMessage
   dispatch: Dispatch<Action>
 }>(({ message, dispatch }) => {
-  const [submitting, fakeSubmitting] = useFakeSubmitting(400)
   const parsedContent = React.useMemo(
     () => parseMessageContent(message.content),
     [message.content]
@@ -314,9 +404,7 @@ const ViewOutgoingInfoMessage = React.memo<{
         size="xs"
         type="submit"
         colorScheme="teal"
-        isLoading={submitting}
         onClick={() => {
-          fakeSubmitting()
           dispatch(SendInfo(message.content))
         }}
       >
@@ -345,8 +433,9 @@ const ViewSucceed = React.memo<{
   info: string
   stream: MediaStream
   outgoingInfoMessages: Array<OutgoingInfoMessage>
+  saveTemplate: null | SaveTemplate.State
   dispatch: Dispatch<Action>
-}>(({ info, stream, outgoingInfoMessages, dispatch }) => {
+}>(({ info, stream, outgoingInfoMessages, saveTemplate, dispatch }) => {
   const videoRef = React.useRef<HTMLVideoElement>(null)
 
   React.useEffect(() => {
@@ -362,7 +451,11 @@ const ViewSucceed = React.memo<{
       </StackItem>
 
       <StackItem>
-        <ViewSendInfo info={info} dispatch={dispatch} />
+        <ViewSendInfo
+          info={info}
+          saveTemplate={saveTemplate}
+          dispatch={dispatch}
+        />
       </StackItem>
 
       <StackItem>
@@ -404,6 +497,7 @@ export const View = React.memo<{
             info={state.info}
             stream={stream}
             outgoingInfoMessages={state.outgoingInfoMessages}
+            saveTemplate={state.saveTemplate}
             dispatch={dispatch}
           />
         )

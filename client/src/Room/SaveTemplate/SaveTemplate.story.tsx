@@ -27,6 +27,17 @@ export const NameIsPresent: React.FC = () => (
   />
 )
 
+export const NameIsBlank: React.FC = () => (
+  <SaveTemplate.View
+    template=""
+    state={{
+      ...SaveTemplate.initial,
+      name: '    '
+    }}
+    dispatch={action('dispatch')}
+  />
+)
+
 export const Saving: React.FC = () => (
   <SaveTemplate.View
     template=""

@@ -3,6 +3,7 @@ import { action } from '@storybook/addon-actions'
 import { text, boolean, number } from '@storybook/addon-knobs'
 import RemoteData from 'frctl/RemoteData/Optional'
 
+import * as SaveTemplate from './SaveTemplate'
 import * as Room from '.'
 
 export default {
@@ -163,6 +164,21 @@ export const WithMultiplyInfoMessages: React.FC = () => {
           id,
           content: messageContent.replace(/\{id\}/g, id.toString())
         }))
+      }}
+      dispatch={action('dispatch')}
+    />
+  )
+}
+
+export const WithSaveTemplate: React.FC = () => {
+  const stream = useFakeStream()
+
+  return (
+    <Room.View
+      state={{
+        ...initialState,
+        saveTemplate: SaveTemplate.initial,
+        stream: RemoteData.Succeed(stream)
       }}
       dispatch={action('dispatch')}
     />

@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { PreloadedState, StoreEnhancer, StoreCreator } from 'redux'
 
 const noop = (): void => {
@@ -8,6 +9,13 @@ const noop = (): void => {
  * Dispatches action to be performed in order to update state.
  */
 export type Dispatch<A> = (action: A) => void
+
+export function useMapDispatch<T, R>(
+  fn: (value: R) => T,
+  dispatch: Dispatch<T>
+): Dispatch<R> {
+  return useCallback(value => dispatch(fn(value)), [fn, dispatch])
+}
 
 type InnerAction<A> =
   | { type: 'Single'; payload: A }
