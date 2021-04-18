@@ -12,11 +12,6 @@ type ExtractPayloadFor<
   A extends Case<string, unknown>
 > = Extract<A, { type: K }>['payload']
 
-interface CaseCreatorWithPayload<T extends string, P> {
-  type: T
-  (payload: P): Case<T, P>
-}
-
 type ExtractCaseCreator<
   T extends C['type'],
   C extends Case<string, unknown>
@@ -57,18 +52,5 @@ export class Case<T extends string, P = never> {
     }
 
     return schema._()
-  }
-
-  public is<TT extends string>(probe: TT): this is Case<TT, unknown>
-  public is<C extends CaseCreatorWithPayload<string, unknown>>(
-    probe: C
-  ): this is Case<C['type'], unknown>
-  public is<C extends Case<string, unknown>>(probe: C): this is C
-  public is<TT extends string>(
-    probe: TT | Case<TT, unknown>
-  ): this is Case<TT, unknown> {
-    const type = typeof probe === 'string' ? probe : probe.type
-
-    return type === this.type.toString()
   }
 }
