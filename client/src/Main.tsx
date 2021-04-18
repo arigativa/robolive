@@ -98,14 +98,14 @@ export const update = (action: Action, state: State): [State, Cmd<Action>] => {
 // S U B S C R I P T I O N S
 
 export const subscriptions = (state: State): Sub<Action> => {
-  if (state.type === 'RoomScreen') {
-    return Room.subscriptions(state.payload.room).map(RoomAction)
-  }
-
   if (state.type === 'RobotsListScreen') {
     return RobotsList.subscriptions(state.payload.robotsList).map(
       RobotsListAction
     )
+  }
+
+  if (state.type === 'RoomScreen') {
+    return Room.subscriptions(state.payload.room).map(RoomAction)
   }
 
   return Sub.none

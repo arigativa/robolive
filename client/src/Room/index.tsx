@@ -165,7 +165,7 @@ export const subscriptions = (state: State): Sub<Action> => {
     return Sub.none
   }
 
-  return Sub.batch<Action>([
+  return Sub.batch([
     state.connection.onEnd(GoToRobotsList),
     state.connection.onFailure(FailConnection),
     state.connection.onOutgoingInfo(NewOutgoingMessage)
@@ -343,11 +343,10 @@ const ViewOutgoingInfoMessages = React.memo<{
 
 const ViewSucceed = React.memo<{
   info: string
-  terminating: boolean
   stream: MediaStream
   outgoingInfoMessages: Array<OutgoingInfoMessage>
   dispatch: Dispatch<Action>
-}>(({ info, terminating, stream, outgoingInfoMessages, dispatch }) => {
+}>(({ info, stream, outgoingInfoMessages, dispatch }) => {
   const videoRef = React.useRef<HTMLVideoElement>(null)
 
   React.useEffect(() => {
@@ -358,17 +357,6 @@ const ViewSucceed = React.memo<{
 
   return (
     <Stack>
-      <StackItem>
-        <Button
-          variant="link"
-          colorScheme="teal"
-          isDisabled={terminating}
-          onClick={() => dispatch(Terminate)}
-        >
-          Back to Robots List
-        </Button>
-      </StackItem>
-
       <StackItem>
         <video ref={videoRef} autoPlay />
       </StackItem>
@@ -392,22 +380,34 @@ export const View = React.memo<{
   dispatch: Dispatch<Action>
 }>(({ state, dispatch }) => (
   <Container>
-    {state.stream.cata({
-      NotAsked: () => <ViewCallOver dispatch={dispatch} />,
+    <Stack>
+      <StackItem>
+        <Button
+          variant="link"
+          colorScheme="teal"
+          isDisabled={state.terminating}
+          onClick={() => dispatch(Terminate)}
+        >
+          Back to Robots List
+        </Button>
+      </StackItem>
 
-      Loading: () => <div>Loading...</div>,
+      {state.stream.cata({
+        NotAsked: () => <ViewCallOver dispatch={dispatch} />,
 
-      Failure: reason => <ViewFailure reason={reason} dispatch={dispatch} />,
+        Loading: () => <div>Loading...</div>,
 
-      Succeed: stream => (
-        <ViewSucceed
-          info={state.info}
-          terminating={state.terminating}
-          stream={stream}
-          outgoingInfoMessages={state.outgoingInfoMessages}
-          dispatch={dispatch}
-        />
-      )
-    })}
+        Failure: reason => <ViewFailure reason={reason} dispatch={dispatch} />,
+
+        Succeed: stream => (
+          <ViewSucceed
+            info={state.info}
+            stream={stream}
+            outgoingInfoMessages={state.outgoingInfoMessages}
+            dispatch={dispatch}
+          />
+        )
+      })}
+    </Stack>
   </Container>
 ))
