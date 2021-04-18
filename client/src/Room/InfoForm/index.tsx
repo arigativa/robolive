@@ -11,25 +11,37 @@ import {
   Input,
   HStack
 } from '@chakra-ui/react'
-import RemoteData from 'frctl/RemoteData/Optional'
+import RemoteData from 'frctl/RemoteData'
+import RemoteDataOptional from 'frctl/RemoteData/Optional'
 import Either from 'frctl/Either'
 
 import { Dispatch, Cmd } from 'core'
+import { InfoTemplate, getInfoTemplates } from 'api'
 import { SipConnection } from 'sip'
 import { Case } from 'utils'
+
+import type { RoomCredentials } from 'Room'
 
 // S T A T E
 
 export interface State {
   info: string
   templateName: null | string
-  savingTemplate: RemoteData<string, never>
+  savingTemplate: RemoteDataOptional<string, never>
+  infoTemplates: RemoteData<string, Array<InfoTemplate>>
 }
 
-export const initial: State = {
+export const initialState: State = {
   info: '',
   templateName: null,
-  savingTemplate: RemoteData.NotAsked
+  savingTemplate: RemoteDataOptional.NotAsked,
+  infoTemplates: RemoteData.Loading
+}
+
+export const initCmd = (credentials: RoomCredentials): Cmd<Action> => {
+  return Cmd.create<Action>(done => {
+    getInfoTemplates(credentials).then(LoadInfoTemplates).then(done)
+  })
 }
 
 // U P D A T E
@@ -41,6 +53,7 @@ export type Action =
   | Case<'ChangeTemplateName', string>
   | Case<'SaveTemplate', string>
   | Case<'SaveTemplateDone', Either<string, null>>
+  | Case<'LoadInfoTemplates', Either<string, Array<InfoTemplate>>>
 
 const ChangeInfo = Case.of<'ChangeInfo', Action>('ChangeInfo')
 const SendInfo = Case.of<'SendInfo', Action>('SendInfo')
@@ -50,9 +63,13 @@ const ChangeTemplateName = Case.of<'ChangeTemplateName', Action>(
 )
 const SaveTemplate = Case.of<'SaveTemplate', Action>('SaveTemplate')
 // const SaveTemplateDone = Case.of<'SaveTemplateDone', Action>('SaveTemplateDone')
+const LoadInfoTemplates = Case.of<'LoadInfoTemplates', Action>(
+  'LoadInfoTemplates'
+)
 
 export const update = (
   action: Action,
+  credentials: RoomCredentials,
   connection: SipConnection,
   state: State
 ): [State, Cmd<Action>] => {
@@ -76,7 +93,7 @@ export const update = (
         {
           ...state,
           templateName: action.payload ? '' : null,
-          savingTemplate: RemoteData.NotAsked
+          savingTemplate: RemoteDataOptional.NotAsked
         },
         Cmd.none
       ]
@@ -96,7 +113,7 @@ export const update = (
       return [
         {
           ...state,
-          savingTemplate: RemoteData.Loading
+          savingTemplate: RemoteDataOptional.Loading
         },
         Cmd.none
       ]
@@ -107,12 +124,22 @@ export const update = (
         Left: error => [
           {
             ...state,
-            savingTemplate: RemoteData.Failure(error)
+            savingTemplate: RemoteDataOptional.Failure(error)
           },
           Cmd.none
         ],
         Right: () => [state, Cmd.none]
       })
+    }
+
+    case 'LoadInfoTemplates': {
+      return [
+        {
+          ...state,
+          infoTemplates: RemoteData.fromEither(action.payload)
+        },
+        Cmd.none
+      ]
     }
   }
 }
@@ -194,16 +221,7 @@ export const View = React.memo<{
   const [submitting, fakeSubmitting] = useFakeSubmitting(400)
 
   return (
-    <Stack
-      as="form"
-      spacing="4"
-      onSubmit={event => {
-        fakeSubmitting()
-        dispatch(SendInfo(state.info))
-
-        event.preventDefault()
-      }}
-    >
+    <Stack spacing="4">
       <StackItem>
         <FormControl>
           <FormLabel>Send Info</FormLabel>
@@ -225,7 +243,14 @@ export const View = React.memo<{
       <StackItem>
         {state.templateName == null ? (
           <HStack>
-            <Button type="submit" colorScheme="teal" isLoading={submitting}>
+            <Button
+              colorScheme="teal"
+              isLoading={submitting}
+              onClick={() => {
+                fakeSubmitting()
+                dispatch(SendInfo(state.info))
+              }}
+            >
               Submit
             </Button>
 

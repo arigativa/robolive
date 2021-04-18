@@ -3,22 +3,14 @@ import { action } from '@storybook/addon-actions'
 import { text, boolean, number } from '@storybook/addon-knobs'
 import RemoteData from 'frctl/RemoteData/Optional'
 
-import * as Room from '.'
+import * as Room from './Room'
 
 export default {
   title: 'Room'
 }
 
-const [initialState] = Room.init({
-  signallingUri: 'signallingUri',
-  sipAgentName: 'sipAgentName',
-  sipClientName: 'sipClientName',
-  stunUri: 'stunUri',
-  turnUri: 'turnUri'
-})
-
 export const Loading: React.FC = () => (
-  <Room.View state={initialState} dispatch={action('dispatch')} />
+  <Room.View state={Room.initialState} dispatch={action('dispatch')} />
 )
 
 export const Failure: React.FC = () => {
@@ -27,7 +19,7 @@ export const Failure: React.FC = () => {
   return (
     <Room.View
       state={{
-        ...initialState,
+        ...Room.initialState,
         stream: RemoteData.Failure(reason)
       }}
       dispatch={action('dispatch')}
@@ -37,7 +29,7 @@ export const Failure: React.FC = () => {
 
 export const EndOfCall: React.FC = () => (
   <Room.View
-    state={{ ...initialState, stream: RemoteData.NotAsked }}
+    state={{ ...Room.initialState, stream: RemoteData.NotAsked }}
     dispatch={action('dispatch')}
   />
 )
@@ -67,7 +59,7 @@ export const OnCall: React.FC = () => {
   return (
     <Room.View
       state={{
-        ...initialState,
+        ...Room.initialState,
         stream: RemoteData.Succeed(stream)
       }}
       dispatch={action('dispatch')}
@@ -82,7 +74,7 @@ export const Terminating: React.FC = () => {
   return (
     <Room.View
       state={{
-        ...initialState,
+        ...Room.initialState,
         terminating,
         stream: RemoteData.Succeed(stream)
       }}
@@ -98,7 +90,7 @@ export const WithRawInfoMessage: React.FC = () => {
   return (
     <Room.View
       state={{
-        ...initialState,
+        ...Room.initialState,
         stream: RemoteData.Succeed(stream),
         outgoingInfoMessages: [{ id: 0, content: messageContent }]
       }}
@@ -115,7 +107,7 @@ export const WithJsonInfoMessage: React.FC = () => {
   return (
     <Room.View
       state={{
-        ...initialState,
+        ...Room.initialState,
         stream: RemoteData.Succeed(stream),
         outgoingInfoMessages: [{ id: 0, content: messageContent }]
       }}
@@ -139,7 +131,7 @@ export const WithMultiplyInfoMessages: React.FC = () => {
   return (
     <Room.View
       state={{
-        ...initialState,
+        ...Room.initialState,
         stream: RemoteData.Succeed(stream),
         outgoingInfoMessages: Array.from({
           length: messagesCount

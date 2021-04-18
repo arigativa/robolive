@@ -10,7 +10,7 @@ export default {
 }
 
 export const Initial: React.FC = () => (
-  <InfoForm.View state={InfoForm.initial} dispatch={action('dispatch')} />
+  <InfoForm.View state={InfoForm.initialState} dispatch={action('dispatch')} />
 )
 
 export const SendInfoText: React.FC = () => {
@@ -19,7 +19,7 @@ export const SendInfoText: React.FC = () => {
   return (
     <InfoForm.View
       state={{
-        ...InfoForm.initial,
+        ...InfoForm.initialState,
         info
       }}
       dispatch={action('dispatch')}
@@ -30,7 +30,7 @@ export const SendInfoText: React.FC = () => {
 export const WithTemplateForm: React.FC = () => (
   <InfoForm.View
     state={{
-      ...InfoForm.initial,
+      ...InfoForm.initialState,
       templateName: text('Button name', 'ROTATE_LEFT')
     }}
     dispatch={action('dispatch')}
@@ -40,7 +40,7 @@ export const WithTemplateForm: React.FC = () => (
 export const TemplateNameIsBlank: React.FC = () => (
   <InfoForm.View
     state={{
-      ...InfoForm.initial,
+      ...InfoForm.initialState,
       templateName: '    '
     }}
     dispatch={action('dispatch')}
@@ -50,7 +50,7 @@ export const TemplateNameIsBlank: React.FC = () => (
 export const TemplateIsSaving: React.FC = () => (
   <InfoForm.View
     state={{
-      ...InfoForm.initial,
+      ...InfoForm.initialState,
       templateName: 'ROTATE_LEFT',
       savingTemplate: boolean('Saving', true)
         ? RemoteData.Loading
@@ -63,7 +63,7 @@ export const TemplateIsSaving: React.FC = () => (
 export const TemplateSavingFails: React.FC = () => (
   <InfoForm.View
     state={{
-      ...InfoForm.initial,
+      ...InfoForm.initialState,
       templateName: 'ROTATE_LEFT',
       savingTemplate: RemoteData.Failure(
         text('Error message', 'Endpoint is not reachable')

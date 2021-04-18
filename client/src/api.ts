@@ -124,17 +124,30 @@ export const joinRoom = (options: {
   })
 }
 
-export interface Template {
+export interface InfoTemplate {
   name: string
   content: string
 }
 
-export const saveTemplates = (options: {
+export const saveInfoTemplates = (options: {
   username: string
   robotId: string
-  templates: Array<Template>
+  templates: Array<InfoTemplate>
 }): Promise<Either<string, null>> => {
   return new Promise(done => {
-    done(Either.Right(null))
+    setTimeout(() => {
+      done(Either.Right(null))
+    }, 1000)
+  })
+}
+
+export const getInfoTemplates = (options: {
+  username: string
+  robotId: string
+}): Promise<Either<string, Array<InfoTemplate>>> => {
+  return new Promise(done => {
+    setTimeout(() => {
+      done(Either.Right([]))
+    }, 1000)
   })
 }

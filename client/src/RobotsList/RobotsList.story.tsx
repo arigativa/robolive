@@ -1,6 +1,6 @@
 import React from 'react'
 import { action } from '@storybook/addon-actions'
-import { text, number, radios } from '@storybook/addon-knobs'
+import { text, number } from '@storybook/addon-knobs'
 import RemoteData from 'frctl/RemoteData'
 
 import { Agent } from 'api'
@@ -68,54 +68,6 @@ export const AgentList: React.FC = () => {
       state={{
         ...initialState,
         robots: RemoteData.Succeed(range(N).map(createAgent))
-      }}
-      dispatch={action('dispatch')}
-    />
-  )
-}
-
-const agentsRadios = (title: string, N: number, initial: number): string => {
-  return radios(
-    title,
-    range(N).reduce(
-      (acc, index) => ({
-        ...acc,
-        [createAgentName(index)]: createAgentId(index)
-      }),
-      {}
-    ),
-    createAgentId(initial)
-  )
-}
-
-export const Joining: React.FC = () => {
-  const robotId = agentsRadios('Id of joining Robot', 3, 1)
-
-  return (
-    <RobotsList.View
-      state={{
-        ...initialState,
-        joinStatus: RobotsList.Joining(robotId),
-        robots: RemoteData.Succeed(range(3).map(createAgent))
-      }}
-      dispatch={action('dispatch')}
-    />
-  )
-}
-
-export const JoinFail: React.FC = () => {
-  const robotId = agentsRadios('Id of joining Robot', 3, 1)
-  const message = text(
-    'Failure message',
-    'Method not found: ClientEndpoint/Join'
-  )
-
-  return (
-    <RobotsList.View
-      state={{
-        ...initialState,
-        joinStatus: RobotsList.JoinFail({ robotId, message }),
-        robots: RemoteData.Succeed(range(3).map(createAgent))
       }}
       dispatch={action('dispatch')}
     />

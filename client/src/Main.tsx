@@ -1,6 +1,6 @@
 import React from 'react'
 
-import { Dispatch, Cmd, Sub } from 'core'
+import { Dispatch, Cmd, Sub, useMapDispatch } from 'core'
 import { Case } from 'utils'
 import * as RobotsList from 'RobotsList'
 import * as Room from 'Room'
@@ -9,13 +9,8 @@ import * as Room from 'Room'
 
 export type State =
   | Case<'AuthScreen'>
-  | Case<
-      'RobotsListScreen',
-      ScreenWithUsername<{ robotsList: RobotsList.State }>
-    >
-  | Case<'RoomScreen', ScreenWithUsername<{ room: Room.State }>>
-
-type ScreenWithUsername<T> = T & { username: string }
+  | Case<'RobotsListScreen', { username: string; robotsList: RobotsList.State }>
+  | Case<'RoomScreen', { username: string; robotId: string; room: Room.State }>
 
 const AuthScreen = Case.of<State, 'AuthScreen'>('AuthScreen')()
 const RobotsListScreen = Case.of<State, 'RobotsListScreen'>('RobotsListScreen')
@@ -59,11 +54,11 @@ export const update = (action: Action, state: State): [State, Cmd<Action>] => {
     const { username, robotsList } = state.payload
 
     return RobotsList.update(action.payload, username, robotsList).match({
-      Joined: room => {
-        const [initialRoom, initialCmd] = Room.init(room)
+      JoinToRoom: robotId => {
+        const [initialRoom, initialCmd] = Room.init({ username, robotId })
 
         return [
-          RoomScreen({ username, room: initialRoom }),
+          RoomScreen({ username, robotId, room: initialRoom }),
           initialCmd.map(RoomAction)
         ]
       },
@@ -78,11 +73,11 @@ export const update = (action: Action, state: State): [State, Cmd<Action>] => {
   // R O O M
 
   if (action.type === 'RoomAction' && state.type === 'RoomScreen') {
-    const { username, room } = state.payload
+    const { username, robotId, room } = state.payload
 
-    return Room.update(action.payload, room).match({
+    return Room.update(action.payload, { username, robotId }, room).match({
       Updated: ([nextRoom, cmd]) => [
-        RoomScreen({ username, room: nextRoom }),
+        RoomScreen({ username, robotId, room: nextRoom }),
         cmd.map(RoomAction)
       ],
 
@@ -116,26 +111,19 @@ export const subscriptions = (state: State): Sub<Action> => {
 const ViewRobotsList = React.memo<{
   robotsList: RobotsList.State
   dispatch: Dispatch<Action>
-}>(({ robotsList, dispatch }) => {
-  const robotsListDispatch = React.useCallback(
-    (action: RobotsList.Action) => dispatch(RobotsListAction(action)),
-    [dispatch]
-  )
-
-  return <RobotsList.View state={robotsList} dispatch={robotsListDispatch} />
-})
+}>(({ robotsList, dispatch }) => (
+  <RobotsList.View
+    state={robotsList}
+    dispatch={useMapDispatch(RobotsListAction, dispatch)}
+  />
+))
 
 const ViewRoom = React.memo<{
   room: Room.State
   dispatch: Dispatch<Action>
-}>(({ room, dispatch }) => {
-  const roomDispatch = React.useCallback(
-    (action: Room.Action) => dispatch(RoomAction(action)),
-    [dispatch]
-  )
-
-  return <Room.View state={room} dispatch={roomDispatch} />
-})
+}>(({ room, dispatch }) => (
+  <Room.View state={room} dispatch={useMapDispatch(RoomAction, dispatch)} />
+))
 
 export const View = React.memo<{
   state: State
