@@ -36,7 +36,9 @@ export const getAgentList = (options: {
 }): Promise<Either<string, Array<Agent>>> => {
   return new Promise(done => {
     const req = new AgentListRequest()
+
     req.setName(options.username)
+
     infoClient.agentList(req, (error, response) => {
       if (error) {
         done(Either.Left(error.message))
@@ -119,5 +121,20 @@ export const joinRoom = (options: {
         }
       }
     })
+  })
+}
+
+export interface Template {
+  name: string
+  content: string
+}
+
+export const saveTemplates = (options: {
+  username: string
+  robotId: string
+  templates: Array<Template>
+}): Promise<Either<string, null>> => {
+  return new Promise(done => {
+    done(Either.Right(null))
   })
 }

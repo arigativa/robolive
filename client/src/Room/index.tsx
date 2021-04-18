@@ -1,28 +1,22 @@
 import React from 'react'
-import styled from '@emotion/styled'
 import RemoteData from 'frctl/RemoteData/Optional'
 import {
   Container,
   Box,
   Stack,
   StackItem,
-  FormControl,
-  FormLabel,
-  FormHelperText,
   Button,
-  Textarea,
   VStack,
-  HStack,
   Heading,
   Text
 } from '@chakra-ui/react'
 
 import { Dispatch, Cmd, Sub, useMapDispatch } from 'core'
 import { RoomConfiguration } from 'api'
-import { Connection, createConnection } from 'sip'
+import { SipConnection, createConnection } from 'sip'
 import { Case } from 'utils'
 
-import * as SaveTemplate from './SaveTemplate'
+import * as InfoForm from './InfoForm'
 
 // S T A T E
 
@@ -35,12 +29,11 @@ interface OutgoingInfoMessage {
 }
 
 export interface State {
-  connection: Connection
+  connection: SipConnection
   stream: RemoteData<string, MediaStream>
-  info: string
   terminating: boolean
   outgoingInfoMessages: Array<OutgoingInfoMessage>
-  saveTemplate: null | SaveTemplate.State
+  infoForm: InfoForm.State
 }
 
 export const init = (
@@ -58,10 +51,9 @@ export const init = (
     {
       connection,
       stream: RemoteData.Loading,
-      info: '',
       terminating: false,
       outgoingInfoMessages: [],
-      saveTemplate: null
+      infoForm: InfoForm.initial
     },
     connection.getStream(Connect)
   ]
@@ -78,28 +70,20 @@ export type Action =
   | Case<'Connect', MediaStream>
   | Case<'FailConnection', string>
   | Case<'NewOutgoingMessage', string>
-  | Case<'ChangeInfo', string>
-  | Case<'SendInfo', string>
+  | Case<'SendInfoAgain', string>
   | Case<'Terminate'>
   | Case<'GoToRobotsList'>
-  | Case<'ShowSaveTemplate'>
-  | Case<'SaveTemplateAction', SaveTemplate.Action>
+  | Case<'InfoFormAction', InfoForm.Action>
 
 const Connect = Case.of<Action, 'Connect'>('Connect')
 const FailConnection = Case.of<Action, 'FailConnection'>('FailConnection')
 const NewOutgoingMessage = Case.of<Action, 'NewOutgoingMessage'>(
   'NewOutgoingMessage'
 )
-const ChangeInfo = Case.of<Action, 'ChangeInfo'>('ChangeInfo')
-const SendInfo = Case.of<Action, 'SendInfo'>('SendInfo')
+const SendInfoAgain = Case.of<Action, 'SendInfoAgain'>('SendInfoAgain')
 const Terminate = Case.of<Action, 'Terminate'>('Terminate')()
 const GoToRobotsList = Case.of<Action, 'GoToRobotsList'>('GoToRobotsList')()
-const ShowSaveTemplate = Case.of<Action, 'ShowSaveTemplate'>(
-  'ShowSaveTemplate'
-)()
-const SaveTemplateAction = Case.of<Action, 'SaveTemplateAction'>(
-  'SaveTemplateAction'
-)
+const InfoFormAction = Case.of<Action, 'InfoFormAction'>('InfoFormAction')
 
 export const update = (action: Action, state: State): Stage => {
   switch (action.type) {
@@ -139,17 +123,7 @@ export const update = (action: Action, state: State): Stage => {
       ])
     }
 
-    case 'ChangeInfo': {
-      return Updated([
-        {
-          ...state,
-          info: action.payload
-        },
-        Cmd.none
-      ])
-    }
-
-    case 'SendInfo': {
+    case 'SendInfoAgain': {
       return Updated([state, state.connection.sendInfo(action.payload)])
     }
 
@@ -167,52 +141,20 @@ export const update = (action: Action, state: State): Stage => {
       return BackToList
     }
 
-    case 'ShowSaveTemplate': {
+    case 'InfoFormAction': {
+      const [nextInfoForm, cmd] = InfoForm.update(
+        action.payload,
+        state.connection,
+        state.infoForm
+      )
+
       return Updated([
         {
           ...state,
-          saveTemplate: SaveTemplate.initial
+          infoForm: nextInfoForm
         },
-        Cmd.none
+        cmd.map(InfoFormAction)
       ])
-    }
-
-    case 'SaveTemplateAction': {
-      if (state.saveTemplate == null) {
-        return Updated([state, Cmd.none])
-      }
-
-      return SaveTemplate.update(action.payload, state.saveTemplate).match({
-        Updated: ([nextSaveTemplate, cmd]) => {
-          return Updated([
-            {
-              ...state,
-              saveTemplate: nextSaveTemplate
-            },
-            cmd.map(SaveTemplateAction)
-          ])
-        },
-
-        Saved: () => {
-          return Updated([
-            {
-              ...state,
-              saveTemplate: null
-            },
-            Cmd.none
-          ])
-        },
-
-        Canceled: () => {
-          return Updated([
-            {
-              ...state,
-              saveTemplate: null
-            },
-            Cmd.none
-          ])
-        }
-      })
     }
   }
 }
@@ -269,101 +211,15 @@ const ViewFailure = React.memo<{
   </Stack>
 ))
 
-const StyledTextarea = styled(Textarea)`
-  font-family: monospace;
-`
-
-const useFakeSubmitting = (ms: number): [boolean, VoidFunction] => {
-  const [submitting, setSubmitting] = React.useState(false)
-  const fakeSubmitting = React.useCallback(() => setSubmitting(true), [])
-
-  React.useEffect(() => {
-    if (submitting) {
-      const timeoutId = setTimeout(() => {
-        setSubmitting(false)
-      }, ms)
-
-      return () => clearTimeout(timeoutId)
-    }
-  }, [ms, submitting])
-
-  return [submitting, fakeSubmitting]
-}
-
-const ViewSaveTemplate = React.memo<{
-  template: string
-  saveTemplate: SaveTemplate.State
+const ViewInfoForm = React.memo<{
+  infoForm: InfoForm.State
   dispatch: Dispatch<Action>
-}>(({ template, saveTemplate, dispatch }) => (
-  <SaveTemplate.View
-    autoFocus
-    template={template}
-    state={saveTemplate}
-    dispatch={useMapDispatch(SaveTemplateAction, dispatch)}
+}>(({ infoForm, dispatch }) => (
+  <InfoForm.View
+    state={infoForm}
+    dispatch={useMapDispatch(InfoFormAction, dispatch)}
   />
 ))
-
-const ViewSendInfo = React.memo<{
-  info: string
-  saveTemplate: null | SaveTemplate.State
-  dispatch: Dispatch<Action>
-}>(({ info, saveTemplate, dispatch }) => {
-  const [submitting, fakeSubmitting] = useFakeSubmitting(400)
-
-  return (
-    <Stack
-      as="form"
-      onSubmit={event => {
-        fakeSubmitting()
-        dispatch(SendInfo(info))
-
-        event.preventDefault()
-      }}
-    >
-      <StackItem>
-        <FormControl>
-          <FormLabel>Send Info</FormLabel>
-
-          <StyledTextarea
-            rows={10}
-            resize="vertical"
-            value={info}
-            placeholder="Put info right here"
-            onChange={event => dispatch(ChangeInfo(event.target.value))}
-          />
-
-          <FormHelperText>
-            You can submit both plain text and JSON or save it as a Button
-          </FormHelperText>
-        </FormControl>
-      </StackItem>
-
-      <StackItem>
-        {saveTemplate == null ? (
-          <HStack>
-            <Button type="submit" colorScheme="teal" isLoading={submitting}>
-              Submit
-            </Button>
-
-            <Button
-              variant="outline"
-              colorScheme="teal"
-              onClick={() => dispatch(ShowSaveTemplate)}
-            >
-              Save as Button
-            </Button>
-          </HStack>
-        ) : (
-          <ViewSaveTemplate
-            template={info}
-            saveTemplate={saveTemplate}
-            dispatch={dispatch}
-          />
-        )}
-      </StackItem>
-    </Stack>
-  )
-})
 
 const parseMessageContent = (content: string): string => {
   try {
@@ -405,7 +261,7 @@ const ViewOutgoingInfoMessage = React.memo<{
         type="submit"
         colorScheme="teal"
         onClick={() => {
-          dispatch(SendInfo(message.content))
+          dispatch(SendInfoAgain(message.content))
         }}
       >
         Send again
@@ -430,12 +286,11 @@ const ViewOutgoingInfoMessages = React.memo<{
 ))
 
 const ViewSucceed = React.memo<{
-  info: string
   stream: MediaStream
   outgoingInfoMessages: Array<OutgoingInfoMessage>
-  saveTemplate: null | SaveTemplate.State
+  infoForm: InfoForm.State
   dispatch: Dispatch<Action>
-}>(({ info, stream, outgoingInfoMessages, saveTemplate, dispatch }) => {
+}>(({ stream, outgoingInfoMessages, infoForm, dispatch }) => {
   const videoRef = React.useRef<HTMLVideoElement>(null)
 
   React.useEffect(() => {
@@ -451,11 +306,7 @@ const ViewSucceed = React.memo<{
       </StackItem>
 
       <StackItem>
-        <ViewSendInfo
-          info={info}
-          saveTemplate={saveTemplate}
-          dispatch={dispatch}
-        />
+        <ViewInfoForm infoForm={infoForm} dispatch={dispatch} />
       </StackItem>
 
       <StackItem>
@@ -494,10 +345,9 @@ export const View = React.memo<{
 
         Succeed: stream => (
           <ViewSucceed
-            info={state.info}
             stream={stream}
             outgoingInfoMessages={state.outgoingInfoMessages}
-            saveTemplate={state.saveTemplate}
+            infoForm={state.infoForm}
             dispatch={dispatch}
           />
         )
