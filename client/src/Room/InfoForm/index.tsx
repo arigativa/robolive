@@ -16,7 +16,7 @@ import RemoteDataOptional from 'frctl/RemoteData/Optional'
 import Either from 'frctl/Either'
 
 import { Dispatch, Cmd } from 'core'
-import { InfoTemplate, getInfoTemplates } from 'api'
+import { InfoTemplate, getInfoTemplates, saveInfoTemplates } from 'api'
 import { SipConnection } from 'sip'
 import { Case } from 'utils'
 
@@ -51,8 +51,9 @@ export type Action =
   | Case<'SendInfo', string>
   | Case<'ShowTemplateForm', boolean>
   | Case<'ChangeTemplateName', string>
-  | Case<'SaveTemplate', string>
-  | Case<'SaveTemplateDone', Either<string, null>>
+  | Case<'SaveTemplate', InfoTemplate>
+  | Case<'DeleteTemplate', string>
+  | Case<'UpdateTemplatesDone', Either<string, null>>
   | Case<'LoadInfoTemplates', Either<string, Array<InfoTemplate>>>
 
 const ChangeInfo = Case.of<'ChangeInfo', Action>('ChangeInfo')
@@ -62,7 +63,10 @@ const ChangeTemplateName = Case.of<'ChangeTemplateName', Action>(
   'ChangeTemplateName'
 )
 const SaveTemplate = Case.of<'SaveTemplate', Action>('SaveTemplate')
-// const SaveTemplateDone = Case.of<'SaveTemplateDone', Action>('SaveTemplateDone')
+// const DeleteTemplate = Case.of<'DeleteTemplate', Action>('DeleteTemplate')
+const UpdateTemplatesDone = Case.of<'UpdateTemplatesDone', Action>(
+  'UpdateTemplatesDone'
+)
 const LoadInfoTemplates = Case.of<'LoadInfoTemplates', Action>(
   'LoadInfoTemplates'
 )
@@ -110,16 +114,43 @@ export const update = (
     }
 
     case 'SaveTemplate': {
+      const nextTemplates = [
+        ...state.infoTemplates.getOrElse([]),
+        action.payload
+      ]
+
       return [
         {
           ...state,
           savingTemplate: RemoteDataOptional.Loading
         },
-        Cmd.none
+        Cmd.create<Action>(done => {
+          saveInfoTemplates(credentials, nextTemplates)
+            .then(UpdateTemplatesDone)
+            .then(done)
+        })
       ]
     }
 
-    case 'SaveTemplateDone': {
+    case 'DeleteTemplate': {
+      const nextTemplates = state.infoTemplates
+        .getOrElse([])
+        .filter(template => template.name !== action.payload)
+
+      return [
+        {
+          ...state,
+          savingTemplate: RemoteDataOptional.Loading
+        },
+        Cmd.create<Action>(done => {
+          saveInfoTemplates(credentials, nextTemplates)
+            .then(UpdateTemplatesDone)
+            .then(done)
+        })
+      ]
+    }
+
+    case 'UpdateTemplatesDone': {
       return action.payload.cata({
         Left: error => [
           {
@@ -157,7 +188,12 @@ const ViewTemplateForm = React.memo<{
     as="form"
     align="start"
     onSubmit={event => {
-      dispatch(SaveTemplate(template))
+      dispatch(
+        SaveTemplate({
+          name: templateName.trim(),
+          content: template
+        })
+      )
 
       event.preventDefault()
     }}

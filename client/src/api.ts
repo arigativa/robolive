@@ -129,11 +129,13 @@ export interface InfoTemplate {
   content: string
 }
 
-export const saveInfoTemplates = (options: {
-  username: string
-  robotId: string
+export const saveInfoTemplates = (
+  options: {
+    username: string
+    robotId: string
+  },
   templates: Array<InfoTemplate>
-}): Promise<Either<string, null>> => {
+): Promise<Either<string, null>> => {
   return new Promise(done => {
     setTimeout(() => {
       done(Either.Right(null))
