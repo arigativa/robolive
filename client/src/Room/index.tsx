@@ -92,7 +92,7 @@ const GoToRobotsList = Case.of<Action, 'GoToRobotsList'>('GoToRobotsList')()
 
 export const update = (action: Action, state: State): Stage => {
   switch (action.type) {
-    case Connect.type: {
+    case 'Connect': {
       return Updated([
         {
           ...state,
@@ -102,7 +102,7 @@ export const update = (action: Action, state: State): Stage => {
       ])
     }
 
-    case FailConnection.type: {
+    case 'FailConnection': {
       return Updated([
         {
           ...state,
@@ -112,7 +112,7 @@ export const update = (action: Action, state: State): Stage => {
       ])
     }
 
-    case NewOutgoingMessage.type: {
+    case 'NewOutgoingMessage': {
       return Updated([
         {
           ...state,
@@ -128,7 +128,7 @@ export const update = (action: Action, state: State): Stage => {
       ])
     }
 
-    case ChangeInfo.type: {
+    case 'ChangeInfo': {
       return Updated([
         {
           ...state,
@@ -138,11 +138,11 @@ export const update = (action: Action, state: State): Stage => {
       ])
     }
 
-    case SendInfo.type: {
+    case 'SendInfo': {
       return Updated([state, state.connection.sendInfo(action.payload)])
     }
 
-    case Terminate.type: {
+    case 'Terminate': {
       return Updated([
         {
           ...state,
@@ -152,7 +152,7 @@ export const update = (action: Action, state: State): Stage => {
       ])
     }
 
-    case GoToRobotsList.type: {
+    case 'GoToRobotsList': {
       return BackToList
     }
   }

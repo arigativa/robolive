@@ -49,36 +49,35 @@ const initRobotsList = (username: string): [State, Cmd<Action>] => {
 }
 
 export const update = (action: Action, state: State): [State, Cmd<Action>] => {
-  if (action.is(InitRobotsList)) {
+  if (action.type === 'InitRobotsList') {
     return initRobotsList(action.payload)
   }
 
   // R O B O T S   L I S T
 
-  if (action.is(RobotsListAction) && state.is(RobotsListScreen)) {
+  if (action.type === 'RobotsListAction' && state.type === 'RobotsListScreen') {
     const { username, robotsList } = state.payload
-    const stage = RobotsList.update(action.payload, username, robotsList)
 
-    if (stage.type === 'Joined') {
-      const [initialRoom, initialCmd] = Room.init(stage.payload)
+    return RobotsList.update(action.payload, username, robotsList).match({
+      Joined: room => {
+        const [initialRoom, initialCmd] = Room.init(room)
 
-      return [
-        RoomScreen({ username, room: initialRoom }),
-        initialCmd.map(RoomAction)
+        return [
+          RoomScreen({ username, room: initialRoom }),
+          initialCmd.map(RoomAction)
+        ]
+      },
+
+      Updated: ([nextRobotsList, cmd]) => [
+        RobotsListScreen({ username, robotsList: nextRobotsList }),
+        cmd.map(RobotsListAction)
       ]
-    }
-
-    const [nextRobotsList, cmd] = stage.payload
-
-    return [
-      RobotsListScreen({ username, robotsList: nextRobotsList }),
-      cmd.map(RobotsListAction)
-    ]
+    })
   }
 
   // R O O M
 
-  if (action.is(RoomAction) && state.is(RoomScreen)) {
+  if (action.type === 'RoomAction' && state.type === 'RoomScreen') {
     const { username, room } = state.payload
 
     return Room.update(action.payload, room).match({
@@ -99,11 +98,11 @@ export const update = (action: Action, state: State): [State, Cmd<Action>] => {
 // S U B S C R I P T I O N S
 
 export const subscriptions = (state: State): Sub<Action> => {
-  if (state.is(RoomScreen)) {
+  if (state.type === 'RoomScreen') {
     return Room.subscriptions(state.payload.room).map(RoomAction)
   }
 
-  if (state.is(RobotsListScreen)) {
+  if (state.type === 'RobotsListScreen') {
     return RobotsList.subscriptions(state.payload.robotsList).map(
       RobotsListAction
     )

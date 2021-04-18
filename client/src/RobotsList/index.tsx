@@ -79,11 +79,11 @@ export const update = (
   state: State
 ): Stage => {
   switch (action.type) {
-    case ReInit.type: {
+    case 'ReInit': {
       return Updated(init(username))
     }
 
-    case RunPolling.type: {
+    case 'RunPolling': {
       return Updated([
         { ...state, polling: true },
         Cmd.create<Action>(done =>
@@ -92,7 +92,7 @@ export const update = (
       ])
     }
 
-    case LoadRobots.type: {
+    case 'LoadRobots': {
       return Updated([
         {
           ...state,
@@ -106,7 +106,7 @@ export const update = (
       ])
     }
 
-    case SelectRobot.type: {
+    case 'SelectRobot': {
       const robotId = action.payload
 
       return Updated([
@@ -123,7 +123,7 @@ export const update = (
       ])
     }
 
-    case SelectRobotDone.type: {
+    case 'SelectRobotDone': {
       return action.payload.fold<Stage>(error => {
         return Updated([
           {
@@ -142,7 +142,7 @@ export const update = (
 export const subscriptions = (state: State): Sub<Action> => {
   if (
     state.polling ||
-    state.joinStatus.is(Joining) ||
+    state.joinStatus.type === 'Joining' ||
     state.robots.getOrElse([]).length === 0
   ) {
     return Sub.none
@@ -215,10 +215,11 @@ const AgentItem = React.memo<{
   agent: Agent
   dispatch: Dispatch<Action>
 }>(({ joinStatus, agent, dispatch }) => {
-  const disabled = joinStatus.is(Joining)
-  const loading = joinStatus.is(Joining) && joinStatus.payload === agent.id
+  const disabled = joinStatus.type === 'Joining'
+  const loading =
+    joinStatus.type === 'Joining' && joinStatus.payload === agent.id
   const error =
-    joinStatus.is(JoinFail) && joinStatus.payload.robotId === agent.id
+    joinStatus.type === 'JoinFail' && joinStatus.payload.robotId === agent.id
       ? joinStatus.payload.message
       : null
 

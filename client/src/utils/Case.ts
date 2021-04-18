@@ -12,11 +12,6 @@ type ExtractPayloadFor<
   A extends Case<string, unknown>
 > = Extract<A, { type: K }>['payload']
 
-interface CaseCreatorWithoutPayload<T extends string> {
-  type: T
-  (): Case<T>
-}
-
 interface CaseCreatorWithPayload<T extends string, P> {
   type: T
   (payload: P): Case<T, P>
@@ -26,8 +21,8 @@ type ExtractCaseCreator<
   T extends C['type'],
   C extends Case<string, unknown>
 > = [ExtractPayloadFor<T, C>] extends [never]
-  ? CaseCreatorWithoutPayload<T>
-  : CaseCreatorWithPayload<T, ExtractPayloadFor<T, C>>
+  ? () => C
+  : (payload: ExtractPayloadFor<T, C>) => C
 
 export class Case<T extends string, P = never> {
   public static of<C extends Case<string, unknown>, TT extends C['type']>(
@@ -38,12 +33,8 @@ export class Case<T extends string, P = never> {
   ): ExtractCaseCreator<TT, C>
   public static of<TT extends string, PP>(
     type: TT
-  ): CaseCreatorWithPayload<TT, PP> {
-    const creator = (payload: PP): Case<TT, PP> => new Case(type, payload)
-
-    creator.type = type
-
-    return creator
+  ): (payload: PP) => Case<TT, PP> {
+    return payload => new Case(type, payload)
   }
 
   private constructor(public readonly type: T, public readonly payload: P) {}
