@@ -11,6 +11,7 @@ import {
   Input,
   HStack
 } from '@chakra-ui/react'
+import RemoteData from 'frctl/RemoteData/Optional'
 import Either from 'frctl/Either'
 
 import { Dispatch, Cmd } from 'core'
@@ -22,13 +23,13 @@ import { Case } from 'utils'
 export interface State {
   info: string
   templateName: null | string
-  savingTemplate: boolean
+  savingTemplate: RemoteData<string, never>
 }
 
 export const initial: State = {
   info: '',
   templateName: null,
-  savingTemplate: false
+  savingTemplate: RemoteData.NotAsked
 }
 
 // U P D A T E
@@ -75,22 +76,43 @@ export const update = (
         {
           ...state,
           templateName: action.payload ? '' : null,
-          savingTemplate: false
+          savingTemplate: RemoteData.NotAsked
         },
         Cmd.none
       ]
     }
 
     case 'ChangeTemplateName': {
-      return [{ ...state, templateName: action.payload }, Cmd.none]
+      return [
+        {
+          ...state,
+          templateName: action.payload
+        },
+        Cmd.none
+      ]
     }
 
     case 'SaveTemplate': {
-      return [{ ...state, savingTemplate: true }, Cmd.none]
+      return [
+        {
+          ...state,
+          savingTemplate: RemoteData.Loading
+        },
+        Cmd.none
+      ]
     }
 
     case 'SaveTemplateDone': {
-      return [state, Cmd.none]
+      return action.payload.cata({
+        Left: error => [
+          {
+            ...state,
+            savingTemplate: RemoteData.Failure(error)
+          },
+          Cmd.none
+        ],
+        Right: () => [state, Cmd.none]
+      })
     }
   }
 }
@@ -100,29 +122,35 @@ export const update = (
 const ViewTemplateForm = React.memo<{
   template: string
   templateName: string
-  savingTemplate: boolean
+  busy: boolean
+  error: null | string
   dispatch: Dispatch<Action>
-}>(({ template, templateName, savingTemplate, dispatch }) => (
+}>(({ template, templateName, busy, error, dispatch }) => (
   <HStack
     as="form"
+    align="start"
     onSubmit={event => {
       dispatch(SaveTemplate(template))
 
       event.preventDefault()
     }}
   >
-    <Input
-      autoFocus
-      isReadOnly={savingTemplate}
-      value={templateName}
-      placeholder="Button name"
-      onChange={event => dispatch(ChangeTemplateName(event.target.value))}
-    />
+    <FormControl>
+      <Input
+        autoFocus
+        isReadOnly={busy}
+        value={templateName}
+        placeholder="Button name"
+        onChange={event => dispatch(ChangeTemplateName(event.target.value))}
+      />
+
+      {error && <FormHelperText color="coral">{error}</FormHelperText>}
+    </FormControl>
 
     <Button
       colorScheme="teal"
       isDisabled={templateName.trim().length === 0}
-      isLoading={savingTemplate}
+      isLoading={busy}
     >
       Save
     </Button>
@@ -130,7 +158,7 @@ const ViewTemplateForm = React.memo<{
     <Button
       colorScheme="pink"
       variant="outline"
-      isDisabled={savingTemplate}
+      isDisabled={busy}
       onClick={() => dispatch(ShowTemplateForm(false))}
     >
       Cancel
@@ -168,6 +196,7 @@ export const View = React.memo<{
   return (
     <Stack
       as="form"
+      spacing="4"
       onSubmit={event => {
         fakeSubmitting()
         dispatch(SendInfo(state.info))
@@ -212,7 +241,11 @@ export const View = React.memo<{
           <ViewTemplateForm
             template={state.info}
             templateName={state.templateName}
-            savingTemplate={state.savingTemplate}
+            busy={state.savingTemplate.isLoading()}
+            error={state.savingTemplate.cata({
+              Failure: error => error,
+              _: () => null
+            })}
             dispatch={dispatch}
           />
         )}
