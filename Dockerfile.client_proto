@@ -1,8 +1,5 @@
 FROM namely/protoc-all as protoc_ts
 
-RUN apk update
-RUN apk add npm
-
 RUN npm install ts-protoc-gen
 
 ADD ./protocols /protocols

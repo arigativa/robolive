@@ -2,6 +2,7 @@
 // file: Client.proto
 
 import * as Client_pb from "./Client_pb";
+import * as Common_pb from "./Common_pb";
 import {grpc} from "@improbable-eng/grpc-web";
 
 type ClientEndpointJoin = {
@@ -13,9 +14,29 @@ type ClientEndpointJoin = {
   readonly responseType: typeof Client_pb.JoinResponse;
 };
 
+type ClientEndpointAddUiDescription = {
+  readonly methodName: string;
+  readonly service: typeof ClientEndpoint;
+  readonly requestStream: false;
+  readonly responseStream: false;
+  readonly requestType: typeof Client_pb.AddUIDescriptionRequest;
+  readonly responseType: typeof Common_pb.Empty;
+};
+
+type ClientEndpointGetUiDescription = {
+  readonly methodName: string;
+  readonly service: typeof ClientEndpoint;
+  readonly requestStream: false;
+  readonly responseStream: false;
+  readonly requestType: typeof Client_pb.GetUIDescriptionRequest;
+  readonly responseType: typeof Client_pb.UIDescription;
+};
+
 export class ClientEndpoint {
   static readonly serviceName: string;
   static readonly Join: ClientEndpointJoin;
+  static readonly AddUiDescription: ClientEndpointAddUiDescription;
+  static readonly GetUiDescription: ClientEndpointGetUiDescription;
 }
 
 export type ServiceError = { message: string, code: number; metadata: grpc.Metadata }
@@ -58,6 +79,24 @@ export class ClientEndpointClient {
   join(
     requestMessage: Client_pb.JoinRequest,
     callback: (error: ServiceError|null, responseMessage: Client_pb.JoinResponse|null) => void
+  ): UnaryResponse;
+  addUiDescription(
+    requestMessage: Client_pb.AddUIDescriptionRequest,
+    metadata: grpc.Metadata,
+    callback: (error: ServiceError|null, responseMessage: Common_pb.Empty|null) => void
+  ): UnaryResponse;
+  addUiDescription(
+    requestMessage: Client_pb.AddUIDescriptionRequest,
+    callback: (error: ServiceError|null, responseMessage: Common_pb.Empty|null) => void
+  ): UnaryResponse;
+  getUiDescription(
+    requestMessage: Client_pb.GetUIDescriptionRequest,
+    metadata: grpc.Metadata,
+    callback: (error: ServiceError|null, responseMessage: Client_pb.UIDescription|null) => void
+  ): UnaryResponse;
+  getUiDescription(
+    requestMessage: Client_pb.GetUIDescriptionRequest,
+    callback: (error: ServiceError|null, responseMessage: Client_pb.UIDescription|null) => void
   ): UnaryResponse;
 }
 
