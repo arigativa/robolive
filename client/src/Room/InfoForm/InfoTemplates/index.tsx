@@ -2,6 +2,7 @@ import React from 'react'
 import {
   Box,
   Tooltip,
+  ButtonGroup,
   Button,
   IconButton,
   InputGroup,
@@ -9,7 +10,7 @@ import {
   Input,
   InputLeftElement
 } from '@chakra-ui/react'
-import { AddIcon, WarningIcon } from '@chakra-ui/icons'
+import { AddIcon, DeleteIcon, WarningIcon } from '@chakra-ui/icons'
 import RemoteData from 'frctl/RemoteData'
 import Either from 'frctl/Either'
 
@@ -58,7 +59,7 @@ const LoadInfoTemplates = Case.of<'LoadInfoTemplates', Action>(
 const SendTemplate = Case.of<'SendTemplate', Action>('SendTemplate')
 const ChangeName = Case.of<'ChangeName', Action>('ChangeName')
 const SaveTemplate = Case.of<'SaveTemplate', Action>('SaveTemplate')
-// const DeleteTemplate = Case.of<'DeleteTemplate', Action>('DeleteTemplate')
+const DeleteTemplate = Case.of<'DeleteTemplate', Action>('DeleteTemplate')
 const UpdateTemplatesDone = Case.of<'UpdateTemplatesDone', Action>(
   'UpdateTemplatesDone'
 )
@@ -152,14 +153,24 @@ const ViewTemplate = React.memo<{
   infoTemplate: InfoTemplate
   dispatch: Dispatch<Action>
 }>(({ infoTemplate, dispatch }) => (
-  <Button
-    size="sm"
-    colorScheme="teal"
-    variant="outline"
-    onClick={() => dispatch(SendTemplate(infoTemplate.content))}
-  >
-    {infoTemplate.name}
-  </Button>
+  <ButtonGroup isAttached size="sm">
+    <Button
+      variant="outline"
+      colorScheme="teal"
+      onClick={() => dispatch(SendTemplate(infoTemplate.content))}
+    >
+      {infoTemplate.name}
+    </Button>
+
+    <IconButton
+      aria-label="Delete template"
+      ml="-px"
+      colorScheme="pink"
+      onClick={() => dispatch(DeleteTemplate(infoTemplate.content))}
+    >
+      <DeleteIcon />
+    </IconButton>
+  </ButtonGroup>
 ))
 
 const ViewTemplateForm = React.memo<{
