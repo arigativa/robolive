@@ -50,7 +50,7 @@ export type Action =
   | Case<'LoadInfoTemplates', Either<string, Array<InfoTemplate>>>
   | Case<'SendTemplate', string>
   | Case<'ChangeName', string>
-  | Case<'SaveTemplate', InfoTemplate>
+  | Case<'SaveTemplate', string>
   | Case<'DeleteTemplate', string>
   | Case<'UpdateTemplatesDone', Either<string, null>>
 
@@ -64,6 +64,27 @@ const DeleteTemplate = Case.of<'DeleteTemplate', Action>('DeleteTemplate')
 const UpdateTemplatesDone = Case.of<'UpdateTemplatesDone', Action>(
   'UpdateTemplatesDone'
 )
+
+const validateTemplate = (
+  name: string,
+  templates: Array<InfoTemplate>
+): null | string => {
+  if (name.length === 0) {
+    return 'Template name should not be empty'
+  }
+
+  const trrimmedName = name.trim()
+
+  if (trrimmedName.length === 0) {
+    return 'Template name should not be blank'
+  }
+
+  if (templates.some(template => template.name === trrimmedName)) {
+    return 'Template with this name already exists'
+  }
+
+  return null
+}
 
 export const update = (
   action: Action,
@@ -97,9 +118,22 @@ export const update = (
     }
 
     case 'SaveTemplate': {
+      const infoTemplates = state.infoTemplates.getOrElse([])
+      const templateValidation = validateTemplate(state.name, infoTemplates)
+
+      if (templateValidation !== null) {
+        return [
+          { ...state, saving: RemoteData.Optional.Failure(templateValidation) },
+          Cmd.none
+        ]
+      }
+
       const nextTemplates = [
-        ...state.infoTemplates.getOrElse([]),
-        action.payload
+        ...infoTemplates,
+        {
+          name: state.name.trim(),
+          content: action.payload
+        }
       ]
 
       return [
@@ -193,7 +227,7 @@ const ViewTemplateForm = React.memo<{
     size="sm"
     width={200}
     onSubmit={event => {
-      dispatch(SaveTemplate({ name, content: template }))
+      dispatch(SaveTemplate(template))
 
       event.preventDefault()
     }}
