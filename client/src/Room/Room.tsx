@@ -1,19 +1,12 @@
 import React from 'react'
 import RemoteData from 'frctl/RemoteData'
-import {
-  Container,
-  Box,
-  Stack,
-  StackItem,
-  Button,
-  VStack,
-  Heading,
-  Text
-} from '@chakra-ui/react'
+import { Container, Box, Button, VStack, Heading, Text } from '@chakra-ui/react'
 
 import { Dispatch, Cmd, Sub, useMapDispatch } from 'core'
 import { SipConnection } from 'sip'
 import { Case } from 'utils'
+import { AlertPanel } from 'AlertPanel'
+import { SkeletonRect } from 'Skeleton'
 
 import { RoomCredentials } from '.'
 import * as InfoForm from './InfoForm'
@@ -174,42 +167,6 @@ export const subscriptions = (
 
 // V I E W
 
-const ViewCallOver = React.memo<{
-  dispatch: Dispatch<Action>
-}>(({ dispatch }) => (
-  <>
-    Call is ended.
-    <Button
-      ml="2"
-      variant="link"
-      colorScheme="teal"
-      onClick={() => dispatch(GoToRobotsList)}
-    >
-      Go back to Robots List
-    </Button>
-  </>
-))
-
-const ViewFailure = React.memo<{
-  reason: string
-  dispatch: Dispatch<Action>
-}>(({ reason, dispatch }) => (
-  <Stack>
-    <StackItem>Something went wrong: {reason}</StackItem>
-
-    <StackItem>
-      <Button
-        ml="2"
-        variant="link"
-        colorScheme="teal"
-        onClick={() => dispatch(GoToRobotsList)}
-      >
-        Go back to Robots List
-      </Button>
-    </StackItem>
-  </Stack>
-))
-
 const ViewInfoForm = React.memo<{
   infoForm: InfoForm.State
   dispatch: Dispatch<Action>
@@ -299,22 +256,20 @@ const ViewSucceed = React.memo<{
   }, [stream])
 
   return (
-    <Stack>
-      <StackItem>
-        <video ref={videoRef} autoPlay />
-      </StackItem>
+    <Box>
+      <video ref={videoRef} autoPlay />
 
-      <StackItem>
+      <Box mt="2">
         <ViewInfoForm infoForm={infoForm} dispatch={dispatch} />
-      </StackItem>
+      </Box>
 
-      <StackItem>
+      <Box mt="4">
         <ViewOutgoingInfoMessages
           messages={outgoingInfoMessages}
           dispatch={dispatch}
         />
-      </StackItem>
-    </Stack>
+      </Box>
+    </Box>
   )
 })
 
@@ -323,24 +278,27 @@ export const View = React.memo<{
   dispatch: Dispatch<Action>
 }>(({ state, dispatch }) => (
   <Container>
-    <Stack>
-      <StackItem>
-        <Button
-          variant="link"
-          colorScheme="teal"
-          isDisabled={state.terminating}
-          onClick={() => dispatch(Terminate)}
-        >
-          Back to Robots List
-        </Button>
-      </StackItem>
+    <VStack align="start">
+      <Button
+        size="xs"
+        variant="outline"
+        colorScheme="teal"
+        isDisabled={state.terminating}
+        onClick={() => dispatch(Terminate)}
+      >
+        Back to Robots List
+      </Button>
 
       {state.stream.cata({
-        NotAsked: () => <ViewCallOver dispatch={dispatch} />,
+        NotAsked: () => <AlertPanel status="info">Call is ended.</AlertPanel>,
 
-        Loading: () => <div>Loading...</div>,
+        Loading: () => <InfoForm.Skeleton />,
 
-        Failure: reason => <ViewFailure reason={reason} dispatch={dispatch} />,
+        Failure: message => (
+          <AlertPanel status="error" title="Video Stream Error!">
+            {message}
+          </AlertPanel>
+        ),
 
         Succeed: stream => (
           <ViewSucceed
@@ -351,10 +309,17 @@ export const View = React.memo<{
           />
         )
       })}
-    </Stack>
+    </VStack>
   </Container>
 ))
 
 // S K E L E T O N
 
-export const Skeleton = React.memo(() => null)
+export const Skeleton = React.memo(() => (
+  <Container>
+    <VStack align="start">
+      <SkeletonRect width={132} height={24} />
+      <InfoForm.Skeleton />
+    </VStack>
+  </Container>
+))

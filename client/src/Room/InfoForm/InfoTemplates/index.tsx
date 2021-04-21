@@ -1,6 +1,7 @@
 import React from 'react'
 import {
-  Box,
+  Wrap,
+  WrapItem,
   Tooltip,
   ButtonGroup,
   Button,
@@ -133,7 +134,7 @@ export const update = (
     }
 
     case 'UpdateTemplatesDone': {
-      return action.payload.cata({
+      return action.payload.cata<[State, Cmd<Action>]>({
         Left: error => [
           {
             ...state,
@@ -141,7 +142,13 @@ export const update = (
           },
           Cmd.none
         ],
-        Right: () => [state, Cmd.none]
+        Right: () => [
+          {
+            ...state,
+            saving: RemoteData.Optional.NotAsked
+          },
+          initCmd(credentials)
+        ]
       })
     }
   }
@@ -176,10 +183,11 @@ const ViewTemplate = React.memo<{
 const ViewTemplateForm = React.memo<{
   template: string
   name: string
+  readonly: boolean
   busy: boolean
   error: null | string
   dispatch: Dispatch<Action>
-}>(({ template, name, busy, error, dispatch }) => (
+}>(({ template, name, readonly, busy, error, dispatch }) => (
   <InputGroup
     as="form"
     size="sm"
@@ -200,7 +208,7 @@ const ViewTemplateForm = React.memo<{
 
     <Input
       autoFocus
-      isReadOnly={busy}
+      isReadOnly={busy || readonly}
       value={name}
       placeholder="Template name"
       onChange={event => dispatch(ChangeName(event.target.value))}
@@ -211,6 +219,7 @@ const ViewTemplateForm = React.memo<{
         aria-label="Save template"
         size="xs"
         colorScheme="teal"
+        isDisabled={readonly}
         isLoading={busy}
       >
         <AddIcon />
@@ -219,35 +228,45 @@ const ViewTemplateForm = React.memo<{
   </InputGroup>
 ))
 
-const ViewTemplatesContainer: React.FC = ({ children }) => (
-  <Box flexWrap="wrap" display="flex" ml="-2" mt="-2">
-    {React.Children.map(children, child => (
-      <Box mt="2" ml="2">
-        {child}
-      </Box>
-    ))}
-  </Box>
-)
+const ViewTemplates = React.memo<{
+  infoTemplates: RemoteData<string, Array<InfoTemplate>>
+  dispatch: Dispatch<Action>
+}>(({ infoTemplates, dispatch }) => {
+  return infoTemplates.cata({
+    Loading: () => <SkeletonTemplates />,
+
+    Failure: message => (
+      <WrapItem>
+        <AlertPanel status="error" title="Request Error!">
+          {message}
+        </AlertPanel>
+      </WrapItem>
+    ),
+
+    Succeed: templates => (
+      <>
+        {templates.map(template => (
+          <WrapItem key={template.name}>
+            <ViewTemplate infoTemplate={template} dispatch={dispatch} />
+          </WrapItem>
+        ))}
+      </>
+    )
+  })
+})
 
 export const View = React.memo<{
   template: string
   state: State
   dispatch: Dispatch<Action>
 }>(({ template, state, dispatch }) => {
-  return state.infoTemplates.cata({
-    Loading: () => <Skeleton />,
-
-    Failure: message => (
-      <AlertPanel status="error" title="Request Error!">
-        {message}
-      </AlertPanel>
-    ),
-
-    Succeed: infoTemplates => (
-      <ViewTemplatesContainer>
+  return (
+    <Wrap spacing="2">
+      <WrapItem>
         <ViewTemplateForm
           template={template}
           name={state.name}
+          readonly={!state.infoTemplates.isSucceed()}
           busy={state.saving.isLoading()}
           error={state.saving.cata({
             Failure: error => error,
@@ -255,25 +274,31 @@ export const View = React.memo<{
           })}
           dispatch={dispatch}
         />
+      </WrapItem>
 
-        {infoTemplates.map(infoTemplate => (
-          <ViewTemplate
-            key={infoTemplate.name}
-            infoTemplate={infoTemplate}
-            dispatch={dispatch}
-          />
-        ))}
-      </ViewTemplatesContainer>
-    )
-  })
+      <ViewTemplates infoTemplates={state.infoTemplates} dispatch={dispatch} />
+    </Wrap>
+  )
 })
 
 // S K E L E T O N
 
-export const Skeleton = React.memo(() => (
-  <ViewTemplatesContainer>
-    {[200, 160, 80, 120].map((width, i) => (
-      <SkeletonRect key={i} width={width} height={32} />
+const SkeletonTemplates = React.memo(() => (
+  <>
+    {[80, 120, 80].map((width, i) => (
+      <WrapItem key={i}>
+        <SkeletonRect width={width} height={32} />
+      </WrapItem>
     ))}
-  </ViewTemplatesContainer>
+  </>
+))
+
+export const Skeleton = React.memo(() => (
+  <Wrap spacing="2">
+    <WrapItem>
+      <SkeletonRect width={200} height={32} />
+    </WrapItem>
+
+    <SkeletonTemplates />
+  </Wrap>
 ))

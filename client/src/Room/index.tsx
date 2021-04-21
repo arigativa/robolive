@@ -6,6 +6,7 @@ import { Dispatch, Cmd, Sub, useMapDispatch } from 'core'
 import { RoomConfiguration, joinRoom } from 'api'
 import { createConnection, SipConnection } from 'sip'
 import { Case } from 'utils'
+import { AlertPanel } from 'AlertPanel'
 
 import * as Room from './Room'
 
@@ -116,7 +117,11 @@ export const View = React.memo<{
   return state.cata({
     Loading: () => <Room.Skeleton />,
 
-    Failure: error => <div>Error: {error}</div>,
+    Failure: message => (
+      <AlertPanel status="error" title="Request Error!">
+        {message}
+      </AlertPanel>
+    ),
 
     Succeed: ({ room }) => <Room.View state={room} dispatch={roomDispatch} />
   })

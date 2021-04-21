@@ -9,6 +9,8 @@ export default {
   title: 'Room'
 }
 
+export const Skeleton: React.FC = () => <Room.Skeleton />
+
 export const Loading: React.FC = () => (
   <Room.View state={Room.initialState} dispatch={action('dispatch')} />
 )

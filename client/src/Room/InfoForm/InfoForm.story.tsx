@@ -1,13 +1,16 @@
 import React from 'react'
 import { action } from '@storybook/addon-actions'
-import { text, boolean } from '@storybook/addon-knobs'
+import { text } from '@storybook/addon-knobs'
 import RemoteData from 'frctl/RemoteData'
 
 import * as InfoForm from '.'
+import * as InfoTemplates from './InfoTemplates'
 
 export default {
   title: 'InfoForm'
 }
+
+export const Skeleton: React.FC = () => <InfoForm.Skeleton />
 
 export const Initial: React.FC = () => (
   <InfoForm.View state={InfoForm.initialState} dispatch={action('dispatch')} />
@@ -27,47 +30,14 @@ export const SendInfoText: React.FC = () => {
   )
 }
 
-export const WithTemplateForm: React.FC = () => (
+export const WithInfoForm: React.FC = () => (
   <InfoForm.View
     state={{
       ...InfoForm.initialState,
-      templateName: text('Button name', 'ROTATE_LEFT')
-    }}
-    dispatch={action('dispatch')}
-  />
-)
-
-export const TemplateNameIsBlank: React.FC = () => (
-  <InfoForm.View
-    state={{
-      ...InfoForm.initialState,
-      templateName: '    '
-    }}
-    dispatch={action('dispatch')}
-  />
-)
-
-export const TemplateIsSaving: React.FC = () => (
-  <InfoForm.View
-    state={{
-      ...InfoForm.initialState,
-      templateName: 'ROTATE_LEFT',
-      savingTemplate: boolean('Saving', true)
-        ? RemoteData.Optional.Loading
-        : RemoteData.Optional.NotAsked
-    }}
-    dispatch={action('dispatch')}
-  />
-)
-
-export const TemplateSavingFails: React.FC = () => (
-  <InfoForm.View
-    state={{
-      ...InfoForm.initialState,
-      templateName: 'ROTATE_LEFT',
-      savingTemplate: RemoteData.Optional.Failure(
-        text('Error message', 'Endpoint is not reachable')
-      )
+      infoTemplates: {
+        ...InfoTemplates.initialState,
+        infoTemplates: RemoteData.Succeed([])
+      }
     }}
     dispatch={action('dispatch')}
   />

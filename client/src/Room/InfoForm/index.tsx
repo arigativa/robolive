@@ -1,47 +1,37 @@
-import React from 'react'
-import styled from '@emotion/styled'
+import React, { ReactNode } from 'react'
 import {
   Box,
-  Stack,
-  StackItem,
   FormControl,
   FormLabel,
   FormHelperText,
   Button,
   Textarea,
-  Input,
-  HStack
+  HStack,
+  VStack
 } from '@chakra-ui/react'
-import RemoteData from 'frctl/RemoteData'
-import Either from 'frctl/Either'
-
-import { Dispatch, Cmd } from 'core'
-import { InfoTemplate, getInfoTemplates, saveInfoTemplates } from 'api'
-import { SipConnection } from 'sip'
-import { Case } from 'utils'
 
 import type { RoomCredentials } from 'Room'
+
+import { Dispatch, Cmd, useMapDispatch } from 'core'
+import { SipConnection } from 'sip'
+import { Case } from 'utils'
+import { SkeletonRect, SkeletonText } from 'Skeleton'
+import * as InfoTemplates from './InfoTemplates'
 
 // S T A T E
 
 export interface State {
   info: string
-  templateName: null | string
-  savingTemplate: RemoteData.Optional<string, never>
-  infoTemplates: RemoteData<string, Array<InfoTemplate>>
+  infoTemplates: InfoTemplates.State
 }
 
 export const initialState: State = {
   info: '',
-  templateName: null,
-  savingTemplate: RemoteData.Optional.NotAsked,
-  infoTemplates: RemoteData.Loading
+  infoTemplates: InfoTemplates.initialState
 }
 
 export const initCmd = (credentials: RoomCredentials): Cmd<Action> => {
-  return Cmd.create<Action>(done => {
-    getInfoTemplates(credentials).then(LoadInfoTemplates).then(done)
-  })
+  return InfoTemplates.initCmd(credentials).map(InfoTemplatesAction)
 }
 
 // U P D A T E
@@ -49,26 +39,12 @@ export const initCmd = (credentials: RoomCredentials): Cmd<Action> => {
 export type Action =
   | Case<'ChangeInfo', string>
   | Case<'SendInfo'>
-  | Case<'ShowTemplateForm', boolean>
-  | Case<'ChangeTemplateName', string>
-  | Case<'SaveTemplate', InfoTemplate>
-  | Case<'DeleteTemplate', string>
-  | Case<'UpdateTemplatesDone', Either<string, null>>
-  | Case<'LoadInfoTemplates', Either<string, Array<InfoTemplate>>>
+  | Case<'InfoTemplatesAction', InfoTemplates.Action>
 
 const ChangeInfo = Case.of<'ChangeInfo', Action>('ChangeInfo')
 const SendInfo = Case.of<'SendInfo', Action>('SendInfo')()
-const ShowTemplateForm = Case.of<'ShowTemplateForm', Action>('ShowTemplateForm')
-const ChangeTemplateName = Case.of<'ChangeTemplateName', Action>(
-  'ChangeTemplateName'
-)
-const SaveTemplate = Case.of<'SaveTemplate', Action>('SaveTemplate')
-// const DeleteTemplate = Case.of<'DeleteTemplate', Action>('DeleteTemplate')
-const UpdateTemplatesDone = Case.of<'UpdateTemplatesDone', Action>(
-  'UpdateTemplatesDone'
-)
-const LoadInfoTemplates = Case.of<'LoadInfoTemplates', Action>(
-  'LoadInfoTemplates'
+const InfoTemplatesAction = Case.of<'InfoTemplatesAction', Action>(
+  'InfoTemplatesAction'
 )
 
 export const update = (
@@ -92,142 +68,26 @@ export const update = (
       return [state, connection.sendInfo(state.info)]
     }
 
-    case 'ShowTemplateForm': {
-      return [
-        {
-          ...state,
-          templateName: action.payload ? '' : null,
-          savingTemplate: RemoteData.Optional.NotAsked
-        },
-        Cmd.none
-      ]
-    }
-
-    case 'ChangeTemplateName': {
-      return [
-        {
-          ...state,
-          templateName: action.payload
-        },
-        Cmd.none
-      ]
-    }
-
-    case 'SaveTemplate': {
-      const nextTemplates = [
-        ...state.infoTemplates.getOrElse([]),
-        action.payload
-      ]
+    case 'InfoTemplatesAction': {
+      const [nextInfoTemplates, cmd] = InfoTemplates.update(
+        action.payload,
+        credentials,
+        connection,
+        state.infoTemplates
+      )
 
       return [
         {
           ...state,
-          savingTemplate: RemoteData.Optional.Loading
+          infoTemplates: nextInfoTemplates
         },
-        Cmd.create<Action>(done => {
-          saveInfoTemplates(credentials, nextTemplates)
-            .then(UpdateTemplatesDone)
-            .then(done)
-        })
-      ]
-    }
-
-    case 'DeleteTemplate': {
-      const nextTemplates = state.infoTemplates
-        .getOrElse([])
-        .filter(template => template.name !== action.payload)
-
-      return [
-        {
-          ...state,
-          savingTemplate: RemoteData.Optional.Loading
-        },
-        Cmd.create<Action>(done => {
-          saveInfoTemplates(credentials, nextTemplates)
-            .then(UpdateTemplatesDone)
-            .then(done)
-        })
-      ]
-    }
-
-    case 'UpdateTemplatesDone': {
-      return action.payload.cata({
-        Left: error => [
-          {
-            ...state,
-            savingTemplate: RemoteData.Optional.Failure(error)
-          },
-          Cmd.none
-        ],
-        Right: () => [state, Cmd.none]
-      })
-    }
-
-    case 'LoadInfoTemplates': {
-      return [
-        {
-          ...state,
-          infoTemplates: RemoteData.fromEither(action.payload)
-        },
-        Cmd.none
+        cmd.map(InfoTemplatesAction)
       ]
     }
   }
 }
 
 // V I E W
-
-const ViewTemplateForm = React.memo<{
-  template: string
-  templateName: string
-  busy: boolean
-  error: null | string
-  dispatch: Dispatch<Action>
-}>(({ template, templateName, busy, error, dispatch }) => (
-  <HStack
-    as="form"
-    align="start"
-    onSubmit={event => {
-      dispatch(
-        SaveTemplate({
-          name: templateName.trim(),
-          content: template
-        })
-      )
-
-      event.preventDefault()
-    }}
-  >
-    <FormControl>
-      <Input
-        autoFocus
-        isReadOnly={busy}
-        value={templateName}
-        placeholder="Button name"
-        onChange={event => dispatch(ChangeTemplateName(event.target.value))}
-      />
-
-      {error && <FormHelperText color="coral">{error}</FormHelperText>}
-    </FormControl>
-
-    <Button
-      colorScheme="teal"
-      isDisabled={templateName.trim().length === 0}
-      isLoading={busy}
-    >
-      Save
-    </Button>
-
-    <Button
-      colorScheme="pink"
-      variant="outline"
-      isDisabled={busy}
-      onClick={() => dispatch(ShowTemplateForm(false))}
-    >
-      Cancel
-    </Button>
-  </HStack>
-))
 
 const useFakeSubmitting = (ms: number): [boolean, VoidFunction] => {
   const [submitting, setSubmitting] = React.useState(false)
@@ -246,85 +106,91 @@ const useFakeSubmitting = (ms: number): [boolean, VoidFunction] => {
   return [submitting, fakeSubmitting]
 }
 
-const StyledTextarea = styled(Textarea)`
-  font-family: monospace;
-`
+const ContainerInfoForm: React.FC<{
+  label: ReactNode
+  textarea: ReactNode
+  helperText: ReactNode
+  submitButton: ReactNode
+}> = ({ label, textarea, helperText, submitButton }) => (
+  <FormControl>
+    <FormLabel>{label}</FormLabel>
+
+    {textarea}
+
+    <FormHelperText>
+      <HStack>
+        <Box flex="1">{helperText}</Box>
+
+        {submitButton}
+      </HStack>
+    </FormHelperText>
+  </FormControl>
+)
+
+const ViewInfoForm = React.memo<{
+  info: string
+  dispatch: Dispatch<Action>
+}>(({ info, dispatch }) => {
+  const [submitting, fakeSubmitting] = useFakeSubmitting(400)
+
+  return (
+    <ContainerInfoForm
+      label="Send Info"
+      textarea={
+        <Textarea
+          fontFamily="monospace"
+          display="block"
+          rows={10}
+          resize="vertical"
+          value={info}
+          placeholder="Put info right here"
+          onChange={event => dispatch(ChangeInfo(event.target.value))}
+        />
+      }
+      helperText="You can submit both plain text and JSON"
+      submitButton={
+        <Button
+          size="sm"
+          colorScheme="teal"
+          isLoading={submitting}
+          onClick={() => {
+            fakeSubmitting()
+            dispatch(SendInfo)
+          }}
+        >
+          Submit
+        </Button>
+      }
+    />
+  )
+})
 
 export const View = React.memo<{
   state: State
   dispatch: Dispatch<Action>
-}>(({ state, dispatch }) => {
-  const [submitting, fakeSubmitting] = useFakeSubmitting(400)
+}>(({ state, dispatch }) => (
+  <VStack spacing="4" align="start">
+    <ViewInfoForm info={state.info} dispatch={dispatch} />
 
-  return (
-    <Stack spacing="4">
-      <StackItem>
-        <FormControl>
-          <FormLabel>Send Info</FormLabel>
+    <InfoTemplates.View
+      template={state.info}
+      state={state.infoTemplates}
+      dispatch={useMapDispatch(InfoTemplatesAction, dispatch)}
+    />
+  </VStack>
+))
 
-          <StyledTextarea
-            rows={10}
-            resize="vertical"
-            value={state.info}
-            placeholder="Put info right here"
-            onChange={event => dispatch(ChangeInfo(event.target.value))}
-          />
+// S K E L E T O N
 
-          <FormHelperText>
-            <HStack>
-              <Box flex="1">You can submit both plain text and JSON</Box>
+export const Skeleton = React.memo(() => (
+  <VStack spacing="4" align="start">
+    <ContainerInfoForm
+      label={<SkeletonText />}
+      textarea={<SkeletonRect width="100%" height={188} />}
+      helperText={<SkeletonText />}
+      submitButton={<SkeletonRect width={72} height={32} />}
+    />
 
-              <Button
-                size="sm"
-                colorScheme="teal"
-                isLoading={submitting}
-                onClick={() => {
-                  fakeSubmitting()
-                  dispatch(SendInfo)
-                }}
-              >
-                Submit
-              </Button>
-            </HStack>
-          </FormHelperText>
-        </FormControl>
-      </StackItem>
-
-      <StackItem>
-        {state.templateName == null ? (
-          <HStack>
-            <Button
-              colorScheme="teal"
-              isLoading={submitting}
-              onClick={() => {
-                fakeSubmitting()
-                dispatch(SendInfo)
-              }}
-            >
-              Submit
-            </Button>
-
-            <Button
-              variant="outline"
-              colorScheme="teal"
-              onClick={() => dispatch(ShowTemplateForm(true))}
-            >
-              Save as Template
-            </Button>
-          </HStack>
-        ) : (
-          <ViewTemplateForm
-            template={state.info}
-            templateName={state.templateName}
-            busy={state.savingTemplate.isLoading()}
-            error={state.savingTemplate.cata({
-              Failure: error => error,
-              _: () => null
-            })}
-            dispatch={dispatch}
-          />
-        )}
-      </StackItem>
-    </Stack>
-  )
-})
+    <InfoTemplates.Skeleton />
+  </VStack>
+))

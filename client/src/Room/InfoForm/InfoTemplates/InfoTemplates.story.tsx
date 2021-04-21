@@ -11,6 +11,8 @@ export default {
   title: 'InfoTemplates'
 }
 
+export const Skeleton: React.FC = () => <InfoTemplates.Skeleton />
+
 export const LoadingTemplates: React.FC = () => (
   <InfoTemplates.View
     template=""
