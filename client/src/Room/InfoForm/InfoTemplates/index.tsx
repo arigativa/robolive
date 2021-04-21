@@ -16,6 +16,8 @@ import Either from 'frctl/Either'
 import { Dispatch, Cmd } from 'core'
 import { InfoTemplate, getInfoTemplates, saveInfoTemplates } from 'api'
 import { SipConnection } from 'sip'
+import { SkeletonRect } from 'Skeleton'
+import { AlertPanel } from 'AlertPanel'
 import { Case } from 'utils'
 
 import type { RoomCredentials } from 'Room'
@@ -170,6 +172,7 @@ const ViewTemplateForm = React.memo<{
   <InputGroup
     as="form"
     size="sm"
+    width={200}
     onSubmit={event => {
       dispatch(SaveTemplate({ name, content: template }))
 
@@ -205,9 +208,7 @@ const ViewTemplateForm = React.memo<{
   </InputGroup>
 ))
 
-const ViewFailure = React.memo(() => null)
-
-const ViewContainer: React.FC = ({ children }) => (
+const ViewTemplatesContainer: React.FC = ({ children }) => (
   <Box flexWrap="wrap" display="flex" ml="-2" mt="-2">
     {React.Children.map(children, child => (
       <Box mt="2" ml="2">
@@ -225,10 +226,14 @@ export const View = React.memo<{
   return state.infoTemplates.cata({
     Loading: () => <Skeleton />,
 
-    Failure: () => <ViewFailure />,
+    Failure: message => (
+      <AlertPanel status="error" title="Request Error!">
+        {message}
+      </AlertPanel>
+    ),
 
     Succeed: infoTemplates => (
-      <ViewContainer>
+      <ViewTemplatesContainer>
         <ViewTemplateForm
           template={template}
           name={state.name}
@@ -247,11 +252,17 @@ export const View = React.memo<{
             dispatch={dispatch}
           />
         ))}
-      </ViewContainer>
+      </ViewTemplatesContainer>
     )
   })
 })
 
 // S K E L E T O N
 
-export const Skeleton = React.memo(() => null)
+export const Skeleton = React.memo(() => (
+  <ViewTemplatesContainer>
+    {[200, 160, 80, 120].map((width, i) => (
+      <SkeletonRect key={i} width={width} height={32} />
+    ))}
+  </ViewTemplatesContainer>
+))

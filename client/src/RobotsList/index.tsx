@@ -1,23 +1,12 @@
 import React, { ReactNode } from 'react'
-import {
-  Container,
-  Heading,
-  Text,
-  Box,
-  VStack,
-  Button,
-  Alert,
-  AlertStatus,
-  AlertIcon,
-  AlertTitle,
-  AlertDescription
-} from '@chakra-ui/react'
+import { Container, Heading, Text, Box, VStack, Button } from '@chakra-ui/react'
 import Either from 'frctl/Either'
 import RemoteData from 'frctl/RemoteData'
 
 import { Cmd, Sub, Dispatch } from 'core'
 import { Agent, getAgentList } from 'api'
 import { SkeletonText, SkeletonRect } from 'Skeleton'
+import { AlertPanel } from 'AlertPanel'
 import { Case, range, every } from 'utils'
 
 // S T A T E
@@ -153,17 +142,6 @@ const EmptyAgentList = React.memo<{
     </Button>
   </AlertPanel>
 ))
-
-const AlertPanel: React.FC<{
-  status: AlertStatus
-  title?: string
-}> = ({ status, title, children }) => (
-  <Alert status={status}>
-    <AlertIcon />
-    {title && <AlertTitle>{title}</AlertTitle>}
-    <AlertDescription>{children}</AlertDescription>
-  </Alert>
-)
 
 const AgentItem = React.memo<{
   agent: Agent
