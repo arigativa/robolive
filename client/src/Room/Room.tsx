@@ -1,6 +1,6 @@
 import React from 'react'
 import RemoteData from 'frctl/RemoteData'
-import { Container, Box, Button, VStack, Heading, Text } from '@chakra-ui/react'
+import { Box, Button, VStack, Heading, Text } from '@chakra-ui/react'
 
 import { Dispatch, Cmd, Sub, useMapDispatch } from 'core'
 import { SipConnection } from 'sip'
@@ -54,7 +54,6 @@ export type Action =
   | Case<'FailConnection', string>
   | Case<'NewOutgoingMessage', string>
   | Case<'SendInfoAgain', string>
-  | Case<'Terminate'>
   | Case<'GoToRobotsList'>
   | Case<'InfoFormAction', InfoForm.Action>
 
@@ -64,7 +63,6 @@ const NewOutgoingMessage = Case.of<Action, 'NewOutgoingMessage'>(
   'NewOutgoingMessage'
 )
 const SendInfoAgain = Case.of<Action, 'SendInfoAgain'>('SendInfoAgain')
-const Terminate = Case.of<Action, 'Terminate'>('Terminate')()
 const GoToRobotsList = Case.of<Action, 'GoToRobotsList'>('GoToRobotsList')()
 const InfoFormAction = Case.of<Action, 'InfoFormAction'>('InfoFormAction')
 
@@ -113,16 +111,6 @@ export const update = (
 
     case 'SendInfoAgain': {
       return Updated([state, connection.sendInfo(action.payload)])
-    }
-
-    case 'Terminate': {
-      return Updated([
-        {
-          ...state,
-          terminating: true
-        },
-        connection.terminate
-      ])
     }
 
     case 'GoToRobotsList': {
@@ -256,7 +244,7 @@ const ViewSucceed = React.memo<{
   }, [stream])
 
   return (
-    <Box>
+    <Box width="100%">
       <video ref={videoRef} autoPlay />
 
       <Box mt="2">
@@ -277,49 +265,44 @@ export const View = React.memo<{
   state: State
   dispatch: Dispatch<Action>
 }>(({ state, dispatch }) => (
-  <Container>
-    <VStack align="start">
-      <Button
-        size="xs"
-        variant="outline"
-        colorScheme="teal"
-        isDisabled={state.terminating}
-        onClick={() => dispatch(Terminate)}
-      >
-        Back to Robots List
-      </Button>
+  <VStack align="start">
+    <Button
+      size="xs"
+      variant="outline"
+      colorScheme="teal"
+      onClick={() => dispatch(GoToRobotsList)}
+    >
+      Back to Robots List
+    </Button>
 
-      {state.stream.cata({
-        NotAsked: () => <AlertPanel status="info">Call is ended.</AlertPanel>,
+    {state.stream.cata({
+      NotAsked: () => <AlertPanel status="info">Call is ended.</AlertPanel>,
 
-        Loading: () => <InfoForm.Skeleton />,
+      Loading: () => <InfoForm.Skeleton />,
 
-        Failure: message => (
-          <AlertPanel status="error" title="Video Stream Error!">
-            {message}
-          </AlertPanel>
-        ),
+      Failure: message => (
+        <AlertPanel status="error" title="Video Stream Error!">
+          {message}
+        </AlertPanel>
+      ),
 
-        Succeed: stream => (
-          <ViewSucceed
-            stream={stream}
-            outgoingInfoMessages={state.outgoingInfoMessages}
-            infoForm={state.infoForm}
-            dispatch={dispatch}
-          />
-        )
-      })}
-    </VStack>
-  </Container>
+      Succeed: stream => (
+        <ViewSucceed
+          stream={stream}
+          outgoingInfoMessages={state.outgoingInfoMessages}
+          infoForm={state.infoForm}
+          dispatch={dispatch}
+        />
+      )
+    })}
+  </VStack>
 ))
 
 // S K E L E T O N
 
 export const Skeleton = React.memo(() => (
-  <Container>
-    <VStack align="start">
-      <SkeletonRect width={132} height={24} />
-      <InfoForm.Skeleton />
-    </VStack>
-  </Container>
+  <VStack align="start">
+    <SkeletonRect width={132} height={24} />
+    <InfoForm.Skeleton />
+  </VStack>
 ))

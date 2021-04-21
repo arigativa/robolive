@@ -1,6 +1,7 @@
 import React from 'react'
 import RemoteData from 'frctl/RemoteData'
 import Either from 'frctl/Either'
+import { Container } from '@chakra-ui/react'
 
 import { Dispatch, Cmd, Sub, useMapDispatch } from 'core'
 import { RoomConfiguration, joinRoom } from 'api'
@@ -114,15 +115,23 @@ export const View = React.memo<{
 }>(({ state, dispatch }) => {
   const roomDispatch = useMapDispatch(RoomAction, dispatch)
 
-  return state.cata({
-    Loading: () => <Room.Skeleton />,
+  return (
+    <Container py="4">
+      {state.cata({
+        Loading: () => (
+          <Room.View state={Room.initialState} dispatch={roomDispatch} />
+        ),
 
-    Failure: message => (
-      <AlertPanel status="error" title="Request Error!">
-        {message}
-      </AlertPanel>
-    ),
+        Failure: message => (
+          <AlertPanel status="error" title="Request Error!">
+            {message}
+          </AlertPanel>
+        ),
 
-    Succeed: ({ room }) => <Room.View state={room} dispatch={roomDispatch} />
-  })
+        Succeed: ({ room }) => (
+          <Room.View state={room} dispatch={roomDispatch} />
+        )
+      })}
+    </Container>
+  )
 })

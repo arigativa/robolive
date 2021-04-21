@@ -177,7 +177,7 @@ export const View = React.memo<{
   state: State
   dispatch: Dispatch<Action>
 }>(({ state, dispatch }) => (
-  <Container>
+  <Container py="4">
     {state.robots.cata({
       Loading: () => <SkeletonAgentList />,
 
@@ -220,7 +220,7 @@ const SkeletonAgentList = React.memo<{
 ))
 
 export const Skeleton = React.memo(() => (
-  <Container>
+  <Container py="4">
     <SkeletonAgentList />
   </Container>
 ))
