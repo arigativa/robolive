@@ -1,7 +1,7 @@
 import React from 'react'
 import { action } from '@storybook/addon-actions'
 import { text, boolean } from '@storybook/addon-knobs'
-import RemoteData from 'frctl/RemoteData/Optional'
+import RemoteData from 'frctl/RemoteData'
 
 import * as InfoForm from '.'
 
@@ -53,8 +53,8 @@ export const TemplateIsSaving: React.FC = () => (
       ...InfoForm.initialState,
       templateName: 'ROTATE_LEFT',
       savingTemplate: boolean('Saving', true)
-        ? RemoteData.Loading
-        : RemoteData.NotAsked
+        ? RemoteData.Optional.Loading
+        : RemoteData.Optional.NotAsked
     }}
     dispatch={action('dispatch')}
   />
@@ -65,7 +65,7 @@ export const TemplateSavingFails: React.FC = () => (
     state={{
       ...InfoForm.initialState,
       templateName: 'ROTATE_LEFT',
-      savingTemplate: RemoteData.Failure(
+      savingTemplate: RemoteData.Optional.Failure(
         text('Error message', 'Endpoint is not reachable')
       )
     }}

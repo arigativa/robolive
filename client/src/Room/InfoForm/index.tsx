@@ -1,6 +1,7 @@
 import React from 'react'
 import styled from '@emotion/styled'
 import {
+  Box,
   Stack,
   StackItem,
   FormControl,
@@ -12,7 +13,6 @@ import {
   HStack
 } from '@chakra-ui/react'
 import RemoteData from 'frctl/RemoteData'
-import RemoteDataOptional from 'frctl/RemoteData/Optional'
 import Either from 'frctl/Either'
 
 import { Dispatch, Cmd } from 'core'
@@ -27,14 +27,14 @@ import type { RoomCredentials } from 'Room'
 export interface State {
   info: string
   templateName: null | string
-  savingTemplate: RemoteDataOptional<string, never>
+  savingTemplate: RemoteData.Optional<string, never>
   infoTemplates: RemoteData<string, Array<InfoTemplate>>
 }
 
 export const initialState: State = {
   info: '',
   templateName: null,
-  savingTemplate: RemoteDataOptional.NotAsked,
+  savingTemplate: RemoteData.Optional.NotAsked,
   infoTemplates: RemoteData.Loading
 }
 
@@ -48,7 +48,7 @@ export const initCmd = (credentials: RoomCredentials): Cmd<Action> => {
 
 export type Action =
   | Case<'ChangeInfo', string>
-  | Case<'SendInfo', string>
+  | Case<'SendInfo'>
   | Case<'ShowTemplateForm', boolean>
   | Case<'ChangeTemplateName', string>
   | Case<'SaveTemplate', InfoTemplate>
@@ -57,7 +57,7 @@ export type Action =
   | Case<'LoadInfoTemplates', Either<string, Array<InfoTemplate>>>
 
 const ChangeInfo = Case.of<'ChangeInfo', Action>('ChangeInfo')
-const SendInfo = Case.of<'SendInfo', Action>('SendInfo')
+const SendInfo = Case.of<'SendInfo', Action>('SendInfo')()
 const ShowTemplateForm = Case.of<'ShowTemplateForm', Action>('ShowTemplateForm')
 const ChangeTemplateName = Case.of<'ChangeTemplateName', Action>(
   'ChangeTemplateName'
@@ -89,7 +89,7 @@ export const update = (
     }
 
     case 'SendInfo': {
-      return [state, connection.sendInfo(action.payload)]
+      return [state, connection.sendInfo(state.info)]
     }
 
     case 'ShowTemplateForm': {
@@ -97,7 +97,7 @@ export const update = (
         {
           ...state,
           templateName: action.payload ? '' : null,
-          savingTemplate: RemoteDataOptional.NotAsked
+          savingTemplate: RemoteData.Optional.NotAsked
         },
         Cmd.none
       ]
@@ -122,7 +122,7 @@ export const update = (
       return [
         {
           ...state,
-          savingTemplate: RemoteDataOptional.Loading
+          savingTemplate: RemoteData.Optional.Loading
         },
         Cmd.create<Action>(done => {
           saveInfoTemplates(credentials, nextTemplates)
@@ -140,7 +140,7 @@ export const update = (
       return [
         {
           ...state,
-          savingTemplate: RemoteDataOptional.Loading
+          savingTemplate: RemoteData.Optional.Loading
         },
         Cmd.create<Action>(done => {
           saveInfoTemplates(credentials, nextTemplates)
@@ -155,7 +155,7 @@ export const update = (
         Left: error => [
           {
             ...state,
-            savingTemplate: RemoteDataOptional.Failure(error)
+            savingTemplate: RemoteData.Optional.Failure(error)
           },
           Cmd.none
         ],
@@ -271,7 +271,21 @@ export const View = React.memo<{
           />
 
           <FormHelperText>
-            You can submit both plain text and JSON or save it as a Button
+            <HStack>
+              <Box flex="1">You can submit both plain text and JSON</Box>
+
+              <Button
+                size="sm"
+                colorScheme="teal"
+                isLoading={submitting}
+                onClick={() => {
+                  fakeSubmitting()
+                  dispatch(SendInfo)
+                }}
+              >
+                Submit
+              </Button>
+            </HStack>
           </FormHelperText>
         </FormControl>
       </StackItem>
@@ -284,7 +298,7 @@ export const View = React.memo<{
               isLoading={submitting}
               onClick={() => {
                 fakeSubmitting()
-                dispatch(SendInfo(state.info))
+                dispatch(SendInfo)
               }}
             >
               Submit

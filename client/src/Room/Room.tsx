@@ -1,5 +1,5 @@
 import React from 'react'
-import RemoteData from 'frctl/RemoteData/Optional'
+import RemoteData from 'frctl/RemoteData'
 import {
   Container,
   Box,
@@ -26,14 +26,14 @@ interface OutgoingInfoMessage {
 }
 
 export interface State {
-  stream: RemoteData<string, MediaStream>
+  stream: RemoteData.Optional<string, MediaStream>
   terminating: boolean
   outgoingInfoMessages: Array<OutgoingInfoMessage>
   infoForm: InfoForm.State
 }
 
 export const initialState: State = {
-  stream: RemoteData.Loading,
+  stream: RemoteData.Optional.Loading,
   terminating: false,
   outgoingInfoMessages: [],
   infoForm: InfoForm.initialState
@@ -86,7 +86,7 @@ export const update = (
       return Updated([
         {
           ...state,
-          stream: RemoteData.Succeed(action.payload)
+          stream: RemoteData.Optional.Succeed(action.payload)
         },
         Cmd.none
       ])
@@ -96,7 +96,7 @@ export const update = (
       return Updated([
         {
           ...state,
-          stream: RemoteData.Failure(action.payload)
+          stream: RemoteData.Optional.Failure(action.payload)
         },
         Cmd.none
       ])
