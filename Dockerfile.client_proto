@@ -14,7 +14,7 @@ RUN protoc \
     --plugin="protoc-gen-ts=${PROTOC_GEN_TS_PATH}" \
     --js_out="import_style=commonjs,binary:${OUT_DIR}" \
     --ts_out="service=grpc-web:${OUT_DIR}" \
-    --proto_path /protocols Agent.proto Client.proto Info.proto Storage.proto
+    --proto_path /protocols /protocols/*
 
 FROM scratch as artifact
 COPY --from=protoc_ts /generated /generated
