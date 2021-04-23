@@ -6,7 +6,7 @@
     "dev": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "typecheck": "tsc --project ./tsconfig.json",
+    "typecheck": "tsc --project ./tsconfig.json --noEmit",
     "lint": "npm run typecheck & eslint . --config=.eslintrc.prod.json --ext=js,ts,tsx",
     "prettify": "prettier . --write",
     "analyze": "source-map-explorer 'build/static/js/**/*.js' --gzip",
@@ -15,8 +15,8 @@
   },
   "husky": {
     "hooks": {
-      "pre-commit": "lint-staged && npm run typecheck",
-      "pre-push": "npm run test -- --passWithNoTests --watchAll=false"
+      "pre-commit": "lint-staged",
+      "pre-push": "npm run typecheck && npm run test -- --passWithNoTests --watchAll=false"
     }
   },
   "lint-staged": {
