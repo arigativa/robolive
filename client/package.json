@@ -11,9 +11,7 @@
     "prettify": "prettier . --write",
     "analyze": "source-map-explorer 'build/static/js/**/*.js' --gzip",
     "storybook": "start-storybook -p 9009 -s public",
-    "storybook:build": "build-storybook -s public",
-    "cy:open": "cypress open",
-    "cy:run": "cypress run --browser chrome"
+    "storybook:build": "build-storybook -s public"
   },
   "husky": {
     "hooks": {
@@ -50,7 +48,6 @@
     "redux-devtools-extension": "^2.13.8"
   },
   "devDependencies": {
-    "@bahmutov/add-typescript-to-cypress": "^2.1.2",
     "@storybook/addon-actions": "^6.1.17",
     "@storybook/addon-knobs": "^6.1.17",
     "@storybook/addon-links": "^6.1.17",
@@ -61,8 +58,6 @@
     "@types/node": "^14.14.25",
     "@typescript-eslint/eslint-plugin": "^4.14.2",
     "@typescript-eslint/parser": "^4.14.2",
-    "cypress": "^6.4.0",
-    "cypress-browser-permissions": "^1.0.5",
     "eslint-config-prettier": "^7.2.0",
     "eslint-config-react-app": "^6.0.0",
     "eslint-plugin-prettier": "^3.3.1",
