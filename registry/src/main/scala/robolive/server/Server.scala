@@ -125,7 +125,8 @@ object Server {
         state = agentState,
         statusRef = new AtomicReference[String]("Status unknown"),
         sendToAgent = sendToAgent,
-        requests = new ConcurrentHashMap[String, Promise[Map[String, String]]]()
+        requests = new ConcurrentHashMap[String, Promise[Map[String, String]]](),
+        settings = new ConcurrentHashMap[String, String]()
       )
 
       activeConnections.put(connectionId, activeConnection)
@@ -164,6 +165,7 @@ object Server {
     private val statusRef: AtomicReference[String],
     private val sendToAgent: RegistryMessage => Unit,
     private val requests: ConcurrentHashMap[String, Promise[Map[String, String]]],
+    private val settings: ConcurrentHashMap[String, String],
   ) {
     def login: Login = state.login
 
@@ -202,6 +204,15 @@ object Server {
       } else {
         false
       }
+    }
+
+    def updateSetting(key: String, value: String): Unit = {
+      val _ = settings.put(key, value)
+    }
+
+    def getSettings: Map[String, String] = {
+      import scala.jdk.CollectionConverters._
+      settings.asScala.toMap
     }
   }
 

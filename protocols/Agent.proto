@@ -11,6 +11,11 @@ message AgentMessage {
     required string status = 1;
   }
 
+  message SettingUpdate {
+    required string key = 1;
+    required string value = 2;
+  }
+
   message JoinDecision {
     message Accepted {
       map<string, string> settings = 1;
@@ -30,6 +35,7 @@ message AgentMessage {
     RegisterRequest register = 1;
     JoinDecision join = 2;
     StatusUpdate statusUpdate = 3;
+    SettingUpdate settingUpdate = 4;
   }
 }
 
