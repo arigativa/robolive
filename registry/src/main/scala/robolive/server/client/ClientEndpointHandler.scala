@@ -102,10 +102,7 @@ final class ClientEndpointHandler(
               )
             }
 
-          case None =>
-            Future.failed(
-              new RuntimeException(s"Can not find UIDescription for ${request.targetId}")
-            )
+          case None => Future.successful(Client.UIDescription(Seq.empty))
         }
 
       case None =>
