@@ -6,6 +6,7 @@
 target/
 .idea/
 classes/
+robot_configs/
 
 # dependencies
 **/node_modules
