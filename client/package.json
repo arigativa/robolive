@@ -36,7 +36,6 @@
     "@improbable-eng/grpc-web": "^0.14.0",
     "@types/react": "^17.0.1",
     "@types/react-dom": "^17.0.0",
-    "browser-headers": "^0.4.1",
     "decode-json": "^1.0.1",
     "framer-motion": "^3.3.0",
     "frctl": "^2.0.0",
