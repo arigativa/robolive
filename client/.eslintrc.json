@@ -151,7 +151,7 @@
           }
         ],
         "@typescript-eslint/method-signature-style": ["error", "method"],
-        "@typescript-eslint/no-non-null-assertion": "error",
+        "@typescript-eslint/no-non-null-assertion": "off",
         "@typescript-eslint/no-extraneous-class": "error",
         "@typescript-eslint/no-invalid-void-type": "error",
         "@typescript-eslint/no-require-imports": "error",

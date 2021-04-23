@@ -50,7 +50,7 @@ export const NonEmptyTemplateName: React.FC = () => (
     template=""
     state={{
       ...InfoTemplates.initialState,
-      name: text('Template name', 'Rotate_180deg'),
+      templateName: text('Template name', 'Rotate_180deg'),
       infoTemplates: RemoteData.Succeed([])
     }}
     dispatch={action('dispatch')}
@@ -62,8 +62,8 @@ export const SavingTemplate: React.FC = () => (
     template=""
     state={{
       ...InfoTemplates.initialState,
-      name: 'Rotate_180deg',
-      saving: boolean('Saving ON', true)
+      templateName: 'Rotate_180deg',
+      savingTemplate: boolean('Saving ON', true)
         ? RemoteData.Optional.Loading
         : RemoteData.Optional.NotAsked,
       infoTemplates: RemoteData.Succeed([])
@@ -77,8 +77,8 @@ export const SavingTemplateFail: React.FC = () => (
     template=""
     state={{
       ...InfoTemplates.initialState,
-      name: 'Rotate_180deg',
-      saving: RemoteData.Optional.Failure(
+      templateName: 'Rotate_180deg',
+      savingTemplate: RemoteData.Optional.Failure(
         text('Saving error', 'Could not save it')
       ),
       infoTemplates: RemoteData.Succeed([])
@@ -121,7 +121,7 @@ export const ManyTemplatesWithSavingError: React.FC = () => {
       template=""
       state={{
         ...InfoTemplates.initialState,
-        saving: RemoteData.Optional.Failure('Could not save it'),
+        savingTemplate: RemoteData.Optional.Failure('Could not save it'),
         infoTemplates: RemoteData.Succeed(makeTemplates(20, 'Template #{i}'))
       }}
       dispatch={action('dispatch')}

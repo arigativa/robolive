@@ -27,14 +27,14 @@ import type { RoomCredentials } from 'Room'
 // S T A T E
 
 export interface State {
-  name: string
-  saving: RemoteData.Optional<string, never>
+  templateName: string
+  savingTemplate: RemoteData.Optional<string, never>
   infoTemplates: RemoteData<string, Array<InfoTemplate>>
 }
 
 export const initialState: State = {
-  name: '',
-  saving: RemoteData.Optional.NotAsked,
+  templateName: '',
+  savingTemplate: RemoteData.Optional.NotAsked,
   infoTemplates: RemoteData.Loading
 }
 
@@ -52,7 +52,10 @@ export type Action =
   | Case<'ChangeName', string>
   | Case<'SaveTemplate', string>
   | Case<'DeleteTemplate', string>
-  | Case<'UpdateTemplatesDone', Either<string, null>>
+  | Case<
+      'UpdateTemplatesDone',
+      { resetName: boolean; result: Either<string, null> }
+    >
 
 const LoadInfoTemplates = Case.of<'LoadInfoTemplates', Action>(
   'LoadInfoTemplates'
@@ -111,7 +114,8 @@ export const update = (
       return [
         {
           ...state,
-          name: action.payload
+          templateName: action.payload,
+          savingTemplate: RemoteData.Optional.NotAsked
         },
         Cmd.none
       ]
@@ -119,11 +123,17 @@ export const update = (
 
     case 'SaveTemplate': {
       const infoTemplates = state.infoTemplates.getOrElse([])
-      const templateValidation = validateTemplate(state.name, infoTemplates)
+      const templateValidation = validateTemplate(
+        state.templateName,
+        infoTemplates
+      )
 
       if (templateValidation !== null) {
         return [
-          { ...state, saving: RemoteData.Optional.Failure(templateValidation) },
+          {
+            ...state,
+            savingTemplate: RemoteData.Optional.Failure(templateValidation)
+          },
           Cmd.none
         ]
       }
@@ -131,7 +141,7 @@ export const update = (
       const nextTemplates = [
         ...infoTemplates,
         {
-          name: state.name.trim(),
+          name: state.templateName.trim(),
           content: action.payload
         }
       ]
@@ -139,11 +149,11 @@ export const update = (
       return [
         {
           ...state,
-          saving: RemoteData.Optional.Loading
+          savingTemplate: RemoteData.Optional.Loading
         },
         Cmd.create<Action>(done => {
           saveInfoTemplates(credentials, nextTemplates)
-            .then(UpdateTemplatesDone)
+            .then(result => UpdateTemplatesDone({ resetName: true, result }))
             .then(done)
         })
       ]
@@ -157,18 +167,18 @@ export const update = (
       return [
         {
           ...state,
-          saving: RemoteData.Optional.Loading
+          savingTemplate: RemoteData.Optional.Loading
         },
         Cmd.create<Action>(done => {
           saveInfoTemplates(credentials, nextTemplates)
-            .then(UpdateTemplatesDone)
+            .then(result => UpdateTemplatesDone({ resetName: false, result }))
             .then(done)
         })
       ]
     }
 
     case 'UpdateTemplatesDone': {
-      return action.payload.cata<[State, Cmd<Action>]>({
+      return action.payload.result.cata<[State, Cmd<Action>]>({
         Left: error => [
           {
             ...state,
@@ -179,9 +189,12 @@ export const update = (
         Right: () => [
           {
             ...state,
-            saving: RemoteData.Optional.NotAsked
+            templateName: action.payload.resetName ? '' : state.templateName,
+            savingTemplate: RemoteData.Optional.NotAsked
           },
-          initCmd(credentials)
+          Cmd.create<Action>(done => {
+            getInfoTemplates(credentials).then(LoadInfoTemplates).then(done)
+          })
         ]
       })
     }
@@ -207,7 +220,7 @@ const ViewTemplate = React.memo<{
       aria-label="Delete template"
       ml="-px"
       colorScheme="pink"
-      onClick={() => dispatch(DeleteTemplate(infoTemplate.content))}
+      onClick={() => dispatch(DeleteTemplate(infoTemplate.name))}
     >
       <DeleteIcon />
     </IconButton>
@@ -251,6 +264,7 @@ const ViewTemplateForm = React.memo<{
     <InputRightElement>
       <IconButton
         aria-label="Save template"
+        type="submit"
         size="xs"
         colorScheme="teal"
         isDisabled={readonly}
@@ -299,10 +313,10 @@ export const View = React.memo<{
       <WrapItem>
         <ViewTemplateForm
           template={template}
-          name={state.name}
+          name={state.templateName}
           readonly={!state.infoTemplates.isSucceed()}
-          busy={state.saving.isLoading()}
-          error={state.saving.cata({
+          busy={state.savingTemplate.isLoading()}
+          error={state.savingTemplate.cata({
             Failure: error => error,
             _: () => null
           })}
