@@ -58,21 +58,12 @@ The page will reload if you make edits
 
 Builds the storybook sandbox for deploy to the `storybook-static` folder.
 
-### [`npm run cy:open`](https://docs.cypress.io/guides/guides/command-line.html#cypress-open)
-
-Opens the [Cypress][cypress] Test Runner.
-
-### [`npm run cy:run`](https://docs.cypress.io/guides/guides/command-line.html#cypress-run)
-
-Runs Cypress tests to completion.
-
 ## Tech Stack
 
 - [TypeScript][ts]
 - [Webpack](https://webpack.js.org/) configured via [Create React App][cra]
 - Code linting with [ESLint][eslint] and [Prettier][prettier]
 - Isolated React component development environment with [Storybook][storybook]
-- Functional tests with [Cypress][cypress]
 - Unit tests with [Jest][jest]
 - Bundle analyser [source-map-explorer][sme] to keep the size
 - Prepush/commit hooks with [husky][husky]

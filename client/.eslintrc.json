@@ -9,7 +9,7 @@
     "ecmaFeatures": { "jsx": true },
     "ecmaVersion": 2018,
     "sourceType": "module",
-    "project": ["./cypress/tsconfig.json", "./tsconfig.json"]
+    "project": ["./tsconfig.json"]
   },
 
   "extends": [
