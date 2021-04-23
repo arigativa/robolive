@@ -4,12 +4,18 @@ import Either from 'frctl/Either'
 import { InfoEndpointClient } from './generated/Info_pb_service'
 import { AgentListRequest, AgentView } from './generated/Info_pb'
 import { ClientEndpointClient } from './generated/Client_pb_service'
-import { JoinRequest } from './generated/Client_pb'
+import {
+  JoinRequest,
+  Button,
+  UIDescription,
+  GetUIDescriptionRequest,
+  AddUIDescriptionRequest
+} from './generated/Client_pb'
 
 const CLIENT_ENDPOINT_URL = process.env.REACT_APP_CLIENT_ENDPOINT_URL ?? ''
 const INFO_ENDPOINT_URL = process.env.REACT_APP_INFO_ENDPOINT_URL ?? ''
 
-const infoClient = new InfoEndpointClient(INFO_ENDPOINT_URL)
+const infoEndpoint = new InfoEndpointClient(INFO_ENDPOINT_URL)
 
 export interface Agent {
   id: string
@@ -36,14 +42,14 @@ export const getAgentList = (options: {
 }): Promise<Either<string, Array<Agent>>> => {
   return new Promise(done => {
     const req = new AgentListRequest()
+
     req.setName(options.username)
-    infoClient.agentList(req, (error, response) => {
+
+    infoEndpoint.agentList(req, (error, response) => {
       if (error) {
         done(Either.Left(error.message))
-      }
-
-      if (response) {
-        const agentList = response
+      } else {
+        const agentList = response!
           .getAgentlistList()
           .map(agent => agentViewToAgent(agent.toObject()))
           .filter((agent): agent is Agent => agent != null)
@@ -54,7 +60,7 @@ export const getAgentList = (options: {
   })
 }
 
-const clientClient = new ClientEndpointClient(CLIENT_ENDPOINT_URL)
+const clientEndpoint = new ClientEndpointClient(CLIENT_ENDPOINT_URL)
 
 const keyValuesToRecord = <T>(
   keyValues: Array<[string, T]>
@@ -94,13 +100,11 @@ export const joinRoom = (options: {
     req.setName(options.username)
     req.setTargetid(options.robotId)
 
-    clientClient.join(req, (error, response) => {
+    clientEndpoint.join(req, (error, response) => {
       if (error) {
         done(Either.Left(error.message))
-      }
-
-      if (response) {
-        const { failure, success } = response.toObject()
+      } else {
+        const { failure, success } = response!.toObject()
 
         if (failure?.reason) {
           done(Either.Left(failure.reason))
@@ -117,6 +121,73 @@ export const joinRoom = (options: {
             done(Either.Right(roomResult.value))
           }
         }
+      }
+    })
+  })
+}
+
+export interface InfoTemplate {
+  name: string
+  content: string
+}
+
+export const saveInfoTemplates = (
+  options: {
+    username: string
+    robotId: string
+  },
+  templates: Array<InfoTemplate>
+): Promise<Either<string, null>> => {
+  return new Promise(done => {
+    const descripiton = new UIDescription()
+
+    descripiton.setButtonsList(
+      templates.map(({ name, content }) => {
+        const btn = new Button()
+
+        btn.setName(name)
+        btn.setTemplate(content)
+
+        return btn
+      })
+    )
+
+    const req = new AddUIDescriptionRequest()
+
+    req.setName(options.username)
+    req.setTargetid(options.robotId)
+    req.setUidescription(descripiton)
+
+    clientEndpoint.addUiDescription(req, error => {
+      if (error) {
+        done(Either.Left(error.message))
+      } else {
+        done(Either.Right(null))
+      }
+    })
+  })
+}
+
+export const getInfoTemplates = (options: {
+  username: string
+  robotId: string
+}): Promise<Either<string, Array<InfoTemplate>>> => {
+  return new Promise(done => {
+    const req = new GetUIDescriptionRequest()
+
+    req.setName(options.username)
+    req.setTargetid(options.robotId)
+
+    clientEndpoint.getUiDescription(req, (error, response) => {
+      if (error) {
+        done(Either.Left(error.message))
+      } else {
+        const infoTemplates = response!.getButtonsList().map(btn => ({
+          name: btn.getName() ?? '',
+          content: btn.getTemplate() ?? ''
+        }))
+
+        done(Either.Right(infoTemplates))
       }
     })
   })

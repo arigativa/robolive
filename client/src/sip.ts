@@ -678,7 +678,7 @@ class ConnectionOptions {
   }
 }
 
-export interface Connection {
+export interface SipConnection {
   getStream<T>(tagger: (stream: MediaStream) => T): Cmd<T>
   sendInfo(info: string): Cmd<never>
   terminate: Cmd<never>
@@ -689,7 +689,7 @@ export interface Connection {
   onOutgoingInfo<T>(tagger: (content: string) => T): Sub<T>
 }
 
-class ConnectionImpl implements Connection {
+class ConnectionImpl implements SipConnection {
   public constructor(private readonly options: ConnectionOptions) {}
 
   public getStream<T>(tagger: (stream: MediaStream) => T): Cmd<T> {
@@ -743,7 +743,7 @@ class ConnectionImpl implements Connection {
 
 export const createConnection = (
   options: CreateConnectionOptions
-): Connection => {
+): SipConnection => {
   const connectionOptions = ConnectionOptions.create(options)
 
   return new ConnectionImpl(connectionOptions)

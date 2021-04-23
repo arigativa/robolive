@@ -1,77 +1,50 @@
 import React, { ReactNode } from 'react'
-import {
-  Container,
-  Heading,
-  Text,
-  Box,
-  VStack,
-  Button,
-  Alert,
-  AlertStatus,
-  AlertIcon,
-  AlertTitle,
-  AlertDescription
-} from '@chakra-ui/react'
+import { Container, Heading, Text, Box, VStack, Button } from '@chakra-ui/react'
 import Either from 'frctl/Either'
 import RemoteData from 'frctl/RemoteData'
 
 import { Cmd, Sub, Dispatch } from 'core'
-import { Agent, RoomConfiguration, getAgentList, joinRoom } from 'api'
+import { Agent, getAgentList } from 'api'
 import { SkeletonText, SkeletonRect } from 'Skeleton'
+import { AlertPanel } from 'AlertPanel'
 import { Case, range, every } from 'utils'
 
 // S T A T E
 
-type JoinStatus =
-  | Case<'NotJoin'>
-  | Case<'Joining', string>
-  | Case<'JoinFail', { robotId: string; message: string }>
-
-export const NotJoin = Case.of<JoinStatus, 'NotJoin'>('NotJoin')()
-export const Joining = Case.of<JoinStatus, 'Joining'>('Joining')
-export const JoinFail = Case.of<JoinStatus, 'JoinFail'>('JoinFail')
-
 export interface State {
   robots: RemoteData<string, Array<Agent>>
-  joinStatus: JoinStatus
   polling: boolean
 }
 
 export const init = (username: string): [State, Cmd<Action>] => [
   {
     robots: RemoteData.Loading,
-    joinStatus: NotJoin,
     polling: false
   },
-  Cmd.create<Action>(done =>
+  Cmd.create<Action>(done => {
     getAgentList({ username }).then(LoadRobots).then(done)
-  )
+  })
 ]
 
 // U P D A T E
 
 export type Stage =
   | Case<'Updated', [State, Cmd<Action>]>
-  | Case<'Joined', RoomConfiguration>
+  | Case<'JoinToRoom', string>
 
 const Updated = Case.of<Stage, 'Updated'>('Updated')
-const Joined = Case.of<Stage, 'Joined'>('Joined')
+const JoinToRoom = Case.of<Stage, 'JoinToRoom'>('JoinToRoom')
 
 export type Action =
   | Case<'ReInit'>
   | Case<'RunPolling'>
   | Case<'LoadRobots', Either<string, Array<Agent>>>
   | Case<'SelectRobot', string>
-  | Case<
-      'SelectRobotDone',
-      Either<{ robotId: string; message: string }, RoomConfiguration>
-    >
 
 const ReInit = Case.of<Action, 'ReInit'>('ReInit')()
 const RunPolling = Case.of<Action, 'RunPolling'>('RunPolling')()
 const LoadRobots = Case.of<Action, 'LoadRobots'>('LoadRobots')
 const SelectRobot = Case.of<Action, 'SelectRobot'>('SelectRobot')
-const SelectRobotDone = Case.of<Action, 'SelectRobotDone'>('SelectRobotDone')
 
 export const update = (
   action: Action,
@@ -107,32 +80,7 @@ export const update = (
     }
 
     case 'SelectRobot': {
-      const robotId = action.payload
-
-      return Updated([
-        {
-          ...state,
-          joinStatus: Joining(robotId)
-        },
-        Cmd.create<Action>(done => {
-          joinRoom({ username, robotId })
-            .then(result => result.mapLeft(message => ({ robotId, message })))
-            .then(SelectRobotDone)
-            .then(done)
-        })
-      ])
-    }
-
-    case 'SelectRobotDone': {
-      return action.payload.fold<Stage>(error => {
-        return Updated([
-          {
-            ...state,
-            joinStatus: JoinFail(error)
-          },
-          Cmd.none
-        ])
-      }, Joined)
+      return JoinToRoom(action.payload)
     }
   }
 }
@@ -140,11 +88,7 @@ export const update = (
 // S U B S C R I P T I O N S
 
 export const subscriptions = (state: State): Sub<Action> => {
-  if (
-    state.polling ||
-    state.joinStatus.type === 'Joining' ||
-    state.robots.getOrElse([]).length === 0
-  ) {
+  if (state.polling || state.robots.getOrElse([]).length === 0) {
     return Sub.none
   }
 
@@ -199,70 +143,32 @@ const EmptyAgentList = React.memo<{
   </AlertPanel>
 ))
 
-const AlertPanel: React.FC<{
-  status: AlertStatus
-  title?: string
-}> = ({ status, title, children }) => (
-  <Alert status={status}>
-    <AlertIcon />
-    {title && <AlertTitle>{title}</AlertTitle>}
-    <AlertDescription>{children}</AlertDescription>
-  </Alert>
-)
-
 const AgentItem = React.memo<{
-  joinStatus: JoinStatus
   agent: Agent
   dispatch: Dispatch<Action>
-}>(({ joinStatus, agent, dispatch }) => {
-  const disabled = joinStatus.type === 'Joining'
-  const loading =
-    joinStatus.type === 'Joining' && joinStatus.payload === agent.id
-  const error =
-    joinStatus.type === 'JoinFail' && joinStatus.payload.robotId === agent.id
-      ? joinStatus.payload.message
-      : null
-
-  return (
-    <ViewAgentItem
-      name={agent.name}
-      status={agent.status}
-      isAvailableForConnection={String(agent.isAvailableForConnection)}
+}>(({ agent, dispatch }) => (
+  <ViewAgentItem
+    name={agent.name}
+    status={agent.status}
+    isAvailableForConnection={String(agent.isAvailableForConnection)}
+  >
+    <Button
+      size="sm"
+      colorScheme="teal"
+      onClick={() => dispatch(SelectRobot(agent.id))}
     >
-      {error && (
-        <Box mb="2">
-          <AlertPanel status="error" title="Joining Failure">
-            {error}
-          </AlertPanel>
-        </Box>
-      )}
-
-      <Button
-        size="sm"
-        colorScheme="teal"
-        isDisabled={disabled}
-        isLoading={loading}
-        onClick={() => dispatch(SelectRobot(agent.id))}
-      >
-        {error ? 'Try again' : 'Select'}
-      </Button>
-    </ViewAgentItem>
-  )
-})
+      Select
+    </Button>
+  </ViewAgentItem>
+))
 
 const AgentList = React.memo<{
-  joinStatus: JoinStatus
   agentList: Array<Agent>
   dispatch: Dispatch<Action>
-}>(({ joinStatus, agentList, dispatch }) => (
+}>(({ agentList, dispatch }) => (
   <ViewAgentList>
     {agentList.map(agent => (
-      <AgentItem
-        key={agent.id}
-        joinStatus={joinStatus}
-        agent={agent}
-        dispatch={dispatch}
-      />
+      <AgentItem key={agent.id} agent={agent} dispatch={dispatch} />
     ))}
   </ViewAgentList>
 ))
@@ -271,7 +177,7 @@ export const View = React.memo<{
   state: State
   dispatch: Dispatch<Action>
 }>(({ state, dispatch }) => (
-  <Container>
+  <Container py="4">
     {state.robots.cata({
       Loading: () => <SkeletonAgentList />,
 
@@ -285,11 +191,7 @@ export const View = React.memo<{
         agentList.length === 0 ? (
           <EmptyAgentList dispatch={dispatch} />
         ) : (
-          <AgentList
-            joinStatus={state.joinStatus}
-            agentList={agentList}
-            dispatch={dispatch}
-          />
+          <AgentList agentList={agentList} dispatch={dispatch} />
         )
     })}
   </Container>
@@ -318,7 +220,7 @@ const SkeletonAgentList = React.memo<{
 ))
 
 export const Skeleton = React.memo(() => (
-  <Container>
+  <Container py="4">
     <SkeletonAgentList />
   </Container>
 ))
