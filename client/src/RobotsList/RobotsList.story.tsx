@@ -52,7 +52,7 @@ const createAgent = (index: number): Agent => ({
   id: createAgentId(index),
   name: createAgentName(index),
   status: `Status of Agent #${index}`,
-  isAvailableForConnection: false
+  isAvailable: false
 })
 
 export const AgentList: React.FC = () => {

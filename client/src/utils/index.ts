@@ -2,6 +2,10 @@ import { Sub } from 'core'
 
 export { Case } from './Case'
 
+export const isDefined = <T>(
+  value: undefined | null | T
+): value is NonNullable<T> => value != null
+
 export const hasWhitespaces = (input: string): boolean => {
   return /.*\s+.*/.test(input)
 }

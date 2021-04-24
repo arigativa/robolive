@@ -161,7 +161,7 @@ const AgentItem = React.memo<{
   <ViewAgentItem
     name={agent.name}
     status={agent.status}
-    isAvailableForConnection={String(agent.isAvailableForConnection)}
+    isAvailableForConnection={String(agent.isAvailable)}
   >
     <Button
       size="sm"

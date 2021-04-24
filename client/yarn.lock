@@ -3196,6 +3196,11 @@
     "@types/minimatch" "*"
     "@types/node" "*"
 
+"@types/google-protobuf@^3.15.1":
+  version "3.15.1"
+  resolved "https://registry.yarnpkg.com/@types/google-protobuf/-/google-protobuf-3.15.1.tgz#18328fd1bd3ae42dbdd55aaddbf466d17f8bfc88"
+  integrity sha512-GpEv+jQXPTK7U7oznibH/L6BZMANKNISVZaSM6d5O2nnuKw8N3YIoyxaKrbIR4H4HF8ksxoFzU0kpdksJK7jfw==
+
 "@types/graceful-fs@^4.1.2":
   version "4.1.4"
   resolved "https://registry.yarnpkg.com/@types/graceful-fs/-/graceful-fs-4.1.4.tgz#4ff9f641a7c6d1a3508ff88bc3141b152772e753"
