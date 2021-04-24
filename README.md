@@ -145,12 +145,13 @@ How to create a session:
 2. Import protocols from ./protocols folder to BloomRPC
 3. Click on `SessionEndpoint`.`DoAllowSession` in BloomRPC
 4. Paste something like the following:
-```
-{
-  "clientId": "test", // this is the name you enter on client
-  "agentId": "782e60f6-a996-4cf2-8453-ab19d8e78fd5", // this id could be found in `InfoEndpoint`.`AgentList`
-  "durationInSeconds": 3600 // time the session is active
-}```
+  ```
+  {
+    "clientId": "test", // this is the name you enter on client
+    "agentId": "782e60f6-a996-4cf2-8453-ab19d8e78fd5", // this id could be found in `InfoEndpoint`.`AgentList`
+    "durationInSeconds": 3600 // time the session is active
+  }
+  ```
 5. Change address to: ```rl.arigativa.ru:10480```
 6. Set TLS settings to `Server Certificate`
 7. Push `Play` button
