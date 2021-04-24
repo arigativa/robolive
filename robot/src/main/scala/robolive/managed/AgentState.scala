@@ -39,6 +39,17 @@ sealed trait AgentState
     )
   }
 
+  protected def settingsUpdate(key: String, value: String): AgentMessage = {
+    AgentMessage(
+      AgentMessage.Message.SettingUpdate(
+        AgentMessage.SettingUpdate(
+          key = key,
+          value = value,
+        )
+      )
+    )
+  }
+
   protected def decline(requestId: String, reason: String): AgentMessage = {
     AgentMessage(
       AgentMessage.Message.Join(
@@ -74,6 +85,7 @@ object AgentState {
     private val VideoSrcFn = "videoSrcFn"
     private val RestreamType = "restreamType"
     private val RTMPLink = "rtmpLink"
+    private val ShareRestreamLink = "shareRestreamLink"
 
     override def apply(deps: Deps, event: RegistryMessage.Message)(
       implicit ec: ExecutionContext
@@ -82,7 +94,13 @@ object AgentState {
         case Message.Registered(RegisterResponse(connectionId, login, password, _)) =>
           deps.configurationManager.write(ConfigurationManager.Config(login, password))
           deps.storageEndpointClient
-            .get(ReadRequest(Seq(VideoSrcFn, RestreamType, RTMPLink), login, password))
+            .get(
+              ReadRequest(
+                Seq(VideoSrcFn, RestreamType, RTMPLink, ShareRestreamLink),
+                login,
+                password
+              )
+            )
             .map { storageResponse =>
               val videoSource = {
                 val videoSourceFn = storageResponse.values.getOrElse(VideoSrcFn, "unknown")
@@ -95,6 +113,9 @@ object AgentState {
               }
 
               val rtmpLink: String = storageResponse.values.getOrElse(RTMPLink, "NONE")
+
+              val shareRestreamLink: Option[String] =
+                storageResponse.values.get(ShareRestreamLink)
 
               deps.logger.info(s"using video source: $videoSource")
 
@@ -118,6 +139,10 @@ object AgentState {
               deps.logger.info(s"pipeline state: ${pipeline.getState}")
 
               deps.sendMessage(statusUpdate("Registered"))
+
+              shareRestreamLink.foreach { link =>
+                deps.sendMessage(settingsUpdate(ShareRestreamLink, link))
+              }
 
               Registered(pipeline, gstInit, connectionId, login, password)
             }

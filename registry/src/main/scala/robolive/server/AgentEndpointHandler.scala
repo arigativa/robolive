@@ -80,6 +80,11 @@ final class AgentEndpointHandler(agentSystem: Server.AgentSystem) extends AgentE
 
           case Message.StatusUpdate(message) =>
             agentSystem.getConnection(connectionId).foreach(_.updateStatus(message.status))
+
+          case Message.SettingUpdate(setting) =>
+            agentSystem
+              .getConnection(connectionId)
+              .foreach(_.updateSetting(setting.key, setting.value))
         }
       }
 

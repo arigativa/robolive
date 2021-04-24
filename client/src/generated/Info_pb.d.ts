@@ -46,6 +46,8 @@ export class AgentView extends jspb.Message {
   getIsavailableforconnection(): boolean | undefined;
   setIsavailableforconnection(value: boolean): void;
 
+  getSettingsMap(): jspb.Map<string, string>;
+  clearSettingsMap(): void;
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): AgentView.AsObject;
   static toObject(includeInstance: boolean, msg: AgentView): AgentView.AsObject;
@@ -62,6 +64,7 @@ export namespace AgentView {
     name?: string,
     id?: string,
     isavailableforconnection?: boolean,
+    settingsMap: Array<[string, string]>,
   }
 }
 

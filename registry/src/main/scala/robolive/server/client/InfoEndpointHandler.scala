@@ -23,7 +23,8 @@ final class InfoEndpointHandler(
           status = connection.status,
           name = connection.name,
           id = connection.connectionId,
-          isAvailableForConnection = isAllowed || isOngoing
+          isAvailableForConnection = isAllowed || isOngoing,
+          settings = connection.getSettings,
         )
       }
       AgentListResponse(views)

@@ -9,6 +9,7 @@ message AgentView {
   required string name = 2;
   required string id = 3;
   required bool isAvailableForConnection = 4;
+  map<string, string> settings = 5;
 }
 
 message AgentListResponse {

@@ -2,14 +2,11 @@
 /**
  * @fileoverview
  * @enhanceable
- * @suppress {missingRequire} reports error on implicit type usages.
  * @suppress {messageConventions} JS Compiler reports an error if a variable or
  *     field starts with 'MSG_' and isn't a translatable message.
  * @public
  */
 // GENERATED CODE -- DO NOT EDIT!
-/* eslint-disable */
-// @ts-nocheck
 
 var jspb = require('google-protobuf');
 var goog = jspb;
@@ -264,7 +261,8 @@ proto.AgentView.toObject = function(includeInstance, msg) {
     status: (f = jspb.Message.getField(msg, 1)) == null ? undefined : f,
     name: (f = jspb.Message.getField(msg, 2)) == null ? undefined : f,
     id: (f = jspb.Message.getField(msg, 3)) == null ? undefined : f,
-    isavailableforconnection: (f = jspb.Message.getBooleanField(msg, 4)) == null ? undefined : f
+    isavailableforconnection: (f = jspb.Message.getBooleanField(msg, 4)) == null ? undefined : f,
+    settingsMap: (f = msg.getSettingsMap()) ? f.toObject(includeInstance, undefined) : []
   };
 
   if (includeInstance) {
@@ -316,6 +314,12 @@ proto.AgentView.deserializeBinaryFromReader = function(msg, reader) {
     case 4:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setIsavailableforconnection(value);
+      break;
+    case 5:
+      var value = msg.getSettingsMap();
+      reader.readMessage(value, function(message, reader) {
+        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
+         });
       break;
     default:
       reader.skipField();
@@ -373,6 +377,10 @@ proto.AgentView.serializeBinaryToWriter = function(message, writer) {
       4,
       f
     );
+  }
+  f = message.getSettingsMap(true);
+  if (f && f.getLength() > 0) {
+    f.serializeBinary(5, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
   }
 };
 
@@ -519,6 +527,28 @@ proto.AgentView.prototype.clearIsavailableforconnection = function() {
 proto.AgentView.prototype.hasIsavailableforconnection = function() {
   return jspb.Message.getField(this, 4) != null;
 };
+
+
+/**
+ * map<string, string> settings = 5;
+ * @param {boolean=} opt_noLazyCreate Do not create the map if
+ * empty, instead returning `undefined`
+ * @return {!jspb.Map<string,string>}
+ */
+proto.AgentView.prototype.getSettingsMap = function(opt_noLazyCreate) {
+  return /** @type {!jspb.Map<string,string>} */ (
+      jspb.Message.getMapField(this, 5, opt_noLazyCreate,
+      null));
+};
+
+
+/**
+ * Clears values from the map. The map will be non-null.
+ * @return {!proto.AgentView} returns this
+ */
+proto.AgentView.prototype.clearSettingsMap = function() {
+  this.getSettingsMap().clear();
+  return this;};
 
 
 

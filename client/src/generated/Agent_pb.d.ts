@@ -19,6 +19,11 @@ export class AgentMessage extends jspb.Message {
   getStatusupdate(): AgentMessage.StatusUpdate | undefined;
   setStatusupdate(value?: AgentMessage.StatusUpdate): void;
 
+  hasSettingupdate(): boolean;
+  clearSettingupdate(): void;
+  getSettingupdate(): AgentMessage.SettingUpdate | undefined;
+  setSettingupdate(value?: AgentMessage.SettingUpdate): void;
+
   getMessageCase(): AgentMessage.MessageCase;
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): AgentMessage.AsObject;
@@ -35,6 +40,7 @@ export namespace AgentMessage {
     register?: AgentMessage.RegisterRequest.AsObject,
     join?: AgentMessage.JoinDecision.AsObject,
     statusupdate?: AgentMessage.StatusUpdate.AsObject,
+    settingupdate?: AgentMessage.SettingUpdate.AsObject,
   }
 
   export class RegisterRequest extends jspb.Message {
@@ -90,6 +96,34 @@ export namespace AgentMessage {
   export namespace StatusUpdate {
     export type AsObject = {
       status?: string,
+    }
+  }
+
+  export class SettingUpdate extends jspb.Message {
+    hasKey(): boolean;
+    clearKey(): void;
+    getKey(): string | undefined;
+    setKey(value: string): void;
+
+    hasValue(): boolean;
+    clearValue(): void;
+    getValue(): string | undefined;
+    setValue(value: string): void;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): SettingUpdate.AsObject;
+    static toObject(includeInstance: boolean, msg: SettingUpdate): SettingUpdate.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: SettingUpdate, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): SettingUpdate;
+    static deserializeBinaryFromReader(message: SettingUpdate, reader: jspb.BinaryReader): SettingUpdate;
+  }
+
+  export namespace SettingUpdate {
+    export type AsObject = {
+      key?: string,
+      value?: string,
     }
   }
 
@@ -186,6 +220,7 @@ export namespace AgentMessage {
     REGISTER = 1,
     JOIN = 2,
     STATUSUPDATE = 3,
+    SETTINGUPDATE = 4,
   }
 }
 

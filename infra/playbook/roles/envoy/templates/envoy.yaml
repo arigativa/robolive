@@ -12,7 +12,7 @@ static_resources:
         - filters:
             - name: envoy.filters.network.http_connection_manager
               typed_config:
-                "@type": type.googleapis.com/envoy.config.filter.network.http_connection_manager.v2.HttpConnectionManager
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
                 codec_type: auto
                 stat_prefix: ingress_http
                 stream_idle_timeout: 0s
@@ -25,7 +25,7 @@ static_resources:
                         - match: { prefix: "/" }
                           route:
                             cluster: registry_agent_cluster
-                            max_grpc_timeout: 0s
+                            timeout: 0s
                       cors:
                         allow_origin_string_match:
                           - prefix: "*"
@@ -34,6 +34,7 @@ static_resources:
                         max_age: "1728000"
                         expose_headers: custom-header-1,grpc-status,grpc-message
                 http_filters:
+                  - name: envoy.filters.http.grpc_web
                   - name: envoy.filters.http.cors
                   - name: envoy.filters.http.router
           transport_socket:
@@ -55,7 +56,7 @@ static_resources:
         - filters:
             - name: envoy.filters.network.http_connection_manager
               typed_config:
-                "@type": type.googleapis.com/envoy.config.filter.network.http_connection_manager.v2.HttpConnectionManager
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
                 codec_type: auto
                 stat_prefix: ingress_http
                 stream_idle_timeout: 0s
@@ -68,7 +69,7 @@ static_resources:
                         - match: { prefix: "/" }
                           route:
                             cluster: registry_info_cluster
-                            max_grpc_timeout: 0s
+                            timeout: 0s
                       cors:
                         allow_origin_string_match:
                           - prefix: "*"
@@ -100,7 +101,7 @@ static_resources:
         - filters:
             - name: envoy.filters.network.http_connection_manager
               typed_config:
-                "@type": type.googleapis.com/envoy.config.filter.network.http_connection_manager.v2.HttpConnectionManager
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
                 codec_type: auto
                 stat_prefix: ingress_http
                 stream_idle_timeout: 0s
@@ -113,7 +114,7 @@ static_resources:
                         - match: { prefix: "/" }
                           route:
                             cluster: registry_client_cluster
-                            max_grpc_timeout: 0s
+                            timeout: 0s
                       cors:
                         allow_origin_string_match:
                           - prefix: "*"
@@ -145,7 +146,7 @@ static_resources:
         - filters:
             - name: envoy.filters.network.http_connection_manager
               typed_config:
-                "@type": type.googleapis.com/envoy.config.filter.network.http_connection_manager.v2.HttpConnectionManager
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
                 codec_type: auto
                 stat_prefix: ingress_http
                 stream_idle_timeout: 0s
@@ -158,7 +159,7 @@ static_resources:
                         - match: { prefix: "/" }
                           route:
                             cluster: registry_storage_cluster
-                            max_grpc_timeout: 0s
+                            timeout: 0s
                       cors:
                         allow_origin_string_match:
                           - prefix: "*"
@@ -167,6 +168,7 @@ static_resources:
                         max_age: "1728000"
                         expose_headers: custom-header-1,grpc-status,grpc-message
                 http_filters:
+                  - name: envoy.filters.http.grpc_web
                   - name: envoy.filters.http.cors
                   - name: envoy.filters.http.router
           transport_socket:
@@ -189,7 +191,7 @@ static_resources:
         - filters:
             - name: envoy.filters.network.http_connection_manager
               typed_config:
-                "@type": type.googleapis.com/envoy.config.filter.network.http_connection_manager.v2.HttpConnectionManager
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
                 codec_type: auto
                 stat_prefix: ingress_http
                 stream_idle_timeout: 0s
@@ -202,7 +204,7 @@ static_resources:
                         - match: { prefix: "/" }
                           route:
                             cluster: registry_session_cluster
-                            max_grpc_timeout: 0s
+                            timeout: 0s
                       cors:
                         allow_origin_string_match:
                           - prefix: "*"
@@ -211,6 +213,7 @@ static_resources:
                         max_age: "1728000"
                         expose_headers: custom-header-1,grpc-status,grpc-message
                 http_filters:
+                  - name: envoy.filters.http.grpc_web
                   - name: envoy.filters.http.cors
                   - name: envoy.filters.http.router
           transport_socket:
