@@ -115,7 +115,7 @@ export VIDEO_SRC='nvarguscamerasrc sensor_mode=3 ! video/x-raw(memory:NVMM),widt
 
 
 ### Run robot connected to Production using docker
-First you need to create `robot_configs` directory in project root.  
+First you need to create `robot_configs` directory in project root. Then create empty `robot_config/robot.cfg` file. 
 Then run docker-compose command below:  
 ```shell script
 # CONFIG_PATH is where robot credentials will be stored
