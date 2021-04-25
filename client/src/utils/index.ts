@@ -1,7 +1,6 @@
 import { Sub } from 'core'
 
 export { Case } from './Case'
-export type { CaseMatchSchema } from './Case'
 
 export const hasWhitespaces = (input: string): boolean => {
   return /.*\s+.*/.test(input)

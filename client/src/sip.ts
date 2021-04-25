@@ -7,7 +7,7 @@ import {
 } from 'jssip/lib/RTCSession'
 import { debug } from 'jssip/lib/JsSIP'
 import { Functor, Router, Cmd, Sub, registerManager } from 'core'
-import { Case, CaseMatchSchema } from 'utils'
+import { Case } from 'utils'
 
 debug.enable('JsSIP:*')
 
@@ -704,39 +704,31 @@ class ConnectionImpl implements SipConnection {
     return sipManager.createCmd(new TerminateCmd(this.options.key))
   }
 
-  private listen<T>(schema: CaseMatchSchema<ListenEvent, null | T>): Sub<T> {
-    return sipManager.createSub(
-      new ListenSub(this.options, event => {
-        return event.match<null | T>(schema)
-      })
-    )
+  private listen<T>(listener: (event: ListenEvent) => null | T): Sub<T> {
+    return sipManager.createSub(new ListenSub(this.options, listener))
   }
 
   public onEnd<T>(msg: T): Sub<T> {
-    return this.listen({
-      OnEnd: () => msg,
-      _: () => null
+    return this.listen(event => {
+      return event.type === 'OnEnd' ? msg : null
     })
   }
 
   public onFailure<T>(tagger: (reason: string) => T): Sub<T> {
-    return this.listen({
-      OnFailure: tagger,
-      _: () => null
+    return this.listen(event => {
+      return event.type === 'OnFailure' ? tagger(event.payload) : null
     })
   }
 
   public onIncomingInfo<T>(tagger: (content: string) => T): Sub<T> {
-    return this.listen({
-      OnIncomingInfo: tagger,
-      _: () => null
+    return this.listen(event => {
+      return event.type === 'OnIncomingInfo' ? tagger(event.payload) : null
     })
   }
 
   public onOutgoingInfo<T>(tagger: (content: string) => T): Sub<T> {
-    return this.listen({
-      OnOutgoingInfo: tagger,
-      _: () => null
+    return this.listen(event => {
+      return event.type === 'OnOutgoingInfo' ? tagger(event.payload) : null
     })
   }
 }

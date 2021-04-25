@@ -14,7 +14,7 @@ import * as Room from './Room'
 const IS_SECURE_SIP_CONNECTION =
   process.env.REACT_APP_IS_SECURE_SIP_CONNECTION === 'true'
 
-export interface RoomCredentials {
+export interface Credentials {
   username: string
   robotId: string
 }
@@ -26,7 +26,7 @@ export type State = RemoteData<
   { connection: SipConnection; room: Room.State }
 >
 
-export const init = (credentials: RoomCredentials): [State, Cmd<Action>] => [
+export const init = (credentials: Credentials): [State, Cmd<Action>] => [
   RemoteData.Loading,
   Cmd.create<Action>(done => {
     joinRoom(credentials).then(JoinToRoom).then(done)
@@ -47,9 +47,25 @@ export type Stage = Case<'Updated', [State, Cmd<Action>]> | Case<'BackToList'>
 const Updated = Case.of<Stage, 'Updated'>('Updated')
 const BackToList = Case.of<Stage, 'BackToList'>('BackToList')()
 
+const updateRoom = (connection: SipConnection, stage: Room.Stage): Stage => {
+  if (stage.type === 'BackToList') {
+    return BackToList
+  }
+
+  const [nextRoom, cmd] = stage.payload
+
+  return Updated([
+    RemoteData.Succeed({
+      connection,
+      room: nextRoom
+    }),
+    cmd.map(RoomAction)
+  ])
+}
+
 export const update = (
   action: Action,
-  credentials: RoomCredentials,
+  credentials: Credentials,
   state: State
 ): Stage => {
   if (action.type === 'JoinToRoom') {
@@ -78,19 +94,10 @@ export const update = (
 
   return state.cata({
     Succeed: ({ connection, room }) => {
-      return Room.update(action.payload, credentials, connection, room).match({
-        Updated: ([nextRoom, cmd]) => {
-          return Updated([
-            RemoteData.Succeed({
-              connection,
-              room: nextRoom
-            }),
-            cmd.map(RoomAction)
-          ])
-        },
-
-        BackToList: () => BackToList
-      })
+      return updateRoom(
+        connection,
+        Room.update(action.payload, credentials, connection, room)
+      )
     },
 
     _: () => Updated([state, Cmd.none])

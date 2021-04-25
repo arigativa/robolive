@@ -22,7 +22,7 @@ import { SkeletonRect } from 'Skeleton'
 import { AlertPanel } from 'AlertPanel'
 import { Case } from 'utils'
 
-import type { RoomCredentials } from 'Room'
+import type { Credentials } from 'Room'
 
 // S T A T E
 
@@ -38,7 +38,7 @@ export const initialState: State = {
   infoTemplates: RemoteData.Loading
 }
 
-export const initCmd = (credentials: RoomCredentials): Cmd<Action> => {
+export const initCmd = (credentials: Credentials): Cmd<Action> => {
   return Cmd.create<Action>(done => {
     getInfoTemplates(credentials).then(LoadInfoTemplates).then(done)
   })
@@ -91,7 +91,7 @@ const validateTemplate = (
 
 export const update = (
   action: Action,
-  credentials: RoomCredentials,
+  credentials: Credentials,
   connection: SipConnection,
   state: State
 ): [State, Cmd<Action>] => {

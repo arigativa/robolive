@@ -8,7 +8,7 @@ import { Case } from 'utils'
 import { AlertPanel } from 'AlertPanel'
 import { SkeletonRect } from 'Skeleton'
 
-import { RoomCredentials } from '.'
+import { Credentials } from '.'
 import * as InfoForm from './InfoForm'
 
 // S T A T E
@@ -34,7 +34,7 @@ export const initialState: State = {
 
 export const initCmd = (
   connection: SipConnection,
-  credentials: RoomCredentials
+  credentials: Credentials
 ): Cmd<Action> => {
   return Cmd.batch([
     connection.getStream(Connect),
@@ -68,7 +68,7 @@ const InfoFormAction = Case.of<Action, 'InfoFormAction'>('InfoFormAction')
 
 export const update = (
   action: Action,
-  credentials: RoomCredentials,
+  credentials: Credentials,
   connection: SipConnection,
   state: State
 ): Stage => {

@@ -10,7 +10,7 @@ import {
   VStack
 } from '@chakra-ui/react'
 
-import type { RoomCredentials } from 'Room'
+import type { Credentials } from 'Room'
 
 import { Dispatch, Cmd, useMapDispatch } from 'core'
 import { SipConnection } from 'sip'
@@ -30,7 +30,7 @@ export const initialState: State = {
   infoTemplates: InfoTemplates.initialState
 }
 
-export const initCmd = (credentials: RoomCredentials): Cmd<Action> => {
+export const initCmd = (credentials: Credentials): Cmd<Action> => {
   return InfoTemplates.initCmd(credentials).map(InfoTemplatesAction)
 }
 
@@ -49,7 +49,7 @@ const InfoTemplatesAction = Case.of<'InfoTemplatesAction', Action>(
 
 export const update = (
   action: Action,
-  credentials: RoomCredentials,
+  credentials: Credentials,
   connection: SipConnection,
   state: State
 ): [State, Cmd<Action>] => {

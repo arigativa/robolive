@@ -10,7 +10,7 @@ import * as Room from 'Room'
 export type State =
   | Case<'AuthScreen'>
   | Case<'RobotsListScreen', { username: string; robotsList: RobotsList.State }>
-  | Case<'RoomScreen', { username: string; robotId: string; room: Room.State }>
+  | Case<'RoomScreen', { credentials: Room.Credentials; room: Room.State }>
 
 const AuthScreen = Case.of<State, 'AuthScreen'>('AuthScreen')()
 const RobotsListScreen = Case.of<State, 'RobotsListScreen'>('RobotsListScreen')
@@ -43,6 +43,44 @@ const initRobotsList = (username: string): [State, Cmd<Action>] => {
   ]
 }
 
+const updateRobotsList = (
+  username: string,
+  stage: RobotsList.Stage
+): [State, Cmd<Action>] => {
+  if (stage.type === 'Updated') {
+    const [robotsList, cmd] = stage.payload
+
+    return [
+      RobotsListScreen({ username, robotsList }),
+      cmd.map(RobotsListAction)
+    ]
+  }
+
+  const credentials = { username, robotId: stage.payload }
+  const [initialRoom, initialCmd] = Room.init(credentials)
+
+  return [
+    RoomScreen({
+      credentials,
+      room: initialRoom
+    }),
+    initialCmd.map(RoomAction)
+  ]
+}
+
+const updateRoom = (
+  credentials: Room.Credentials,
+  stage: Room.Stage
+): [State, Cmd<Action>] => {
+  if (stage.type === 'BackToList') {
+    return initRobotsList(credentials.username)
+  }
+
+  const [room, cmd] = stage.payload
+
+  return [RoomScreen({ credentials, room }), cmd.map(RoomAction)]
+}
+
 export const update = (action: Action, state: State): [State, Cmd<Action>] => {
   if (action.type === 'InitRobotsList') {
     return initRobotsList(action.payload)
@@ -53,36 +91,21 @@ export const update = (action: Action, state: State): [State, Cmd<Action>] => {
   if (action.type === 'RobotsListAction' && state.type === 'RobotsListScreen') {
     const { username, robotsList } = state.payload
 
-    return RobotsList.update(action.payload, username, robotsList).match({
-      JoinToRoom: robotId => {
-        const [initialRoom, initialCmd] = Room.init({ username, robotId })
-
-        return [
-          RoomScreen({ username, robotId, room: initialRoom }),
-          initialCmd.map(RoomAction)
-        ]
-      },
-
-      Updated: ([nextRobotsList, cmd]) => [
-        RobotsListScreen({ username, robotsList: nextRobotsList }),
-        cmd.map(RobotsListAction)
-      ]
-    })
+    return updateRobotsList(
+      username,
+      RobotsList.update(action.payload, username, robotsList)
+    )
   }
 
   // R O O M
 
   if (action.type === 'RoomAction' && state.type === 'RoomScreen') {
-    const { username, robotId, room } = state.payload
+    const { credentials, room } = state.payload
 
-    return Room.update(action.payload, { username, robotId }, room).match({
-      Updated: ([nextRoom, cmd]) => [
-        RoomScreen({ username, robotId, room: nextRoom }),
-        cmd.map(RoomAction)
-      ],
-
-      BackToList: () => initRobotsList(username)
-    })
+    return updateRoom(
+      credentials,
+      Room.update(action.payload, credentials, room)
+    )
   }
 
   // U N M A T C H E D
@@ -129,13 +152,22 @@ export const View = React.memo<{
   state: State
   dispatch: Dispatch<Action>
 }>(({ state, dispatch }) => {
-  return state.match({
-    AuthScreen: () => <RobotsList.Skeleton />,
+  switch (state.type) {
+    case 'AuthScreen': {
+      return <RobotsList.Skeleton />
+    }
 
-    RobotsListScreen: ({ robotsList }) => (
-      <ViewRobotsList robotsList={robotsList} dispatch={dispatch} />
-    ),
+    case 'RobotsListScreen': {
+      return (
+        <ViewRobotsList
+          robotsList={state.payload.robotsList}
+          dispatch={dispatch}
+        />
+      )
+    }
 
-    RoomScreen: ({ room }) => <ViewRoom room={room} dispatch={dispatch} />
-  })
+    case 'RoomScreen': {
+      return <ViewRoom room={state.payload.room} dispatch={dispatch} />
+    }
+  }
 })
