@@ -37,15 +37,16 @@ export const initCmd = (credentials: Credentials): Cmd<Action> => {
 // U P D A T E
 
 export type Action =
-  | Case<'ChangeInfo', string>
+  | Case<'ChangeInfo', { info: string }>
   | Case<'SendInfo'>
-  | Case<'InfoTemplatesAction', InfoTemplates.Action>
+  | Case<'InfoTemplatesAction', { action: InfoTemplates.Action }>
 
 const ChangeInfo = Case.of<'ChangeInfo', Action>('ChangeInfo')
 const SendInfo = Case.of<'SendInfo', Action>('SendInfo')()
-const InfoTemplatesAction = Case.of<'InfoTemplatesAction', Action>(
-  'InfoTemplatesAction'
-)
+const InfoTemplatesAction = (action: InfoTemplates.Action): Action => ({
+  type: 'InfoTemplatesAction',
+  action
+})
 
 export const update = (
   action: Action,
@@ -58,7 +59,7 @@ export const update = (
       return [
         {
           ...state,
-          info: action.payload
+          info: action.info
         },
         Cmd.none
       ]
@@ -70,7 +71,7 @@ export const update = (
 
     case 'InfoTemplatesAction': {
       const [nextInfoTemplates, cmd] = InfoTemplates.update(
-        action.payload,
+        action.action,
         credentials,
         connection,
         state.infoTemplates
@@ -144,7 +145,7 @@ const ViewInfoForm = React.memo<{
           resize="vertical"
           value={info}
           placeholder="Put info right here"
-          onChange={event => dispatch(ChangeInfo(event.target.value))}
+          onChange={event => dispatch(ChangeInfo({ info: event.target.value }))}
         />
       }
       helperText="You can submit both plain text and JSON"

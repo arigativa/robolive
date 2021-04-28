@@ -90,7 +90,9 @@ class Room<AppMsg> {
     })
 
     const onFailed = (event: EndEvent): void => {
-      router.sendToSelf(new DispatchEvent(key, OnFailure(event.cause)))
+      router.sendToSelf(
+        new DispatchEvent(key, OnFailure({ cause: event.cause }))
+      )
     }
 
     const onEnded = (): void => {
@@ -102,8 +104,8 @@ class Room<AppMsg> {
         new DispatchEvent(
           key,
           event.originator === 'local'
-            ? OnOutgoingInfo(event.info.body)
-            : OnIncomingInfo(event.info.body)
+            ? OnOutgoingInfo({ content: event.info.body })
+            : OnIncomingInfo({ content: event.info.body })
         )
       )
     }
@@ -553,9 +555,9 @@ const sipManager = registerManager<
 
 export type ListenEvent =
   | Case<'OnEnd'>
-  | Case<'OnFailure', string>
-  | Case<'OnIncomingInfo', string>
-  | Case<'OnOutgoingInfo', string>
+  | Case<'OnFailure', { cause: string }>
+  | Case<'OnIncomingInfo', { content: string }>
+  | Case<'OnOutgoingInfo', { content: string }>
 
 const OnEnd = Case.of<'OnEnd', ListenEvent>('OnEnd')()
 const OnFailure = Case.of<'OnFailure', ListenEvent>('OnFailure')
@@ -716,19 +718,19 @@ class ConnectionImpl implements SipConnection {
 
   public onFailure<T>(tagger: (reason: string) => T): Sub<T> {
     return this.listen(event => {
-      return event.type === 'OnFailure' ? tagger(event.payload) : null
+      return event.type === 'OnFailure' ? tagger(event.cause) : null
     })
   }
 
   public onIncomingInfo<T>(tagger: (content: string) => T): Sub<T> {
     return this.listen(event => {
-      return event.type === 'OnIncomingInfo' ? tagger(event.payload) : null
+      return event.type === 'OnIncomingInfo' ? tagger(event.content) : null
     })
   }
 
   public onOutgoingInfo<T>(tagger: (content: string) => T): Sub<T> {
     return this.listen(event => {
-      return event.type === 'OnOutgoingInfo' ? tagger(event.payload) : null
+      return event.type === 'OnOutgoingInfo' ? tagger(event.content) : null
     })
   }
 }

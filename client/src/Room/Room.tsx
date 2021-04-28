@@ -37,25 +37,31 @@ export const initCmd = (
   credentials: Credentials
 ): Cmd<Action> => {
   return Cmd.batch([
-    connection.getStream(Connect),
+    connection.getStream(stream => Connect({ stream })),
     InfoForm.initCmd(credentials).map(InfoFormAction)
   ])
 }
 
 // U P D A T E
 
-export type Stage = Case<'Updated', [State, Cmd<Action>]> | Case<'BackToList'>
+export type Stage =
+  | Case<'Updated', { state: State; cmd: Cmd<Action> }>
+  | Case<'BackToList'>
 
-const Updated = Case.of<Stage, 'Updated'>('Updated')
+const Updated = (state: State, cmd: Cmd<Action>): Stage => ({
+  type: 'Updated',
+  state,
+  cmd
+})
 const BackToList = Case.of<Stage, 'BackToList'>('BackToList')()
 
 export type Action =
-  | Case<'Connect', MediaStream>
-  | Case<'FailConnection', string>
-  | Case<'NewOutgoingMessage', string>
-  | Case<'SendInfoAgain', string>
+  | Case<'Connect', { stream: MediaStream }>
+  | Case<'FailConnection', { reason: string }>
+  | Case<'NewOutgoingMessage', { content: string }>
+  | Case<'SendInfoAgain', { content: string }>
   | Case<'GoToRobotsList'>
-  | Case<'InfoFormAction', InfoForm.Action>
+  | Case<'InfoFormAction', { action: InfoForm.Action }>
 
 const Connect = Case.of<Action, 'Connect'>('Connect')
 const FailConnection = Case.of<Action, 'FailConnection'>('FailConnection')
@@ -64,7 +70,10 @@ const NewOutgoingMessage = Case.of<Action, 'NewOutgoingMessage'>(
 )
 const SendInfoAgain = Case.of<Action, 'SendInfoAgain'>('SendInfoAgain')
 const GoToRobotsList = Case.of<Action, 'GoToRobotsList'>('GoToRobotsList')()
-const InfoFormAction = Case.of<Action, 'InfoFormAction'>('InfoFormAction')
+const InfoFormAction = (action: InfoForm.Action): Action => ({
+  type: 'InfoFormAction',
+  action
+})
 
 export const update = (
   action: Action,
@@ -74,43 +83,43 @@ export const update = (
 ): Stage => {
   switch (action.type) {
     case 'Connect': {
-      return Updated([
+      return Updated(
         {
           ...state,
-          stream: RemoteData.Optional.Succeed(action.payload)
+          stream: RemoteData.Optional.Succeed(action.stream)
         },
         Cmd.none
-      ])
+      )
     }
 
     case 'FailConnection': {
-      return Updated([
+      return Updated(
         {
           ...state,
-          stream: RemoteData.Optional.Failure(action.payload)
+          stream: RemoteData.Optional.Failure(action.reason)
         },
         Cmd.none
-      ])
+      )
     }
 
     case 'NewOutgoingMessage': {
-      return Updated([
+      return Updated(
         {
           ...state,
           outgoingInfoMessages: [
             {
               id: state.outgoingInfoMessages.length,
-              content: action.payload
+              content: action.content
             },
             ...state.outgoingInfoMessages
           ]
         },
         Cmd.none
-      ])
+      )
     }
 
     case 'SendInfoAgain': {
-      return Updated([state, connection.sendInfo(action.payload)])
+      return Updated(state, connection.sendInfo(action.content))
     }
 
     case 'GoToRobotsList': {
@@ -119,19 +128,19 @@ export const update = (
 
     case 'InfoFormAction': {
       const [nextInfoForm, cmd] = InfoForm.update(
-        action.payload,
+        action.action,
         credentials,
         connection,
         state.infoForm
       )
 
-      return Updated([
+      return Updated(
         {
           ...state,
           infoForm: nextInfoForm
         },
         cmd.map(InfoFormAction)
-      ])
+      )
     }
   }
 }
@@ -148,8 +157,8 @@ export const subscriptions = (
 
   return Sub.batch([
     connection.onEnd(GoToRobotsList),
-    connection.onFailure(FailConnection),
-    connection.onOutgoingInfo(NewOutgoingMessage)
+    connection.onFailure(reason => FailConnection({ reason })),
+    connection.onOutgoingInfo(content => NewOutgoingMessage({ content }))
   ])
 }
 
@@ -205,7 +214,7 @@ const ViewOutgoingInfoMessage = React.memo<{
         type="submit"
         colorScheme="teal"
         onClick={() => {
-          dispatch(SendInfoAgain(message.content))
+          dispatch(SendInfoAgain({ content: message.content }))
         }}
       >
         Send again

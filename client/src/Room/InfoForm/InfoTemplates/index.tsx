@@ -40,18 +40,20 @@ export const initialState: State = {
 
 export const initCmd = (credentials: Credentials): Cmd<Action> => {
   return Cmd.create<Action>(done => {
-    getInfoTemplates(credentials).then(LoadInfoTemplates).then(done)
+    getInfoTemplates(credentials)
+      .then(result => LoadInfoTemplates({ result }))
+      .then(done)
   })
 }
 
 // U P D A T E
 
 export type Action =
-  | Case<'LoadInfoTemplates', Either<string, Array<InfoTemplate>>>
-  | Case<'SendTemplate', string>
-  | Case<'ChangeName', string>
-  | Case<'SaveTemplate', string>
-  | Case<'DeleteTemplate', string>
+  | Case<'LoadInfoTemplates', { result: Either<string, Array<InfoTemplate>> }>
+  | Case<'SendTemplate', { content: string }>
+  | Case<'ChangeName', { name: string }>
+  | Case<'SaveTemplate', { content: string }>
+  | Case<'DeleteTemplate', { name: string }>
   | Case<
       'UpdateTemplatesDone',
       { resetName: boolean; result: Either<string, null> }
@@ -100,21 +102,21 @@ export const update = (
       return [
         {
           ...state,
-          infoTemplates: RemoteData.fromEither(action.payload)
+          infoTemplates: RemoteData.fromEither(action.result)
         },
         Cmd.none
       ]
     }
 
     case 'SendTemplate': {
-      return [state, connection.sendInfo(action.payload)]
+      return [state, connection.sendInfo(action.content)]
     }
 
     case 'ChangeName': {
       return [
         {
           ...state,
-          templateName: action.payload,
+          templateName: action.name,
           savingTemplate: RemoteData.Optional.NotAsked
         },
         Cmd.none
@@ -142,7 +144,7 @@ export const update = (
         ...infoTemplates,
         {
           name: state.templateName.trim(),
-          content: action.payload
+          content: action.content
         }
       ]
 
@@ -162,7 +164,7 @@ export const update = (
     case 'DeleteTemplate': {
       const nextTemplates = state.infoTemplates
         .getOrElse([])
-        .filter(template => template.name !== action.payload)
+        .filter(template => template.name !== action.name)
 
       return [
         {
@@ -178,7 +180,7 @@ export const update = (
     }
 
     case 'UpdateTemplatesDone': {
-      return action.payload.result.cata<[State, Cmd<Action>]>({
+      return action.result.cata<[State, Cmd<Action>]>({
         Left: error => [
           {
             ...state,
@@ -189,11 +191,13 @@ export const update = (
         Right: () => [
           {
             ...state,
-            templateName: action.payload.resetName ? '' : state.templateName,
+            templateName: action.resetName ? '' : state.templateName,
             savingTemplate: RemoteData.Optional.NotAsked
           },
           Cmd.create<Action>(done => {
-            getInfoTemplates(credentials).then(LoadInfoTemplates).then(done)
+            getInfoTemplates(credentials)
+              .then(result => LoadInfoTemplates({ result }))
+              .then(done)
           })
         ]
       })
@@ -211,7 +215,7 @@ const ViewTemplate = React.memo<{
     <Button
       variant="outline"
       colorScheme="teal"
-      onClick={() => dispatch(SendTemplate(infoTemplate.content))}
+      onClick={() => dispatch(SendTemplate({ content: infoTemplate.content }))}
     >
       {infoTemplate.name}
     </Button>
@@ -220,7 +224,7 @@ const ViewTemplate = React.memo<{
       aria-label="Delete template"
       ml="-px"
       colorScheme="pink"
-      onClick={() => dispatch(DeleteTemplate(infoTemplate.name))}
+      onClick={() => dispatch(DeleteTemplate({ name: infoTemplate.name }))}
     >
       <DeleteIcon />
     </IconButton>
@@ -240,7 +244,7 @@ const ViewTemplateForm = React.memo<{
     size="sm"
     width={200}
     onSubmit={event => {
-      dispatch(SaveTemplate(template))
+      dispatch(SaveTemplate({ content: template }))
 
       event.preventDefault()
     }}
@@ -258,7 +262,7 @@ const ViewTemplateForm = React.memo<{
       isReadOnly={busy || readonly}
       value={name}
       placeholder="Template name"
-      onChange={event => dispatch(ChangeName(event.target.value))}
+      onChange={event => dispatch(ChangeName({ name: event.target.value }))}
     />
 
     <InputRightElement>

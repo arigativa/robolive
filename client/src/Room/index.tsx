@@ -29,39 +29,34 @@ export type State = RemoteData<
 export const init = (credentials: Credentials): [State, Cmd<Action>] => [
   RemoteData.Loading,
   Cmd.create<Action>(done => {
-    joinRoom(credentials).then(JoinToRoom).then(done)
+    joinRoom(credentials)
+      .then(result => JoinToRoom({ result }))
+      .then(done)
   })
 ]
 
 // U P D A T E
 
 export type Action =
-  | Case<'JoinToRoom', Either<string, RoomConfiguration>>
-  | Case<'RoomAction', Room.Action>
+  | Case<'JoinToRoom', { result: Either<string, RoomConfiguration> }>
+  | Case<'RoomAction', { action: Room.Action }>
 
 const JoinToRoom = Case.of<Action, 'JoinToRoom'>('JoinToRoom')
-const RoomAction = Case.of<Action, 'RoomAction'>('RoomAction')
+const RoomAction = (action: Room.Action): Action => ({
+  type: 'RoomAction',
+  action
+})
 
-export type Stage = Case<'Updated', [State, Cmd<Action>]> | Case<'BackToList'>
+export type Stage =
+  | Case<'Updated', { state: State; cmd: Cmd<Action> }>
+  | Case<'BackToList'>
 
-const Updated = Case.of<Stage, 'Updated'>('Updated')
+const Updated = (state: State, cmd: Cmd<Action>): Stage => ({
+  type: 'Updated',
+  state,
+  cmd
+})
 const BackToList = Case.of<Stage, 'BackToList'>('BackToList')()
-
-const updateRoom = (connection: SipConnection, stage: Room.Stage): Stage => {
-  if (stage.type === 'BackToList') {
-    return BackToList
-  }
-
-  const [nextRoom, cmd] = stage.payload
-
-  return Updated([
-    RemoteData.Succeed({
-      connection,
-      room: nextRoom
-    }),
-    cmd.map(RoomAction)
-  ])
-}
 
 export const update = (
   action: Action,
@@ -69,8 +64,8 @@ export const update = (
   state: State
 ): Stage => {
   if (action.type === 'JoinToRoom') {
-    return action.payload.cata({
-      Left: error => Updated([RemoteData.Failure(error), Cmd.none]),
+    return action.result.cata({
+      Left: error => Updated(RemoteData.Failure(error), Cmd.none),
 
       Right: configuration => {
         const connection = createConnection({
@@ -81,26 +76,32 @@ export const update = (
           iceServers: [configuration.stunUri, configuration.turnUri]
         })
 
-        return Updated([
+        return Updated(
           RemoteData.Succeed({
             connection,
             room: Room.initialState
           }),
           Room.initCmd(connection, credentials).map(RoomAction)
-        ])
+        )
       }
     })
   }
 
   return state.cata({
     Succeed: ({ connection, room }) => {
-      return updateRoom(
-        connection,
-        Room.update(action.payload, credentials, connection, room)
+      const stage = Room.update(action.action, credentials, connection, room)
+
+      if (stage.type === 'BackToList') {
+        return BackToList
+      }
+
+      return Updated(
+        RemoteData.Succeed({ connection, room: stage.state }),
+        stage.cmd.map(RoomAction)
       )
     },
 
-    _: () => Updated([state, Cmd.none])
+    _: () => Updated(state, Cmd.none)
   })
 }
 
