@@ -22,24 +22,30 @@ export const init = (username: string): [State, Cmd<Action>] => [
     polling: false
   },
   Cmd.create<Action>(done => {
-    getAgentList({ username }).then(LoadRobots).then(done)
+    getAgentList({ username })
+      .then(result => LoadRobots({ result }))
+      .then(done)
   })
 ]
 
 // U P D A T E
 
 export type Stage =
-  | Case<'Updated', [State, Cmd<Action>]>
-  | Case<'JoinToRoom', string>
+  | Case<'Updated', { state: State; cmd: Cmd<Action> }>
+  | Case<'JoinToRoom', { robotId: string }>
 
-const Updated = Case.of<Stage, 'Updated'>('Updated')
+const Updated = (state: State, cmd: Cmd<Action>): Stage => ({
+  type: 'Updated',
+  state,
+  cmd
+})
 const JoinToRoom = Case.of<Stage, 'JoinToRoom'>('JoinToRoom')
 
 export type Action =
   | Case<'ReInit'>
   | Case<'RunPolling'>
-  | Case<'LoadRobots', Either<string, Array<Agent>>>
-  | Case<'SelectRobot', string>
+  | Case<'LoadRobots', { result: Either<string, Array<Agent>> }>
+  | Case<'SelectRobot', { robotId: string }>
 
 const ReInit = Case.of<Action, 'ReInit'>('ReInit')()
 const RunPolling = Case.of<Action, 'RunPolling'>('RunPolling')()
@@ -53,34 +59,39 @@ export const update = (
 ): Stage => {
   switch (action.type) {
     case 'ReInit': {
-      return Updated(init(username))
+      const [initialState, initialCmd] = init(username)
+
+      return Updated(initialState, initialCmd)
     }
 
     case 'RunPolling': {
-      return Updated([
+      return Updated(
         { ...state, polling: true },
+
         Cmd.create<Action>(done =>
-          getAgentList({ username }).then(LoadRobots).then(done)
+          getAgentList({ username })
+            .then(result => LoadRobots({ result }))
+            .then(done)
         )
-      ])
+      )
     }
 
     case 'LoadRobots': {
-      return Updated([
+      return Updated(
         {
           ...state,
           polling: false,
           robots:
-            state.polling && action.payload.isLeft()
+            state.polling && action.result.isLeft()
               ? state.robots
-              : RemoteData.fromEither(action.payload)
+              : RemoteData.fromEither(action.result)
         },
         Cmd.none
-      ])
+      )
     }
 
     case 'SelectRobot': {
-      return JoinToRoom(action.payload)
+      return JoinToRoom({ robotId: action.robotId })
     }
   }
 }
@@ -155,7 +166,7 @@ const AgentItem = React.memo<{
     <Button
       size="sm"
       colorScheme="teal"
-      onClick={() => dispatch(SelectRobot(agent.id))}
+      onClick={() => dispatch(SelectRobot({ robotId: agent.id }))}
     >
       Select
     </Button>

@@ -1,56 +1,33 @@
-type FullSchema<A extends Case<string, unknown>, R> = Record<
-  A['type'],
-  (payload: A['payload']) => R
->
+type Compute<O> = { [K in keyof O]: O[K] } & unknown
 
-export type CaseMatchSchema<A extends Case<string, unknown>, R> =
-  | FullSchema<A, R>
-  | (Partial<FullSchema<A, R>> & { _(): R })
+type CasePayload = null | (Record<string, unknown> & { type?: never })
 
-type ExtractPayloadFor<
-  K extends string,
-  A extends Case<string, unknown>
-> = Extract<A, { type: K }>['payload']
+export type Case<
+  T extends string,
+  P extends CasePayload = null
+> = P extends null ? { type: T } : Compute<P & { type: T }>
+
+type ExtractPayload<
+  T extends C['type'],
+  C extends Case<string, CasePayload>
+> = Compute<Omit<Extract<C, { type: T }>, 'type'>>
 
 type ExtractCaseCreator<
   T extends C['type'],
-  C extends Case<string, unknown>
-> = [ExtractPayloadFor<T, C>] extends [never]
+  C extends Case<string, CasePayload>
+> = keyof ExtractPayload<T, C> extends null
   ? () => C
-  : (payload: ExtractPayloadFor<T, C>) => C
+  : (payload: ExtractPayload<T, C>) => C
 
-export class Case<T extends string, P = never> {
-  public static of<C extends Case<string, unknown>, TT extends C['type']>(
-    type: TT
-  ): ExtractCaseCreator<TT, C>
-  public static of<TT extends C['type'], C extends Case<string, unknown>>(
-    type: TT
-  ): ExtractCaseCreator<TT, C>
-  public static of<TT extends string, PP>(
-    type: TT
-  ): (payload: PP) => Case<TT, PP> {
-    return payload => new Case(type, payload)
-  }
-
-  private constructor(public readonly type: T, public readonly payload: P) {}
-
-  protected toString(): string {
-    return this.type
-  }
-
-  protected toJSON(): unknown {
-    return {
-      type: this.type,
-      payload: this.payload
-    }
-  }
-
-  public match<R>(schema: CaseMatchSchema<Case<T, P>, R>): R
-  public match<R>(schema: { [K in T]: (payload: P) => R } & { _(): R }): R {
-    if (this.type in schema) {
-      return schema[this.type](this.payload)
-    }
-
-    return schema._()
-  }
+function of<C extends Case<string, CasePayload>, T extends C['type']>(
+  type: T
+): ExtractCaseCreator<T, C>
+function of<T extends C['type'], C extends Case<string, CasePayload>>(
+  type: T
+): ExtractCaseCreator<T, C>
+function of<T extends string, P extends CasePayload>(type: T) {
+  return (payload?: P) => (payload == null ? { type } : { ...payload, type })
 }
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const Case = { of }
