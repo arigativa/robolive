@@ -157,7 +157,7 @@ const AgentItem = React.memo<{
 }>(({ agent, dispatch }) => (
   <ViewAgentItem name={agent.name} status={agent.status}>
     <VStack align="start">
-      {agent.isAvailable && agent.restreamUrl && (
+      {agent.restreamUrl && (
         <YouTube
           videoId={agent.restreamUrl}
           autoplay

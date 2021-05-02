@@ -100,8 +100,8 @@ export const WithRestreamUrl: React.FC = () => (
           id: '0',
           name: 'Agent',
           status: `Status of Agent`,
-          isAvailable: boolean('isAvailable', true),
-          restreamUrl: 'hAJV0WZtJvg'
+          isAvailable: true,
+          restreamUrl: boolean('show stream', true) ? 'hAJV0WZtJvg' : undefined
         }
       ])
     }}
