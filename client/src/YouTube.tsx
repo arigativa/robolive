@@ -16,8 +16,8 @@ export const YouTube = React.memo<{
 
     const player = YouTubePlayer(containerRef.current, {
       videoId,
-      width,
-      height,
+      width: '100%',
+      height: '100%',
       playerVars: {
         autoplay: autoplay ? 1 : 0,
         controls: 0
@@ -27,7 +27,11 @@ export const YouTube = React.memo<{
     return () => {
       player.destroy()
     }
-  }, [videoId, width, height, autoplay])
+  }, [videoId, autoplay])
 
-  return <div ref={containerRef} />
+  return (
+    <div style={{ width, height }}>
+      <div ref={containerRef} />
+    </div>
+  )
 })
