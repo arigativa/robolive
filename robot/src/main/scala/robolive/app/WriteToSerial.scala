@@ -38,7 +38,13 @@ object WriteToSerial extends App {
             val response = serialDriver.readline()
             println(s"> $response")
 
-          case "-c" :: command :: "-b" :: hexString :: "-r" :: readBytes :: Nil =>
+          case "-c" :: command :: "-b" :: hexString :: rest =>
+            
+            val toRead = rest match {
+              case "-r" :: readBytes :: Nil => Some(readBytes)
+              case _ => None
+            }
+                
             val bytes = Hex.decodeBytes(hexString)
             val commandWithBodySize = s"$command:${bytes.length}\n"
 
@@ -48,8 +54,12 @@ object WriteToSerial extends App {
             val writtenBytes = serialDriver.write(bytes)
             println(s"$writtenBytes < ${bytes.mkString}")
 
-            val response = serialDriver.read(readBytes.toInt)
-            println(s"> ${response.mkString}")
+            val response =
+              toRead match {
+                case Some(readBytes) => serialDriver.read(readBytes.toInt).mkString
+                case None => serialDriver.readline()
+              }
+            println(s"> ${response}")
 
           case other => printHelp(other)
         }
