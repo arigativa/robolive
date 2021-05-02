@@ -78,7 +78,6 @@
     // Variables
     "init-declarations": "error", // https://eslint.org/docs/rules/init-declarations
     "no-shadow": "error", // https://eslint.org/docs/rules/no-shadow
-    "no-undefined": "error", // https://eslint.org/docs/rules/no-undefined
     "no-unused-vars": "warn", // https://eslint.org/docs/rules/no-unused-vars
 
     // ECMAScript 6
