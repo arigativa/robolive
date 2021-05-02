@@ -2,6 +2,7 @@
 #include <Adafruit_PWMServoDriver.h>
 #include <SoftwareSerial.h>
 
+// RX, TX
 SoftwareSerial mySerial(2, 3);
 
 // default address 0x40
@@ -13,6 +14,7 @@ const int PIN_INDEX_MIN = 0;
 const int PIN_INDEX_MAX = 16;
 const int SERVO_FREQ = 50; // Analog servos run at ~50 Hz updates
 
+boolean isRoombaMode = false;
 
 struct PWMCommand {
     const int pinIndex;
@@ -48,6 +50,10 @@ SerialCommand parseSerialInputCommand(const String& rawInput) {
     }
 }
 
+boolean isRoombaStart(const String& rawInput) {
+    return rawInput.startsWith("roomba-start");
+}
+
 boolean isSerial(const String& rawInput) {
     return rawInput.startsWith("serial");
 }
@@ -61,7 +67,7 @@ void setup() {
     while (!Serial) {
         ; // wait for serial port to connect. Needed for Native USB only
     }
-    mySerial.begin(19200);
+    Serial.println("arduino_driver.cpp, 19 Apr 2021");
 
     pwm.begin();
     pwm.setOscillatorFrequency(27000000);
@@ -85,12 +91,26 @@ bool setPWM(int id, int pulseLength) {
     }
 }
 
+void startRoomba() {
+    // Start roomba
+    mySerial.begin(19200);
+    mySerial.write(0x80);
+    delay(50);
+    mySerial.write(0x82);
+    delay(50);
+    mySerial.write(0x8d);
+    mySerial.write((int) 0x00);
+}
+
 void loop() {
     if (Serial.available() > 0) {
         const String rawInput = Serial.readStringUntil('\n');
         if (isReset(rawInput)) {
             reset();
             Serial.println("pwm driver has been reset");
+        } else if (isRoombaStart(rawInput)) {
+            startRoomba();
+            Serial.println("roomba started");
         } else if (isSerial(rawInput)) {
             const auto command = parseSerialInputCommand(rawInput);
             char *buffer = (char*) malloc(command.bytesToRead);
@@ -101,6 +121,7 @@ void loop() {
             mySerial.write(buffer, command.bytesToRead);
             mySerial.flush();
             free(buffer);
+            Serial.println("sent");
         } else {
             const auto command = parseSetPWMCommand(rawInput);
             const boolean isPWMSet = setPWM(command.pinIndex, command.pulseLength);
@@ -110,8 +131,18 @@ void loop() {
                 Serial.print(" pulseLength to ");
                 Serial.println(command.pulseLength);
             } else {
+              Serial.println(rawInput);
                 Serial.println("invalid parameters");
             }
         }
+    } else {
+      int available = mySerial.available();
+      if (available) {
+            char *buffer = (char*) malloc(available);
+            mySerial.readBytes(buffer, available);
+            Serial.print(String("roomba:" + String(available) + "\n"));
+            Serial.write(buffer, available);
+            free(buffer);
+      }
     }
 }

@@ -52,6 +52,32 @@ function streamTestVideo() {
           ! mux.
 }
 
+function streamTwo() {
+  export KEY1="xxxx-xxxx-xxxx-xxxx-xxxx"
+  export KEY2="xxxx-xxxx-xxxx-xxxx-xxxx"
+
+  gst-launch-1.0 \
+    nvarguscamerasrc sensor_id=0 sensor_mode=4 \
+      ! 'video/x-raw(memory:NVMM),width=1280, height=720, framerate=60/1, format=NV12' \
+      ! nvvidconv flip-method=0 ! videoconvert ! queue ! tee name=t \
+    t. ! queue \
+      ! x264enc bitrate=2000 byte-stream=false key-int-max=60 bframes=0 aud=true tune=zerolatency \
+      ! video/x-h264,profile=main \
+      ! flvmux streamable=true name=mux1 \
+      ! rtmpsink location="rtmp://a.rtmp.youtube.com/live2/x/$KEY1 app=live2" \
+    t. \
+      ! x264enc bitrate=2000 byte-stream=false key-int-max=60 bframes=0 aud=true tune=zerolatency \
+      ! video/x-h264,profile=main \
+      ! flvmux streamable=true name=mux2 \
+      ! rtmpsink location="rtmp://a.rtmp.youtube.com/live2/x/$KEY2 app=live2" \
+    audiotestsrc \
+      ! voaacenc bitrate=128000 \
+      ! mux1. \
+    audiotestsrc \
+      ! voaacenc bitrate=128000 \
+      ! mux2.
+}
+
 streamTestVideoWithOverlay
 
 # GST_DEBUG=*webkit*:5 gst-launch-1.0 webkitsrc url=http://localhost/news/ ! video/x-raw, format=RGBA, framerate=25/1, width=1280, height=720 ! videoconvert ! xvimagesink sync=FALSE
