@@ -1,6 +1,7 @@
 import Decode, { Decoder, errorToHumanReadable } from 'decode-json'
 import Either from 'frctl/Either'
 
+import { isDefined } from 'utils'
 import { InfoEndpointClient } from './generated/Info_pb_service'
 import { AgentListRequest, AgentView } from './generated/Info_pb'
 import { ClientEndpointClient } from './generated/Client_pb_service'
@@ -21,10 +22,14 @@ export interface Agent {
   id: string
   name: string
   status: string
-  isAvailableForConnection: boolean
+  isAvailable: boolean
+  restreamUrl?: string
 }
 
-const agentViewToAgent = (agentView: AgentView.AsObject): null | Agent => {
+const agentViewToAgent = (
+  agentView: AgentView.AsObject,
+  restreamUrl?: string
+): null | Agent => {
   if (agentView.id == null) {
     return null
   }
@@ -33,7 +38,8 @@ const agentViewToAgent = (agentView: AgentView.AsObject): null | Agent => {
     id: agentView.id,
     name: agentView.name ?? 'unknown',
     status: agentView.status ?? 'unknown',
-    isAvailableForConnection: agentView.isavailableforconnection ?? false
+    isAvailable: agentView.isavailableforconnection ?? false,
+    restreamUrl
   }
 }
 
@@ -44,15 +50,19 @@ export const getAgentList = (options: {
     const req = new AgentListRequest()
 
     req.setName(options.username)
-
     infoEndpoint.agentList(req, (error, response) => {
       if (error) {
         done(Either.Left(error.message))
       } else {
         const agentList = response!
           .getAgentlistList()
-          .map(agent => agentViewToAgent(agent.toObject()))
-          .filter((agent): agent is Agent => agent != null)
+          .map(agent => {
+            return agentViewToAgent(
+              agent.toObject(),
+              agent.getSettingsMap().get('shareRestreamLink')
+            )
+          })
+          .filter(isDefined)
 
         done(Either.Right(agentList))
       }

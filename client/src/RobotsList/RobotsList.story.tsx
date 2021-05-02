@@ -1,6 +1,6 @@
 import React from 'react'
 import { action } from '@storybook/addon-actions'
-import { text, number } from '@storybook/addon-knobs'
+import { text, number, boolean } from '@storybook/addon-knobs'
 import RemoteData from 'frctl/RemoteData'
 
 import { Agent } from 'api'
@@ -52,7 +52,7 @@ const createAgent = (index: number): Agent => ({
   id: createAgentId(index),
   name: createAgentName(index),
   status: `Status of Agent #${index}`,
-  isAvailableForConnection: false
+  isAvailable: true
 })
 
 export const AgentList: React.FC = () => {
@@ -73,3 +73,38 @@ export const AgentList: React.FC = () => {
     />
   )
 }
+
+export const NotAvailableRobot: React.FC = () => (
+  <RobotsList.View
+    state={{
+      ...initialState,
+      robots: RemoteData.Succeed([
+        {
+          id: '0',
+          name: 'Agent',
+          status: `Status of Agent`,
+          isAvailable: false
+        }
+      ])
+    }}
+    dispatch={action('dispatch')}
+  />
+)
+
+export const WithRestreamUrl: React.FC = () => (
+  <RobotsList.View
+    state={{
+      ...initialState,
+      robots: RemoteData.Succeed([
+        {
+          id: '0',
+          name: 'Agent',
+          status: `Status of Agent`,
+          isAvailable: boolean('isAvailable', true),
+          restreamUrl: 'hAJV0WZtJvg'
+        }
+      ])
+    }}
+    dispatch={action('dispatch')}
+  />
+)

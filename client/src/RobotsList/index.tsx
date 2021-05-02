@@ -6,6 +6,7 @@ import RemoteData from 'frctl/RemoteData'
 import { Cmd, Sub, Dispatch } from 'core'
 import { Agent, getAgentList } from 'api'
 import { SkeletonText, SkeletonRect } from 'Skeleton'
+import { YouTube } from 'YouTube'
 import { AlertPanel } from 'AlertPanel'
 import { Case, range, every } from 'utils'
 
@@ -111,8 +112,7 @@ export const subscriptions = (state: State): Sub<Action> => {
 const ViewAgentItem: React.FC<{
   name: ReactNode
   status: ReactNode
-  isAvailableForConnection: ReactNode
-}> = ({ name, status, isAvailableForConnection, children }) => (
+}> = ({ name, status, children }) => (
   <Box
     p="5"
     width="100%"
@@ -127,9 +127,6 @@ const ViewAgentItem: React.FC<{
       {status}
     </Text>
 
-    <Text mt="3" size="sm">
-      {isAvailableForConnection}
-    </Text>
     <Box mt="4">{children}</Box>
   </Box>
 )
@@ -158,18 +155,31 @@ const AgentItem = React.memo<{
   agent: Agent
   dispatch: Dispatch<Action>
 }>(({ agent, dispatch }) => (
-  <ViewAgentItem
-    name={agent.name}
-    status={agent.status}
-    isAvailableForConnection={String(agent.isAvailableForConnection)}
-  >
-    <Button
-      size="sm"
-      colorScheme="teal"
-      onClick={() => dispatch(SelectRobot({ robotId: agent.id }))}
-    >
-      Select
-    </Button>
+  <ViewAgentItem name={agent.name} status={agent.status}>
+    <VStack align="start">
+      {agent.isAvailable && agent.restreamUrl && (
+        <YouTube
+          videoId={agent.restreamUrl}
+          autoplay
+          width="100%"
+          height={300}
+        />
+      )}
+
+      {agent.isAvailable ? (
+        <Button
+          size="sm"
+          colorScheme="teal"
+          onClick={() => dispatch(SelectRobot({ robotId: agent.id }))}
+        >
+          Select
+        </Button>
+      ) : (
+        <AlertPanel status="info">
+          You are not authorised to select this robot
+        </AlertPanel>
+      )}
+    </VStack>
   </ViewAgentItem>
 ))
 
@@ -211,11 +221,7 @@ export const View = React.memo<{
 // S K E L E T O N
 
 const SkeletonAgentItem = React.memo(() => (
-  <ViewAgentItem
-    name={<SkeletonText />}
-    status={<SkeletonText />}
-    isAvailableForConnection={<SkeletonText />}
-  >
+  <ViewAgentItem name={<SkeletonText />} status={<SkeletonText />}>
     <SkeletonRect width="66px" height="32px" rounded="6px" />
   </ViewAgentItem>
 ))

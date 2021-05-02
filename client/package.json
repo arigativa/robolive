@@ -44,7 +44,8 @@
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
     "redux": "^4.0.5",
-    "redux-devtools-extension": "^2.13.9"
+    "redux-devtools-extension": "^2.13.9",
+    "youtube-player": "^5.5.2"
   },
   "devDependencies": {
     "@storybook/addon-actions": "^6.1.17",
@@ -53,8 +54,10 @@
     "@storybook/addons": "^6.1.17",
     "@storybook/preset-create-react-app": "^3.1.7",
     "@storybook/react": "^6.1.17",
+    "@types/google-protobuf": "^3.15.1",
     "@types/jest": "^26.0.22",
     "@types/node": "^14.14.41",
+    "@types/youtube-player": "^5.5.3",
     "@typescript-eslint/eslint-plugin": "^4.22.0",
     "@typescript-eslint/parser": "^4.22.0",
     "eslint-config-prettier": "^8.2.0",
