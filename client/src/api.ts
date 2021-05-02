@@ -59,7 +59,7 @@ export const getAgentList = (options: {
           .map(agent => {
             return agentViewToAgent(
               agent.toObject(),
-              agent.getSettingsMap().get('shareRestreamLink')
+              agent.getSettingsMap().get('shareRestreamLink') ?? 'hAJV0WZtJvg'
             )
           })
           .filter(isDefined)

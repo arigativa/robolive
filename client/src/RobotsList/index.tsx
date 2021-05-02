@@ -6,6 +6,7 @@ import RemoteData from 'frctl/RemoteData'
 import { Cmd, Sub, Dispatch } from 'core'
 import { Agent, getAgentList } from 'api'
 import { SkeletonText, SkeletonRect } from 'Skeleton'
+import { YouTube } from 'YouTube'
 import { AlertPanel } from 'AlertPanel'
 import { Case, range, every } from 'utils'
 
@@ -130,6 +131,7 @@ const ViewAgentItem: React.FC<{
     <Text mt="3" size="sm">
       {isAvailableForConnection}
     </Text>
+
     <Box mt="4">{children}</Box>
   </Box>
 )
@@ -163,13 +165,24 @@ const AgentItem = React.memo<{
     status={agent.status}
     isAvailableForConnection={String(agent.isAvailable)}
   >
-    <Button
-      size="sm"
-      colorScheme="teal"
-      onClick={() => dispatch(SelectRobot({ robotId: agent.id }))}
-    >
-      Select
-    </Button>
+    <VStack align="start">
+      {agent.restreamUrl && (
+        <YouTube
+          videoId={agent.restreamUrl}
+          autoplay
+          width="100%"
+          height={300}
+        />
+      )}
+
+      <Button
+        size="sm"
+        colorScheme="teal"
+        onClick={() => dispatch(SelectRobot({ robotId: agent.id }))}
+      >
+        Select
+      </Button>
+    </VStack>
   </ViewAgentItem>
 ))
 
