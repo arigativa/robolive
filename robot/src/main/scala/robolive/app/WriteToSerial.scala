@@ -4,7 +4,7 @@ import com.fazecast.jSerialComm.SerialPort
 import robolive.puppet.driver.SerialDriver
 import robolive.utils.Hex
 
-import scala.io.Source
+import scala.util.Failure
 
 object WriteToSerial extends App {
 
@@ -29,7 +29,8 @@ object WriteToSerial extends App {
       }
 
     case "-s" :: systemPortName :: rest =>
-      SerialDriver.withSerial(systemPortName) { serialDriver =>
+      val result = SerialDriver.withSerial(systemPortName) { serialDriver =>
+        Thread.sleep(2000)
         rest match {
           case "-c" :: command :: Nil =>
             val writtenCommand = serialDriver.write(s"$command\n")
@@ -63,6 +64,12 @@ object WriteToSerial extends App {
 
           case other => printHelp(other)
         }
+      }
+      result match {
+        case Failure(exception) =>
+          println(exception)
+          exception.printStackTrace()
+        case _ =>
       }
 
     case other => printHelp(other)

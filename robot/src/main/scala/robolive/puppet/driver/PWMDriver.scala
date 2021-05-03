@@ -5,6 +5,7 @@ trait PWMDriver {
   def reset(): Unit
   def setPWM(id: Int, pulseLength: Int): Unit
   def sendToSerial(bytes: Array[Byte]): Unit
+  def startRoomba(): Unit
 }
 
 object PWMDriver {
@@ -18,6 +19,10 @@ object PWMDriver {
     def setPWM(id: Int, pulseLength: Int): Unit = {
       val command = s"$id $pulseLength\n"
       sendCommand(command)
+    }
+
+    def startRoomba(): Unit = {
+      sendCommand("roomba-start")
     }
 
     def sendToSerial(bytes: Array[Byte]): Unit = {
@@ -40,5 +45,6 @@ object PWMDriver {
     def reset(): Unit = ()
     def setPWM(id: Int, pulseLength: Int): Unit = ()
     def sendToSerial(bytes: Array[Byte]): Unit = ()
+    def startRoomba(): Unit = ()
   }
 }
