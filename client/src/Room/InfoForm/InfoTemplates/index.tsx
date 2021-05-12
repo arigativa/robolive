@@ -234,11 +234,10 @@ const ViewTemplate = React.memo<{
 const ViewTemplateForm = React.memo<{
   template: string
   name: string
-  readonly: boolean
   busy: boolean
   error: null | string
   dispatch: Dispatch<Action>
-}>(({ template, name, readonly, busy, error, dispatch }) => (
+}>(({ template, name, busy, error, dispatch }) => (
   <InputGroup
     as="form"
     size="sm"
@@ -259,7 +258,7 @@ const ViewTemplateForm = React.memo<{
 
     <Input
       autoFocus
-      isReadOnly={busy || readonly}
+      isReadOnly={busy}
       value={name}
       placeholder="Template name"
       onChange={event => dispatch(ChangeName({ name: event.target.value }))}
@@ -271,7 +270,6 @@ const ViewTemplateForm = React.memo<{
         type="submit"
         size="xs"
         colorScheme="teal"
-        isDisabled={readonly}
         isLoading={busy}
       >
         <AddIcon />
@@ -280,70 +278,46 @@ const ViewTemplateForm = React.memo<{
   </InputGroup>
 ))
 
-const ViewTemplates = React.memo<{
-  infoTemplates: RemoteData<string, Array<InfoTemplate>>
-  dispatch: Dispatch<Action>
-}>(({ infoTemplates, dispatch }) => {
-  return infoTemplates.cata({
-    Loading: () => <SkeletonTemplates />,
-
-    Failure: message => (
-      <WrapItem>
-        <AlertPanel status="error" title="Request Error!">
-          {message}
-        </AlertPanel>
-      </WrapItem>
-    ),
-
-    Succeed: templates => (
-      <>
-        {templates.map(template => (
-          <WrapItem key={template.name}>
-            <ViewTemplate infoTemplate={template} dispatch={dispatch} />
-          </WrapItem>
-        ))}
-      </>
-    )
-  })
-})
-
 export const View = React.memo<{
   template: string
   state: State
   dispatch: Dispatch<Action>
 }>(({ template, state, dispatch }) => {
-  return (
-    <Wrap spacing="2">
-      <WrapItem>
-        <ViewTemplateForm
-          template={template}
-          name={state.templateName}
-          readonly={!state.infoTemplates.isSucceed()}
-          busy={state.savingTemplate.isLoading()}
-          error={state.savingTemplate.cata({
-            Failure: error => error,
-            _: () => null
-          })}
-          dispatch={dispatch}
-        />
-      </WrapItem>
+  return state.infoTemplates.cata({
+    Loading: () => <Skeleton />,
 
-      <ViewTemplates infoTemplates={state.infoTemplates} dispatch={dispatch} />
-    </Wrap>
-  )
+    Failure: message => (
+      <AlertPanel status="error" title="Request Error!">
+        {message}
+      </AlertPanel>
+    ),
+
+    Succeed: infoTemplates => (
+      <Wrap spacing="2">
+        <WrapItem>
+          <ViewTemplateForm
+            template={template}
+            name={state.templateName}
+            busy={state.savingTemplate.isLoading()}
+            error={state.savingTemplate.cata({
+              Failure: error => error,
+              _: () => null
+            })}
+            dispatch={dispatch}
+          />
+        </WrapItem>
+
+        {infoTemplates.map(infoTemplate => (
+          <WrapItem key={infoTemplate.name}>
+            <ViewTemplate infoTemplate={infoTemplate} dispatch={dispatch} />
+          </WrapItem>
+        ))}
+      </Wrap>
+    )
+  })
 })
 
 // S K E L E T O N
-
-const SkeletonTemplates = React.memo(() => (
-  <>
-    {[80, 120, 80].map((width, i) => (
-      <WrapItem key={i}>
-        <SkeletonRect width={width} height={32} />
-      </WrapItem>
-    ))}
-  </>
-))
 
 export const Skeleton = React.memo(() => (
   <Wrap spacing="2">
@@ -351,6 +325,10 @@ export const Skeleton = React.memo(() => (
       <SkeletonRect width={200} height={32} />
     </WrapItem>
 
-    <SkeletonTemplates />
+    {[80, 120, 80].map((width, i) => (
+      <WrapItem key={i}>
+        <SkeletonRect width={width} height={32} />
+      </WrapItem>
+    ))}
   </Wrap>
 ))
