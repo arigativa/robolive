@@ -6,8 +6,10 @@ import RemoteData from 'frctl/RemoteData'
 import * as InfoForm from '.'
 import * as InfoTemplates from './InfoTemplates'
 
+import parent from '../Room.story'
+
 export default {
-  title: 'InfoForm'
+  title: `${parent.title} / InfoForm`
 }
 
 export const Skeleton: React.FC = () => <InfoForm.Skeleton />

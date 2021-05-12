@@ -7,8 +7,10 @@ import { range } from 'utils'
 import { InfoTemplate } from 'api'
 import * as InfoTemplates from '.'
 
+import parent from '../InfoForm.story'
+
 export default {
-  title: 'InfoTemplates'
+  title: `${parent.title} / InfoTemplates`
 }
 
 export const Skeleton: React.FC = () => <InfoTemplates.Skeleton />
