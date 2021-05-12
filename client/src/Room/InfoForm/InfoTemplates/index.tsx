@@ -285,14 +285,15 @@ export const View = React.memo<{
         {infoTemplates.map(infoTemplate => (
           <WrapItem key={infoTemplate.name}>
             <TemplateButton
-              template={infoTemplate}
               onSubmit={() => {
                 dispatch(SendTemplate({ content: infoTemplate.content }))
               }}
               onDelete={() => {
                 dispatch(DeleteTemplate({ name: infoTemplate.name }))
               }}
-            />
+            >
+              {infoTemplate.name}
+            </TemplateButton>
           </WrapItem>
         ))}
       </Wrap>

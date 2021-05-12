@@ -2,7 +2,6 @@ import React from 'react'
 import { Box, ButtonGroup, Button, IconButton } from '@chakra-ui/react'
 import { DeleteIcon, RepeatClockIcon } from '@chakra-ui/icons'
 
-import { InfoTemplate } from 'api'
 import { SkeletonRect } from 'Skeleton'
 
 const DELETE_CONFIRMATION_TIMEOUT_MS = 2000
@@ -23,11 +22,10 @@ const Countdown = React.memo<{ seconds: number }>(({ seconds }) => (
   </Box>
 ))
 
-export const TemplateButton: React.VFC<{
-  template: InfoTemplate
+export const TemplateButton: React.FC<{
   onSubmit(): void
   onDelete(): void
-}> = ({ template, onSubmit, onDelete }) => {
+}> = ({ children, onSubmit, onDelete }) => {
   const [countDown, setCountdown] = React.useState<number>(0)
   const counting = countDown > 0
   const onDeleteRef = React.useRef(onDelete)
@@ -72,7 +70,7 @@ export const TemplateButton: React.VFC<{
           }
         }}
       >
-        <Box opacity={counting ? 0 : 1}>{template.name}</Box>
+        <Box opacity={counting ? 0 : 1}>{children}</Box>
         {counting && <Countdown seconds={countDown / 1000} />}
       </Button>
 
