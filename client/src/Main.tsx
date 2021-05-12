@@ -40,14 +40,10 @@ const RoomAction = (action: Room.Action): Action => ({
   action
 })
 
-const initRobotsList = (username: string): [State, Cmd<Action>] => {
-  const [initialRobotsList, initialCmd] = RobotsList.init(username)
-
-  return [
-    RobotsListScreen({ username, robotsList: initialRobotsList }),
-    initialCmd.map(RobotsListAction)
-  ]
-}
+const initRobotsList = (username: string): [State, Cmd<Action>] => [
+  RobotsListScreen({ username, robotsList: RobotsList.initialState }),
+  RobotsList.initCmd(username).map(RobotsListAction)
+]
 
 export const update = (action: Action, state: State): [State, Cmd<Action>] => {
   if (action.type === 'InitRobotsList') {
