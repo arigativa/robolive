@@ -12,13 +12,13 @@ export default {
 
 export const Skeleton: React.FC = () => <InfoForm.Skeleton />
 
-export const Initial = (): JSX.Element => (
+export const Initial = (): React.ReactNode => (
   <InfoForm.View state={Initial.state} dispatch={action('dispatch')} />
 )
 
 Initial.state = InfoForm.initialState
 
-export const InfoTemplatesFailed = (): JSX.Element => (
+export const InfoTemplatesFailed = (): React.ReactNode => (
   <InfoForm.View
     state={InfoTemplatesFailed.state}
     dispatch={action('dispatch')}
@@ -27,10 +27,12 @@ export const InfoTemplatesFailed = (): JSX.Element => (
 
 InfoTemplatesFailed.state = {
   ...Initial.state,
-  infoTemplates: InfoTemplates.FailureTemplateLoading.init()
+  infoTemplates: InfoTemplates.FailureTemplateLoading.init(
+    'Something went wrong'
+  )
 }
 
-export const InfoTemplatesLoaded = (): JSX.Element => {
+export const InfoTemplatesLoaded = (): React.ReactNode => {
   const infoTemplatesCount = number('InfoTemplates count', 10)
 
   return (
@@ -46,7 +48,7 @@ InfoTemplatesLoaded.init = (infoTemplatesCount: number) => ({
   infoTemplates: InfoTemplates.ManyTemplates.init(infoTemplatesCount)
 })
 
-export const SendInfoText = (): JSX.Element => {
+export const SendInfoText = (): React.ReactNode => {
   const info = text('Info', 'Some useful information to send')
 
   return (

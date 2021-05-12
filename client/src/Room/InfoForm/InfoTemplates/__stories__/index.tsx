@@ -12,7 +12,7 @@ export default {
 
 export const Skeleton: React.VFC = () => <InfoTemplates.Skeleton />
 
-export const LoadingTemplates = (): JSX.Element => (
+export const LoadingTemplates = (): React.ReactNode => (
   <InfoTemplates.View
     template=""
     state={LoadingTemplates.state}
@@ -22,24 +22,24 @@ export const LoadingTemplates = (): JSX.Element => (
 
 LoadingTemplates.state = InfoTemplates.initialState
 
-export const FailureTemplateLoading = (): JSX.Element => {
-  const message = text('Error message', 'Something went wrong 🚨')
+export const FailureTemplateLoading = (): React.ReactNode => {
+  const reason = text('Error message', 'Something went wrong 🚨')
 
   return (
     <InfoTemplates.View
       template=""
-      state={FailureTemplateLoading.init(message)}
+      state={FailureTemplateLoading.init(reason)}
       dispatch={action('dispatch')}
     />
   )
 }
 
-FailureTemplateLoading.init = (message = 'Something went wrong 🚨') => ({
+FailureTemplateLoading.init = (reason: string) => ({
   ...InfoTemplates.initialState,
-  infoTemplates: RemoteData.Failure(message)
+  infoTemplates: RemoteData.Failure(reason)
 })
 
-export const EmptyTemplateName = (): JSX.Element => (
+export const EmptyTemplateName = (): React.ReactNode => (
   <InfoTemplates.View
     template=""
     state={EmptyTemplateName.state}
@@ -52,7 +52,7 @@ EmptyTemplateName.state = {
   infoTemplates: RemoteData.Succeed([])
 }
 
-export const NonEmptyTemplateName = (): JSX.Element => {
+export const NonEmptyTemplateName = (): React.ReactNode => {
   const templateName = text('Template name', 'Rotate_180deg')
 
   return (
@@ -69,7 +69,7 @@ NonEmptyTemplateName.init = (templateName = 'Rotate_180deg') => ({
   templateName
 })
 
-export const SavingTemplate = (): JSX.Element => (
+export const SavingTemplate = (): React.ReactNode => (
   <InfoTemplates.View
     template=""
     state={SavingTemplate.state}
@@ -82,24 +82,24 @@ SavingTemplate.state = {
   savingTemplate: RemoteData.Optional.Loading
 }
 
-export const SavingTemplateFail = (): JSX.Element => {
-  const message = text('Error message', 'Could not save it')
+export const SavingTemplateFail = (): React.ReactNode => {
+  const reason = text('Error message', 'Could not save it')
 
   return (
     <InfoTemplates.View
       template=""
-      state={SavingTemplateFail.init(message)}
+      state={SavingTemplateFail.init(reason)}
       dispatch={action('dispatch')}
     />
   )
 }
 
-SavingTemplateFail.init = (message = 'Could not save it') => ({
+SavingTemplateFail.init = (reason: string) => ({
   ...NonEmptyTemplateName.init(),
-  savingTemplate: RemoteData.Optional.Failure(message)
+  savingTemplate: RemoteData.Optional.Failure(reason)
 })
 
-export const ManyTemplates = (): JSX.Element => {
+export const ManyTemplates = (): React.ReactNode => {
   const templatesCount = number('Templates count', 20)
 
   return (
@@ -121,7 +121,7 @@ ManyTemplates.init = (infoTemplatesCount: number) => ({
   )
 })
 
-export const ManyTemplatesWithSavingError = (): JSX.Element => (
+export const ManyTemplatesWithSavingError = (): React.ReactNode => (
   <InfoTemplates.View
     template=""
     state={ManyTemplatesWithSavingError.state}

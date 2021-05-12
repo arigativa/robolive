@@ -5,7 +5,7 @@ module.exports = {
   stories: [
     '../src/**/*.stories.ts*',
     '../src/**/*.story.ts*',
-    '../src/**/__stories__/*.tsx'
+    '../src/**/__stories__/*.ts*'
   ],
   addons: [
     '@storybook/preset-create-react-app',
