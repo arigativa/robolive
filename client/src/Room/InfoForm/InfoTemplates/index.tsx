@@ -3,15 +3,13 @@ import {
   Wrap,
   WrapItem,
   Tooltip,
-  ButtonGroup,
-  Button,
   IconButton,
   InputGroup,
   InputRightElement,
   Input,
   InputLeftElement
 } from '@chakra-ui/react'
-import { AddIcon, DeleteIcon, WarningIcon } from '@chakra-ui/icons'
+import { AddIcon, WarningIcon } from '@chakra-ui/icons'
 import RemoteData from 'frctl/RemoteData'
 import Either from 'frctl/Either'
 
@@ -23,6 +21,7 @@ import { AlertPanel } from 'AlertPanel'
 import { Case } from 'utils'
 
 import type { Credentials } from 'Room'
+import { TemplateButton, SkeletonTemplateButton } from './TemplateButton'
 
 // S T A T E
 
@@ -207,30 +206,6 @@ export const update = (
 
 // V I E W
 
-const ViewTemplate = React.memo<{
-  infoTemplate: InfoTemplate
-  dispatch: Dispatch<Action>
-}>(({ infoTemplate, dispatch }) => (
-  <ButtonGroup isAttached size="sm">
-    <Button
-      variant="outline"
-      colorScheme="teal"
-      onClick={() => dispatch(SendTemplate({ content: infoTemplate.content }))}
-    >
-      {infoTemplate.name}
-    </Button>
-
-    <IconButton
-      aria-label="Delete template"
-      ml="-px"
-      colorScheme="pink"
-      onClick={() => dispatch(DeleteTemplate({ name: infoTemplate.name }))}
-    >
-      <DeleteIcon />
-    </IconButton>
-  </ButtonGroup>
-))
-
 const ViewTemplateForm = React.memo<{
   template: string
   name: string
@@ -309,7 +284,15 @@ export const View = React.memo<{
 
         {infoTemplates.map(infoTemplate => (
           <WrapItem key={infoTemplate.name}>
-            <ViewTemplate infoTemplate={infoTemplate} dispatch={dispatch} />
+            <TemplateButton
+              template={infoTemplate}
+              onSubmit={() => {
+                dispatch(SendTemplate({ content: infoTemplate.content }))
+              }}
+              onDelete={() => {
+                dispatch(DeleteTemplate({ name: infoTemplate.name }))
+              }}
+            />
           </WrapItem>
         ))}
       </Wrap>
@@ -327,7 +310,7 @@ export const Skeleton = React.memo(() => (
 
     {[80, 120, 80].map((width, i) => (
       <WrapItem key={i}>
-        <SkeletonRect width={width} height={32} />
+        <SkeletonTemplateButton width={width} />
       </WrapItem>
     ))}
   </Wrap>
