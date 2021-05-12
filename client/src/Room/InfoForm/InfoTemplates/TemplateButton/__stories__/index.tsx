@@ -7,7 +7,7 @@ import {
   SkeletonTemplateButton
 } from '..'
 
-import parent from '../../InfoTemplates.story'
+import parent from '../../__stories__'
 
 export default {
   title: `${parent.title} / TemplateButton`
