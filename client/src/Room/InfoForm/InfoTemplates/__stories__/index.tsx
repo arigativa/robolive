@@ -1,99 +1,135 @@
 import React from 'react'
-import { Story } from '@storybook/react'
 import { action } from '@storybook/addon-actions'
+import { number, text } from '@storybook/addon-knobs'
 import RemoteData from 'frctl/RemoteData'
 import { range } from 'utils'
 
-import { InfoTemplate } from 'api'
 import * as InfoTemplates from '..'
 
-import parent from '../../InfoForm.story'
-
 export default {
-  title: `${parent.title} / InfoTemplates`
+  title: 'Room / InfoForm / InfoTemplates'
 }
 
 export const Skeleton: React.VFC = () => <InfoTemplates.Skeleton />
 
-type InfoTemplatesStory = Story<InfoTemplates.State>
-
-export const LoadingTemplates: InfoTemplatesStory = state => (
-  <InfoTemplates.View template="" state={state} dispatch={action('dispatch')} />
+export const LoadingTemplates = (): JSX.Element => (
+  <InfoTemplates.View
+    template=""
+    state={LoadingTemplates.state}
+    dispatch={action('dispatch')}
+  />
 )
 
-LoadingTemplates.args = InfoTemplates.initialState
+LoadingTemplates.state = InfoTemplates.initialState
 
-export const FailureTemplateLoading: InfoTemplatesStory = state => (
-  <InfoTemplates.View template="" state={state} dispatch={action('dispatch')} />
-)
+export const FailureTemplateLoading = (): JSX.Element => {
+  const message = text('Error message', 'Something went wrong 🚨')
 
-FailureTemplateLoading.args = {
-  ...InfoTemplates.initialState,
-  infoTemplates: RemoteData.Failure('Something went wrong 🚨')
+  return (
+    <InfoTemplates.View
+      template=""
+      state={FailureTemplateLoading.init(message)}
+      dispatch={action('dispatch')}
+    />
+  )
 }
 
-export const EmptyTemplateName: InfoTemplatesStory = state => (
-  <InfoTemplates.View template="" state={state} dispatch={action('dispatch')} />
+FailureTemplateLoading.init = (message = 'Something went wrong 🚨') => ({
+  ...InfoTemplates.initialState,
+  infoTemplates: RemoteData.Failure(message)
+})
+
+export const EmptyTemplateName = (): JSX.Element => (
+  <InfoTemplates.View
+    template=""
+    state={EmptyTemplateName.state}
+    dispatch={action('dispatch')}
+  />
 )
 
-EmptyTemplateName.args = {
+EmptyTemplateName.state = {
   ...InfoTemplates.initialState,
   infoTemplates: RemoteData.Succeed([])
 }
 
-export const NonEmptyTemplateName: InfoTemplatesStory = state => (
-  <InfoTemplates.View template="" state={state} dispatch={action('dispatch')} />
+export const NonEmptyTemplateName = (): JSX.Element => {
+  const templateName = text('Template name', 'Rotate_180deg')
+
+  return (
+    <InfoTemplates.View
+      template=""
+      state={NonEmptyTemplateName.init(templateName)}
+      dispatch={action('dispatch')}
+    />
+  )
+}
+
+NonEmptyTemplateName.init = (templateName = 'Rotate_180deg') => ({
+  ...EmptyTemplateName.state,
+  templateName
+})
+
+export const SavingTemplate = (): JSX.Element => (
+  <InfoTemplates.View
+    template=""
+    state={SavingTemplate.state}
+    dispatch={action('dispatch')}
+  />
 )
 
-NonEmptyTemplateName.args = {
+SavingTemplate.state = {
+  ...NonEmptyTemplateName.init(),
+  savingTemplate: RemoteData.Optional.Loading
+}
+
+export const SavingTemplateFail = (): JSX.Element => {
+  const message = text('Error message', 'Could not save it')
+
+  return (
+    <InfoTemplates.View
+      template=""
+      state={SavingTemplateFail.init(message)}
+      dispatch={action('dispatch')}
+    />
+  )
+}
+
+SavingTemplateFail.init = (message = 'Could not save it') => ({
+  ...NonEmptyTemplateName.init(),
+  savingTemplate: RemoteData.Optional.Failure(message)
+})
+
+export const ManyTemplates = (): JSX.Element => {
+  const templatesCount = number('Templates count', 20)
+
+  return (
+    <InfoTemplates.View
+      template=""
+      state={ManyTemplates.init(templatesCount)}
+      dispatch={action('dispatch')}
+    />
+  )
+}
+
+ManyTemplates.init = (infoTemplatesCount: number) => ({
   ...InfoTemplates.initialState,
-  templateName: 'Rotate_180deg',
-  infoTemplates: RemoteData.Succeed([])
-}
+  infoTemplates: RemoteData.Succeed(
+    range(infoTemplatesCount).map(index => ({
+      name: `Template #${index}`,
+      content: `Content #${index}`
+    }))
+  )
+})
 
-export const SavingTemplate: InfoTemplatesStory = state => (
-  <InfoTemplates.View template="" state={state} dispatch={action('dispatch')} />
+export const ManyTemplatesWithSavingError = (): JSX.Element => (
+  <InfoTemplates.View
+    template=""
+    state={ManyTemplatesWithSavingError.state}
+    dispatch={action('dispatch')}
+  />
 )
 
-SavingTemplate.args = {
-  ...InfoTemplates.initialState,
-  templateName: 'Rotate_180deg',
-  savingTemplate: RemoteData.Optional.Loading,
-  infoTemplates: RemoteData.Succeed([])
-}
-
-export const SavingTemplateFail: InfoTemplatesStory = state => (
-  <InfoTemplates.View template="" state={state} dispatch={action('dispatch')} />
-)
-
-SavingTemplateFail.args = {
-  ...InfoTemplates.initialState,
-  templateName: 'Rotate_180deg',
-  savingTemplate: RemoteData.Optional.Failure('Could not save it'),
-  infoTemplates: RemoteData.Succeed([])
-}
-
-const makeInfoTemplates = (n: number): Array<InfoTemplate> => {
-  return range(n).map(index => ({
-    name: `Template #${index}`,
-    content: `Content #${index}`
-  }))
-}
-
-export const ManyTemplates: InfoTemplatesStory = state => (
-  <InfoTemplates.View template="" state={state} dispatch={action('dispatch')} />
-)
-
-ManyTemplates.args = {
-  ...InfoTemplates.initialState,
-  infoTemplates: RemoteData.Succeed(makeInfoTemplates(20))
-}
-
-export const ManyTemplatesWithSavingError: InfoTemplatesStory = state => (
-  <InfoTemplates.View template="" state={state} dispatch={action('dispatch')} />
-)
-
-ManyTemplatesWithSavingError.args = {
-  ...ManyTemplates.args,
+ManyTemplatesWithSavingError.state = {
+  ...ManyTemplates.init(10),
   savingTemplate: RemoteData.Optional.Failure('Could not save it')
 }

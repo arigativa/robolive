@@ -7,10 +7,8 @@ import {
   SkeletonTemplateButton
 } from '..'
 
-import parent from '../../__stories__'
-
 export default {
-  title: `${parent.title} / TemplateButton`
+  title: 'Room / InfoForm / InfoTemplates / TemplateButton'
 }
 
 export const Skeleton: React.VFC = () => (
