@@ -1,21 +1,12 @@
-import React, { ReactNode } from 'react'
-import {
-  Box,
-  FormControl,
-  FormLabel,
-  FormHelperText,
-  Button,
-  Textarea,
-  HStack,
-  VStack
-} from '@chakra-ui/react'
+import React from 'react'
+import { Box, Button, Textarea, HStack, VStack } from '@chakra-ui/react'
 
 import type { Credentials } from 'Room'
 
 import { Dispatch, Cmd, useMapDispatch } from 'core'
 import { SipConnection } from 'sip'
 import { Case } from 'utils'
-import { SkeletonRect, SkeletonText } from 'Skeleton'
+import { SkeletonRect } from 'Skeleton'
 import * as InfoTemplates from './InfoTemplates'
 
 // S T A T E
@@ -90,108 +81,58 @@ export const update = (
 
 // V I E W
 
-const useFakeSubmitting = (ms: number): [boolean, VoidFunction] => {
-  const [submitting, setSubmitting] = React.useState(false)
-  const fakeSubmitting = React.useCallback(() => setSubmitting(true), [])
-
-  React.useEffect(() => {
-    if (submitting) {
-      const timeoutId = setTimeout(() => {
-        setSubmitting(false)
-      }, ms)
-
-      return () => clearTimeout(timeoutId)
-    }
-  }, [ms, submitting])
-
-  return [submitting, fakeSubmitting]
-}
-
-const ContainerInfoForm: React.FC<{
-  label: ReactNode
-  textarea: ReactNode
-  helperText: ReactNode
-  submitButton: ReactNode
-}> = ({ label, textarea, helperText, submitButton }) => (
-  <FormControl>
-    <FormLabel>{label}</FormLabel>
-
+const ViewContainer: React.FC<{
+  textarea: React.ReactNode
+  infoTemplates: React.ReactNode
+  submitButton: React.ReactNode
+}> = ({ textarea, infoTemplates, submitButton }) => (
+  <VStack spacing="4" align="start" alignItems="stretch">
     {textarea}
 
-    <FormHelperText>
-      <HStack>
-        <Box flex="1">{helperText}</Box>
-
-        {submitButton}
-      </HStack>
-    </FormHelperText>
-  </FormControl>
+    <HStack alignItems="flex-start" justifyContent="space-between" spacing="4">
+      {infoTemplates}
+      <Box flexShrink={0}>{submitButton}</Box>
+    </HStack>
+  </VStack>
 )
-
-const ViewInfoForm = React.memo<{
-  info: string
-  dispatch: Dispatch<Action>
-}>(({ info, dispatch }) => {
-  const [submitting, fakeSubmitting] = useFakeSubmitting(400)
-
-  return (
-    <ContainerInfoForm
-      label="Send Info"
-      textarea={
-        <Textarea
-          fontFamily="monospace"
-          display="block"
-          rows={10}
-          resize="vertical"
-          value={info}
-          placeholder="Put info right here"
-          onChange={event => dispatch(ChangeInfo({ info: event.target.value }))}
-        />
-      }
-      helperText="You can submit both plain text and JSON"
-      submitButton={
-        <Button
-          size="sm"
-          colorScheme="teal"
-          isLoading={submitting}
-          onClick={() => {
-            fakeSubmitting()
-            dispatch(SendInfo)
-          }}
-        >
-          Submit
-        </Button>
-      }
-    />
-  )
-})
 
 export const View = React.memo<{
   state: State
   dispatch: Dispatch<Action>
 }>(({ state, dispatch }) => (
-  <VStack spacing="4" align="start">
-    <ViewInfoForm info={state.info} dispatch={dispatch} />
-
-    <InfoTemplates.View
-      template={state.info}
-      state={state.infoTemplates}
-      dispatch={useMapDispatch(InfoTemplatesAction, dispatch)}
-    />
-  </VStack>
+  <ViewContainer
+    textarea={
+      <Textarea
+        fontFamily="monospace"
+        display="block"
+        rows={12}
+        resize="vertical"
+        value={state.info}
+        placeholder="You can submit both plain text and JSON"
+        onChange={event => dispatch(ChangeInfo({ info: event.target.value }))}
+      />
+    }
+    infoTemplates={
+      <InfoTemplates.View
+        template={state.info}
+        state={state.infoTemplates}
+        dispatch={useMapDispatch(InfoTemplatesAction, dispatch)}
+      />
+    }
+    submitButton={
+      <Button size="sm" colorScheme="teal" onClick={() => dispatch(SendInfo)}>
+        Submit
+      </Button>
+    }
+  />
 ))
 
 // S K E L E T O N
 
 export const Skeleton = React.memo(() => (
-  <VStack spacing="4" align="start">
-    <ContainerInfoForm
-      label={<SkeletonText />}
-      textarea={<SkeletonRect width="100%" height={188} />}
-      helperText={<SkeletonText />}
-      submitButton={<SkeletonRect width={72} height={32} />}
-    />
-
-    <InfoTemplates.Skeleton />
-  </VStack>
+  <ViewContainer
+    textarea={<SkeletonRect width="100%" height={282} />}
+    infoTemplates={<InfoTemplates.Skeleton />}
+    submitButton={<SkeletonRect width={72} height={32} />}
+  />
 ))

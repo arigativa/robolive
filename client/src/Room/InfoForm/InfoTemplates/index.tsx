@@ -216,7 +216,7 @@ const ViewTemplateForm = React.memo<{
   <InputGroup
     as="form"
     size="sm"
-    width={200}
+    width={220}
     onSubmit={event => {
       dispatch(SaveTemplate({ content: template }))
 
@@ -235,7 +235,7 @@ const ViewTemplateForm = React.memo<{
       autoFocus
       isReadOnly={busy}
       value={name}
-      placeholder="Template name"
+      placeholder="Save template with name"
       onChange={event => dispatch(ChangeName({ name: event.target.value }))}
     />
 
@@ -306,7 +306,7 @@ export const View = React.memo<{
 export const Skeleton = React.memo(() => (
   <Wrap spacing="2">
     <WrapItem>
-      <SkeletonRect width={200} height={32} />
+      <SkeletonRect width={220} height={32} />
     </WrapItem>
 
     {[80, 120, 80].map((width, i) => (

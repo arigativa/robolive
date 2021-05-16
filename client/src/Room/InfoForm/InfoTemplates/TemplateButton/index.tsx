@@ -4,7 +4,7 @@ import { DeleteIcon, RepeatClockIcon } from '@chakra-ui/icons'
 
 import { SkeletonRect } from 'Skeleton'
 
-const DELETE_CONFIRMATION_TIMEOUT_MS = 2000
+const DELETE_CONFIRMATION_TIMEOUT_MS = 1000
 
 const Countdown = React.memo<{ seconds: number }>(({ seconds }) => (
   <Box
