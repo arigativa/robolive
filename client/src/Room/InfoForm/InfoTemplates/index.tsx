@@ -260,21 +260,19 @@ export const ViewInput: React.VFC<{
   content: string
   state: State
   dispatch: Dispatch<Action>
-}> = React.memo(({ content, state, dispatch }) => {
-  return (
-    <ViewTemplateForm
-      content={content}
-      name={state.templateName}
-      busy={state.savingTemplate.isLoading()}
-      disabled={!state.infoTemplates.isSucceed()}
-      error={state.savingTemplate.cata({
-        Failure: error => error,
-        _: () => null
-      })}
-      dispatch={dispatch}
-    />
-  )
-})
+}> = React.memo(({ content, state, dispatch }) => (
+  <ViewTemplateForm
+    content={content}
+    name={state.templateName}
+    busy={state.savingTemplate.isLoading()}
+    disabled={!state.infoTemplates.isSucceed()}
+    error={state.savingTemplate.cata({
+      Failure: error => error,
+      _: () => null
+    })}
+    dispatch={dispatch}
+  />
+))
 
 export const ViewButtons: React.VFC<{
   state: State
