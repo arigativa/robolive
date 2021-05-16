@@ -1,6 +1,7 @@
 import React from 'react'
 import { action } from '@storybook/addon-actions'
 import { number, text } from '@storybook/addon-knobs'
+import { VStack } from '@chakra-ui/react'
 import RemoteData from 'frctl/RemoteData'
 import { range } from 'utils'
 
@@ -10,14 +11,28 @@ export default {
   title: 'Room / InfoForm / InfoTemplates'
 }
 
-export const Skeleton: React.VFC = () => <InfoTemplates.Skeleton />
+export const Skeleton: React.VFC = () => (
+  <VStack spacing="4" alignItems="stretch">
+    <InfoTemplates.SkeletonInput />
+    <InfoTemplates.SkeletonButtons />
+  </VStack>
+)
+
+const ViewCombined: React.VFC<{
+  state: InfoTemplates.State
+}> = ({ state }) => (
+  <VStack spacing="4" alignItems="stretch">
+    <InfoTemplates.ViewInput
+      content=""
+      state={state}
+      dispatch={action('dispatch')}
+    />
+    <InfoTemplates.ViewButtons state={state} dispatch={action('dispatch')} />
+  </VStack>
+)
 
 export const LoadingTemplates = (): React.ReactNode => (
-  <InfoTemplates.View
-    template=""
-    state={LoadingTemplates.state}
-    dispatch={action('dispatch')}
-  />
+  <ViewCombined state={LoadingTemplates.state} />
 )
 
 LoadingTemplates.state = InfoTemplates.initialState
@@ -25,13 +40,7 @@ LoadingTemplates.state = InfoTemplates.initialState
 export const FailureTemplateLoading = (): React.ReactNode => {
   const reason = text('Error message', 'Something went wrong 🚨')
 
-  return (
-    <InfoTemplates.View
-      template=""
-      state={FailureTemplateLoading.init(reason)}
-      dispatch={action('dispatch')}
-    />
-  )
+  return <ViewCombined state={FailureTemplateLoading.init(reason)} />
 }
 
 FailureTemplateLoading.init = (reason: string) => ({
@@ -40,11 +49,7 @@ FailureTemplateLoading.init = (reason: string) => ({
 })
 
 export const EmptyTemplateName = (): React.ReactNode => (
-  <InfoTemplates.View
-    template=""
-    state={EmptyTemplateName.state}
-    dispatch={action('dispatch')}
-  />
+  <ViewCombined state={EmptyTemplateName.state} />
 )
 
 EmptyTemplateName.state = {
@@ -55,13 +60,7 @@ EmptyTemplateName.state = {
 export const NonEmptyTemplateName = (): React.ReactNode => {
   const templateName = text('Template name', 'Rotate_180deg')
 
-  return (
-    <InfoTemplates.View
-      template=""
-      state={NonEmptyTemplateName.init(templateName)}
-      dispatch={action('dispatch')}
-    />
-  )
+  return <ViewCombined state={NonEmptyTemplateName.init(templateName)} />
 }
 
 NonEmptyTemplateName.init = (templateName = 'Rotate_180deg') => ({
@@ -70,11 +69,7 @@ NonEmptyTemplateName.init = (templateName = 'Rotate_180deg') => ({
 })
 
 export const SavingTemplate = (): React.ReactNode => (
-  <InfoTemplates.View
-    template=""
-    state={SavingTemplate.state}
-    dispatch={action('dispatch')}
-  />
+  <ViewCombined state={SavingTemplate.state} />
 )
 
 SavingTemplate.state = {
@@ -85,13 +80,7 @@ SavingTemplate.state = {
 export const SavingTemplateFail = (): React.ReactNode => {
   const reason = text('Error message', 'Could not save it')
 
-  return (
-    <InfoTemplates.View
-      template=""
-      state={SavingTemplateFail.init(reason)}
-      dispatch={action('dispatch')}
-    />
-  )
+  return <ViewCombined state={SavingTemplateFail.init(reason)} />
 }
 
 SavingTemplateFail.init = (reason: string) => ({
@@ -102,13 +91,7 @@ SavingTemplateFail.init = (reason: string) => ({
 export const ManyTemplates = (): React.ReactNode => {
   const templatesCount = number('Templates count', 20)
 
-  return (
-    <InfoTemplates.View
-      template=""
-      state={ManyTemplates.init(templatesCount)}
-      dispatch={action('dispatch')}
-    />
-  )
+  return <ViewCombined state={ManyTemplates.init(templatesCount)} />
 }
 
 ManyTemplates.init = (infoTemplatesCount: number) => ({
@@ -122,11 +105,7 @@ ManyTemplates.init = (infoTemplatesCount: number) => ({
 })
 
 export const ManyTemplatesWithSavingError = (): React.ReactNode => (
-  <InfoTemplates.View
-    template=""
-    state={ManyTemplatesWithSavingError.state}
-    dispatch={action('dispatch')}
-  />
+  <ViewCombined state={ManyTemplatesWithSavingError.state} />
 )
 
 ManyTemplatesWithSavingError.state = {

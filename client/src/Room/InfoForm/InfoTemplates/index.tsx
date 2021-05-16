@@ -206,19 +206,20 @@ export const update = (
 
 // V I E W
 
-const ViewTemplateForm = React.memo<{
-  template: string
+const ViewTemplateForm: React.VFC<{
+  content: string
   name: string
   busy: boolean
+  disabled: boolean
   error: null | string
   dispatch: Dispatch<Action>
-}>(({ template, name, busy, error, dispatch }) => (
+}> = React.memo(({ content, name, busy, disabled, error, dispatch }) => (
   <InputGroup
     as="form"
     size="sm"
     width={220}
     onSubmit={event => {
-      dispatch(SaveTemplate({ content: template }))
+      dispatch(SaveTemplate({ content }))
 
       event.preventDefault()
     }}
@@ -233,6 +234,7 @@ const ViewTemplateForm = React.memo<{
 
     <Input
       autoFocus
+      isDisabled={disabled}
       isReadOnly={busy}
       value={name}
       placeholder="Save template with name"
@@ -246,6 +248,7 @@ const ViewTemplateForm = React.memo<{
         size="xs"
         colorScheme="teal"
         isLoading={busy}
+        isDisabled={disabled}
       >
         <AddIcon />
       </IconButton>
@@ -253,13 +256,32 @@ const ViewTemplateForm = React.memo<{
   </InputGroup>
 ))
 
-export const View = React.memo<{
-  template: string
+export const ViewInput: React.VFC<{
+  content: string
   state: State
   dispatch: Dispatch<Action>
-}>(({ template, state, dispatch }) => {
+}> = React.memo(({ content, state, dispatch }) => {
+  return (
+    <ViewTemplateForm
+      content={content}
+      name={state.templateName}
+      busy={state.savingTemplate.isLoading()}
+      disabled={!state.infoTemplates.isSucceed()}
+      error={state.savingTemplate.cata({
+        Failure: error => error,
+        _: () => null
+      })}
+      dispatch={dispatch}
+    />
+  )
+})
+
+export const ViewButtons: React.VFC<{
+  state: State
+  dispatch: Dispatch<Action>
+}> = React.memo(({ state, dispatch }) => {
   return state.infoTemplates.cata({
-    Loading: () => <Skeleton />,
+    Loading: () => <SkeletonButtons />,
 
     Failure: message => (
       <AlertPanel status="error" title="Request Error!">
@@ -269,19 +291,6 @@ export const View = React.memo<{
 
     Succeed: infoTemplates => (
       <Wrap spacing="2">
-        <WrapItem>
-          <ViewTemplateForm
-            template={template}
-            name={state.templateName}
-            busy={state.savingTemplate.isLoading()}
-            error={state.savingTemplate.cata({
-              Failure: error => error,
-              _: () => null
-            })}
-            dispatch={dispatch}
-          />
-        </WrapItem>
-
         {infoTemplates.map(infoTemplate => (
           <WrapItem key={infoTemplate.name}>
             <TemplateButton
@@ -303,12 +312,12 @@ export const View = React.memo<{
 
 // S K E L E T O N
 
-export const Skeleton = React.memo(() => (
-  <Wrap spacing="2">
-    <WrapItem>
-      <SkeletonRect width={220} height={32} />
-    </WrapItem>
+export const SkeletonInput: React.VFC = React.memo(() => (
+  <SkeletonRect width={220} height={32} />
+))
 
+export const SkeletonButtons: React.VFC = React.memo(() => (
+  <Wrap spacing="2">
     {[80, 120, 80].map((width, i) => (
       <WrapItem key={i}>
         <SkeletonTemplateButton width={width} />

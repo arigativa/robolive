@@ -1,5 +1,5 @@
 import React from 'react'
-import { Box, Button, Textarea, HStack, VStack } from '@chakra-ui/react'
+import { Button, Textarea, HStack, VStack } from '@chakra-ui/react'
 
 import type { Credentials } from 'Room'
 
@@ -81,25 +81,28 @@ export const update = (
 
 // V I E W
 
-const ViewContainer: React.FC<{
+const ViewContainer: React.VFC<{
   textarea: React.ReactNode
-  infoTemplates: React.ReactNode
+  infoTemplatesInput: React.ReactNode
+  infoTemplatesButtons: React.ReactNode
   submitButton: React.ReactNode
-}> = ({ textarea, infoTemplates, submitButton }) => (
+}> = ({ textarea, infoTemplatesInput, infoTemplatesButtons, submitButton }) => (
   <VStack spacing="4" align="start" alignItems="stretch">
     {textarea}
 
     <HStack alignItems="flex-start" justifyContent="space-between" spacing="4">
-      {infoTemplates}
-      <Box flexShrink={0}>{submitButton}</Box>
+      {infoTemplatesInput}
+      {submitButton}
     </HStack>
+
+    {infoTemplatesButtons}
   </VStack>
 )
 
-export const View = React.memo<{
+export const View: React.VFC<{
   state: State
   dispatch: Dispatch<Action>
-}>(({ state, dispatch }) => (
+}> = React.memo(({ state, dispatch }) => (
   <ViewContainer
     textarea={
       <Textarea
@@ -113,15 +116,26 @@ export const View = React.memo<{
         onChange={event => dispatch(ChangeInfo({ info: event.target.value }))}
       />
     }
-    infoTemplates={
-      <InfoTemplates.View
-        template={state.info}
+    infoTemplatesInput={
+      <InfoTemplates.ViewInput
+        content={state.info}
+        state={state.infoTemplates}
+        dispatch={useMapDispatch(InfoTemplatesAction, dispatch)}
+      />
+    }
+    infoTemplatesButtons={
+      <InfoTemplates.ViewButtons
         state={state.infoTemplates}
         dispatch={useMapDispatch(InfoTemplatesAction, dispatch)}
       />
     }
     submitButton={
-      <Button size="sm" colorScheme="teal" onClick={() => dispatch(SendInfo)}>
+      <Button
+        flexShrink={0}
+        size="sm"
+        colorScheme="teal"
+        onClick={() => dispatch(SendInfo)}
+      >
         Submit
       </Button>
     }
@@ -130,10 +144,11 @@ export const View = React.memo<{
 
 // S K E L E T O N
 
-export const Skeleton = React.memo(() => (
+export const Skeleton: React.VFC = React.memo(() => (
   <ViewContainer
     textarea={<SkeletonRect width="100%" height={194} />}
-    infoTemplates={<InfoTemplates.Skeleton />}
+    infoTemplatesInput={<InfoTemplates.SkeletonInput />}
+    infoTemplatesButtons={<InfoTemplates.SkeletonButtons />}
     submitButton={<SkeletonRect width={72} height={32} />}
   />
 ))
