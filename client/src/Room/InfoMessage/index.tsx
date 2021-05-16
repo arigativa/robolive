@@ -15,7 +15,7 @@ const parseMessageContent = (content: string): string => {
   }
 }
 
-export const InfoMessage = React.memo<{
+export const ViewInfoMessage = React.memo<{
   message: OutgoingInfoMessage
   onResend(): void
 }>(({ message, onResend }) => {
@@ -32,9 +32,12 @@ export const InfoMessage = React.memo<{
       borderWidth="1"
       borderRadius="md"
       wordBreak="break-all"
+      alignItems="stretch"
     >
       <HStack justifyContent="space-between">
-        <Text as="kbd">#{message.id}</Text>
+        <Text as="kbd" color="gray.400">
+          #{message.id}
+        </Text>
 
         <HStack>
           <Text as="time">{message.timestamp.toLocaleDateString()}</Text>

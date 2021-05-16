@@ -1,7 +1,6 @@
 import React from 'react'
 import { action } from '@storybook/addon-actions'
 import { number, text } from '@storybook/addon-knobs'
-// import RemoteData from 'frctl/RemoteData'
 
 import * as InfoForm from '..'
 import * as InfoTemplates from '../InfoTemplates/__stories__'

@@ -68,33 +68,6 @@ OnCall.useState = () => {
   }
 }
 
-export const WithInfoMessage = (): React.ReactNode => {
-  const messageContent = text('Message Content', 'Raw no JSON message')
-
-  return (
-    <Room.View
-      state={WithInfoMessage.useState(messageContent)}
-      dispatch={action('dispatch')}
-    />
-  )
-}
-
-WithInfoMessage.useState = (messageContent: string) => ({
-  ...OnCall.useState(),
-  outgoingInfoMessages: [{ id: 0, content: messageContent }]
-})
-
-export const WithJsonInfoMessage = (): React.ReactNode => {
-  const messageContent = '{"foo":false,"baz":123}'
-
-  return (
-    <Room.View
-      state={WithInfoMessage.useState(messageContent)}
-      dispatch={action('dispatch')}
-    />
-  )
-}
-
 export const WithMultiplyInfoMessages = (): React.ReactNode => {
   const messagesCount = number('# Messages', 5, {
     range: true,
@@ -114,6 +87,7 @@ WithMultiplyInfoMessages.useState = (messagesCount: number) => ({
   ...OnCall.useState(),
   outgoingInfoMessages: range(messagesCount).map(id => ({
     id,
-    content: `Some content of #${id} message`
+    content: `Some content of #${id} message`,
+    timestamp: new Date(2021, 4, 16, 11, 35 + id, 56)
   }))
 })

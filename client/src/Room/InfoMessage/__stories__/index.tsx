@@ -2,7 +2,7 @@ import React from 'react'
 import { action } from '@storybook/addon-actions'
 import { text, date } from '@storybook/addon-knobs'
 
-import { InfoMessage } from '..'
+import { ViewInfoMessage } from '..'
 
 export default {
   title: 'Room / InfoMessage'
@@ -13,7 +13,7 @@ export const WithPlainTextContent = (): React.ReactNode => {
   const timestamp = date('Timestamp', new Date(2021, 4, 16, 15, 28, 51))
 
   return (
-    <InfoMessage
+    <ViewInfoMessage
       message={WithPlainTextContent.makeMessage(content, new Date(timestamp))}
       onResend={action('onResend')}
     />
@@ -30,7 +30,7 @@ export const WithJsonContent = (): React.ReactNode => {
   const content = '{"foo":false,"baz":123}'
 
   return (
-    <InfoMessage
+    <ViewInfoMessage
       message={WithPlainTextContent.makeMessage(
         content,
         new Date(2021, 4, 16, 15, 28, 51)

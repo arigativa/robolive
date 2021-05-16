@@ -1,6 +1,6 @@
 import React from 'react'
 import RemoteData from 'frctl/RemoteData'
-import { Box, Button, VStack, Heading, Text } from '@chakra-ui/react'
+import { Box, Button, VStack } from '@chakra-ui/react'
 
 import { Dispatch, Cmd, Sub, useMapDispatch } from 'core'
 import { SipConnection } from 'sip'
@@ -9,14 +9,10 @@ import { AlertPanel } from 'AlertPanel'
 import { SkeletonRect } from 'Skeleton'
 
 import { Credentials } from '.'
+import { OutgoingInfoMessage, ViewInfoMessage } from './InfoMessage'
 import * as InfoForm from './InfoForm'
 
 // S T A T E
-
-interface OutgoingInfoMessage {
-  id: number
-  content: string
-}
 
 export interface State {
   stream: RemoteData.Optional<string, MediaStream>
@@ -57,6 +53,7 @@ export type Action =
   | Case<'Connect', { stream: MediaStream }>
   | Case<'FailConnection', { reason: string }>
   | Case<'NewOutgoingMessage', { content: string }>
+  | Case<'SaveOutgoingMessage', { message: OutgoingInfoMessage }>
   | Case<'SendInfoAgain', { content: string }>
   | Case<'GoToRobotsList'>
   | Case<'InfoFormAction', { action: InfoForm.Action }>
@@ -65,6 +62,9 @@ const Connect = Case.of<Action, 'Connect'>('Connect')
 const FailConnection = Case.of<Action, 'FailConnection'>('FailConnection')
 const NewOutgoingMessage = Case.of<Action, 'NewOutgoingMessage'>(
   'NewOutgoingMessage'
+)
+const SaveOutgoingMessage = Case.of<Action, 'SaveOutgoingMessage'>(
+  'SaveOutgoingMessage'
 )
 const SendInfoAgain = Case.of<Action, 'SendInfoAgain'>('SendInfoAgain')
 const GoToRobotsList = Case.of<Action, 'GoToRobotsList'>('GoToRobotsList')()
@@ -102,15 +102,26 @@ export const update = (
 
     case 'NewOutgoingMessage': {
       return Updated(
+        state,
+        Cmd.create<Action>(done => {
+          done(
+            SaveOutgoingMessage({
+              message: {
+                id: state.outgoingInfoMessages.length,
+                content: action.content,
+                timestamp: new Date()
+              }
+            })
+          )
+        })
+      )
+    }
+
+    case 'SaveOutgoingMessage': {
+      return Updated(
         {
           ...state,
-          outgoingInfoMessages: [
-            {
-              id: state.outgoingInfoMessages.length,
-              content: action.content
-            },
-            ...state.outgoingInfoMessages
-          ]
+          outgoingInfoMessages: [action.message, ...state.outgoingInfoMessages]
         },
         Cmd.none
       )
@@ -172,68 +183,17 @@ const ViewInfoForm = React.memo<{
   />
 ))
 
-const parseMessageContent = (content: string): string => {
-  try {
-    return JSON.stringify(JSON.parse(content), null, 4)
-  } catch {
-    return content
-  }
-}
-
 const ViewOutgoingInfoMessage = React.memo<{
   message: OutgoingInfoMessage
   dispatch: Dispatch<Action>
-}>(({ message, dispatch }) => {
-  const parsedContent = React.useMemo(
-    () => parseMessageContent(message.content),
-    [message.content]
-  )
-
-  return (
-    <Box
-      p="5"
-      width="100%"
-      shadow="md"
-      borderWidth="1"
-      borderRadius="md"
-      wordBreak="break-all"
-    >
-      <Heading fontSize="xl">Message #{message.id}</Heading>
-
-      <Box mt="2" p="3" width="100%" borderRadius="sm" bg="gray.50">
-        <Text fontSize="sm" as="pre">
-          {parsedContent}
-        </Text>
-      </Box>
-
-      <Button
-        mt="2"
-        size="xs"
-        type="submit"
-        colorScheme="teal"
-        onClick={() => {
-          dispatch(SendInfoAgain({ content: message.content }))
-        }}
-      >
-        Send again
-      </Button>
-    </Box>
-  )
-})
-
-const ViewOutgoingInfoMessages = React.memo<{
-  messages: Array<OutgoingInfoMessage>
-  dispatch: Dispatch<Action>
-}>(({ messages, dispatch }) => (
-  <VStack>
-    {messages.map(message => (
-      <ViewOutgoingInfoMessage
-        key={message.id}
-        message={message}
-        dispatch={dispatch}
-      />
-    ))}
-  </VStack>
+}>(({ message, dispatch }) => (
+  <ViewInfoMessage
+    message={message}
+    onResend={React.useCallback(
+      () => dispatch(SendInfoAgain({ content: message.content })),
+      [dispatch, message.content]
+    )}
+  />
 ))
 
 const ViewSucceed = React.memo<{
@@ -258,12 +218,15 @@ const ViewSucceed = React.memo<{
         <ViewInfoForm infoForm={infoForm} dispatch={dispatch} />
       </Box>
 
-      <Box mt="4">
-        <ViewOutgoingInfoMessages
-          messages={outgoingInfoMessages}
-          dispatch={dispatch}
-        />
-      </Box>
+      <VStack mt="4" spacing="4">
+        {outgoingInfoMessages.map(message => (
+          <ViewOutgoingInfoMessage
+            key={message.id}
+            message={message}
+            dispatch={dispatch}
+          />
+        ))}
+      </VStack>
     </Box>
   )
 })
