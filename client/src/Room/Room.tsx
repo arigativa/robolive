@@ -1,6 +1,6 @@
 import React from 'react'
 import RemoteData from 'frctl/RemoteData'
-import { Box, Button, VStack } from '@chakra-ui/react'
+import { Box, VStack, HStack, Button } from '@chakra-ui/react'
 
 import { Dispatch, Cmd, Sub, useMapDispatch } from 'core'
 import { SipConnection } from 'sip'
@@ -11,6 +11,9 @@ import { SkeletonRect } from 'Skeleton'
 import { Credentials } from '.'
 import { OutgoingInfoMessage, ViewInfoMessage } from './InfoMessage'
 import * as InfoForm from './InfoForm'
+
+const CONTAINER_MAX_WIDTH = 1800
+const SIDEBAR_WIDTH = 420
 
 // S T A T E
 
@@ -196,12 +199,9 @@ const ViewOutgoingInfoMessage = React.memo<{
   />
 ))
 
-const ViewSucceed = React.memo<{
+const ViewVideoStream: React.VFC<{
   stream: MediaStream
-  outgoingInfoMessages: Array<OutgoingInfoMessage>
-  infoForm: InfoForm.State
-  dispatch: Dispatch<Action>
-}>(({ stream, outgoingInfoMessages, infoForm, dispatch }) => {
+}> = React.memo(({ stream }) => {
   const videoRef = React.useRef<HTMLVideoElement>(null)
 
   React.useEffect(() => {
@@ -211,48 +211,61 @@ const ViewSucceed = React.memo<{
   }, [stream])
 
   return (
-    <Box width="100%">
-      <video ref={videoRef} autoPlay />
-
-      <Box mt="2">
-        <ViewInfoForm infoForm={infoForm} dispatch={dispatch} />
-      </Box>
-
-      <VStack mt="4" spacing="4">
-        {outgoingInfoMessages.map(message => (
-          <ViewOutgoingInfoMessage
-            key={message.id}
-            message={message}
-            dispatch={dispatch}
-          />
-        ))}
-      </VStack>
+    <Box height="100%" width="100%" background="gray.900">
+      <video
+        ref={videoRef}
+        autoPlay
+        style={{ width: '100%', height: '100%' }}
+      />
     </Box>
   )
 })
 
-const ViewContainer: React.FC = ({ children }) => (
-  <VStack align="start" alignItems="stretch">
-    {children}
-  </VStack>
+const ViewLayout: React.VFC<{
+  header: React.ReactNode
+  sidebar: React.ReactNode
+  content: React.ReactNode
+}> = ({ header, sidebar, content }) => (
+  <HStack
+    padding="4"
+    spacing="4"
+    alignItems="flex-start"
+    width={CONTAINER_MAX_WIDTH}
+    maxWidth="100%"
+    height={CONTAINER_MAX_WIDTH - SIDEBAR_WIDTH}
+    maxHeight="100%"
+  >
+    {content}
+    <VStack
+      flexShrink={0}
+      width={SIDEBAR_WIDTH}
+      maxHeight="100%"
+      alignItems="stretch"
+    >
+      {header}
+      {sidebar}
+    </VStack>
+  </HStack>
 )
 
 export const View = React.memo<{
   state: State
   dispatch: Dispatch<Action>
 }>(({ state, dispatch }) => (
-  <ViewContainer>
-    <Button
-      alignSelf="flex-start"
-      size="xs"
-      variant="outline"
-      colorScheme="teal"
-      onClick={() => dispatch(GoToRobotsList)}
-    >
-      Back to Robots List
-    </Button>
-
-    {state.stream.cata({
+  <ViewLayout
+    header={
+      <Button
+        alignSelf="flex-start"
+        flexShrink={0}
+        size="xs"
+        variant="outline"
+        colorScheme="teal"
+        onClick={() => dispatch(GoToRobotsList)}
+      >
+        Back to Robots List
+      </Button>
+    }
+    sidebar={state.stream.cata({
       NotAsked: () => <AlertPanel status="info">Call is ended.</AlertPanel>,
 
       Loading: () => <InfoForm.Skeleton />,
@@ -263,23 +276,55 @@ export const View = React.memo<{
         </AlertPanel>
       ),
 
-      Succeed: stream => (
-        <ViewSucceed
-          stream={stream}
-          outgoingInfoMessages={state.outgoingInfoMessages}
-          infoForm={state.infoForm}
-          dispatch={dispatch}
-        />
+      Succeed: () => (
+        <>
+          <ViewInfoForm infoForm={state.infoForm} dispatch={dispatch} />
+
+          <Box
+            display="flex"
+            flexDirection="column"
+            minHeight={0}
+            alignItems="stretch"
+          >
+            <VStack
+              spacing="4"
+              maxHeight="100%"
+              overflowY="auto"
+              marginX="-4"
+              paddingX="4"
+              marginBottom="-4"
+              paddingBottom="4"
+            >
+              {state.outgoingInfoMessages.map(message => (
+                <ViewOutgoingInfoMessage
+                  key={message.id}
+                  message={message}
+                  dispatch={dispatch}
+                />
+              ))}
+            </VStack>
+          </Box>
+        </>
       )
     })}
-  </ViewContainer>
+    content={state.stream.cata({
+      Succeed: stream => <ViewVideoStream stream={stream} />,
+
+      _: () => <SkeletonVideoStream />
+    })}
+  />
 ))
 
 // S K E L E T O N
 
+const SkeletonVideoStream: React.VFC = React.memo(() => (
+  <SkeletonRect width="100%" height="100%" />
+))
+
 export const Skeleton = React.memo(() => (
-  <ViewContainer>
-    <SkeletonRect width={132} height={24} />
-    <InfoForm.Skeleton />
-  </ViewContainer>
+  <ViewLayout
+    header={<SkeletonRect width={132} height={24} />}
+    sidebar={<InfoForm.Skeleton />}
+    content={<SkeletonVideoStream />}
+  />
 ))

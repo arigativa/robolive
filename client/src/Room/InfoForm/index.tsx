@@ -104,8 +104,9 @@ export const View = React.memo<{
     textarea={
       <Textarea
         fontFamily="monospace"
+        fontSize="sm"
         display="block"
-        rows={12}
+        rows={8}
         resize="vertical"
         value={state.info}
         placeholder="You can submit both plain text and JSON"
@@ -131,7 +132,7 @@ export const View = React.memo<{
 
 export const Skeleton = React.memo(() => (
   <ViewContainer
-    textarea={<SkeletonRect width="100%" height={282} />}
+    textarea={<SkeletonRect width="100%" height={194} />}
     infoTemplates={<InfoTemplates.Skeleton />}
     submitButton={<SkeletonRect width={72} height={32} />}
   />

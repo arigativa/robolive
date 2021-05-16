@@ -40,8 +40,10 @@ export const ViewInfoMessage = React.memo<{
         </Text>
 
         <HStack>
-          <Text as="time">{message.timestamp.toLocaleDateString()}</Text>
-          <Text as="time">{message.timestamp.toLocaleTimeString()}</Text>
+          <Text as="time" fontSize="xs">
+            {message.timestamp.toLocaleDateString()}{' '}
+            {message.timestamp.toLocaleTimeString()}
+          </Text>
 
           <Button size="xs" type="submit" colorScheme="teal" onClick={onResend}>
             Send again
