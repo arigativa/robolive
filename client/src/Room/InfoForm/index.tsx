@@ -82,28 +82,41 @@ export const update = (
 // V I E W
 
 const ViewContainer: React.VFC<{
+  hideTextarea?: boolean
+  hideTemplates?: boolean
   textarea: React.ReactNode
   infoTemplatesInput: React.ReactNode
   infoTemplatesButtons: React.ReactNode
   submitButton: React.ReactNode
-}> = ({ textarea, infoTemplatesInput, infoTemplatesButtons, submitButton }) => (
+}> = ({
+  hideTextarea = false,
+  hideTemplates = false,
+  textarea,
+  infoTemplatesInput,
+  infoTemplatesButtons,
+  submitButton
+}) => (
   <VStack spacing="4" align="start" alignItems="stretch">
-    {textarea}
+    {!hideTextarea && textarea}
 
     <HStack alignItems="flex-start" justifyContent="space-between" spacing="4">
-      {infoTemplatesInput}
-      {submitButton}
+      {!hideTemplates && infoTemplatesInput}
+      {!hideTextarea && submitButton}
     </HStack>
 
-    {infoTemplatesButtons}
+    {!hideTemplates && infoTemplatesButtons}
   </VStack>
 )
 
 export const View: React.VFC<{
+  hideTextarea?: boolean
+  hideTemplates?: boolean
   state: State
   dispatch: Dispatch<Action>
-}> = React.memo(({ state, dispatch }) => (
+}> = React.memo(({ hideTextarea, hideTemplates, state, dispatch }) => (
   <ViewContainer
+    hideTextarea={hideTextarea}
+    hideTemplates={hideTemplates}
     textarea={
       <Textarea
         fontFamily="monospace"
@@ -144,8 +157,13 @@ export const View: React.VFC<{
 
 // S K E L E T O N
 
-export const Skeleton: React.VFC = React.memo(() => (
+export const Skeleton: React.VFC<{
+  hideTextarea?: boolean
+  hideTemplates?: boolean
+}> = React.memo(({ hideTextarea, hideTemplates }) => (
   <ViewContainer
+    hideTextarea={hideTextarea}
+    hideTemplates={hideTemplates}
     textarea={<SkeletonRect width="100%" height={194} />}
     infoTemplatesInput={<InfoTemplates.SkeletonInput />}
     infoTemplatesButtons={<InfoTemplates.SkeletonButtons />}

@@ -6,6 +6,7 @@ import { range } from 'utils'
 
 import * as Room from '../Room'
 import * as InfoForm from '../InfoForm/__stories__'
+import * as Preferences from '../Preferences/__stories__'
 
 export default {
   title: 'Room'
@@ -64,7 +65,8 @@ OnCall.useState = () => {
   return {
     ...Room.initialState,
     infoForm: InfoForm.InfoTemplatesLoaded.init(3),
-    stream: RemoteData.Optional.Succeed(stream)
+    stream: RemoteData.Optional.Succeed(stream),
+    preferences: Preferences.Defaults.state
   }
 }
 
@@ -90,4 +92,31 @@ WithMultiplyInfoMessages.useState = (messagesCount: number) => ({
     content: `Some content of #${id} message`,
     timestamp: new Date(2021, 4, 16, 11, 35 + id, 56)
   }))
+})
+
+export const HideTextarea = (): React.ReactNode => (
+  <Room.View state={HideTextarea.useState()} dispatch={action('dispatch')} />
+)
+
+HideTextarea.useState = () => ({
+  ...WithMultiplyInfoMessages.useState(10),
+  preferences: Preferences.HideTextarea.state
+})
+
+export const HideTemplates = (): React.ReactNode => (
+  <Room.View state={HideTemplates.useState()} dispatch={action('dispatch')} />
+)
+
+HideTemplates.useState = () => ({
+  ...WithMultiplyInfoMessages.useState(10),
+  preferences: Preferences.HideTemplates.state
+})
+
+export const HideInfoLog = (): React.ReactNode => (
+  <Room.View state={HideInfoLog.useState()} dispatch={action('dispatch')} />
+)
+
+HideInfoLog.useState = () => ({
+  ...WithMultiplyInfoMessages.useState(10),
+  preferences: Preferences.HideInfoLog.state
 })

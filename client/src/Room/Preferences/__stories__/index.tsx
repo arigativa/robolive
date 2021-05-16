@@ -22,6 +22,36 @@ export const Defaults = (): JSX.Element => (
 
 Defaults.state = Maybe.Just(Preferences.Preferences.defaults)
 
+export const HideTextarea = (): JSX.Element => (
+  <Preferences.View state={HideTextarea.state} dispatch={action('dispatch')} />
+)
+
+HideTextarea.state = Maybe.Just({
+  showTextarea: false,
+  showTemplates: true,
+  showInfoLog: true
+})
+
+export const HideTemplates = (): JSX.Element => (
+  <Preferences.View state={HideTemplates.state} dispatch={action('dispatch')} />
+)
+
+HideTemplates.state = Maybe.Just({
+  showTextarea: true,
+  showTemplates: false,
+  showInfoLog: true
+})
+
+export const HideInfoLog = (): JSX.Element => (
+  <Preferences.View state={HideInfoLog.state} dispatch={action('dispatch')} />
+)
+
+HideInfoLog.state = Maybe.Just({
+  showTextarea: true,
+  showTemplates: true,
+  showInfoLog: false
+})
+
 export const HideAll = (): JSX.Element => (
   <Preferences.View state={HideAll.state} dispatch={action('dispatch')} />
 )

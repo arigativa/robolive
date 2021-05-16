@@ -49,7 +49,7 @@ export type State = Maybe<Preferences>
 
 export const initialState: State = Maybe.Nothing
 
-export const initCmd: Cmd<Action> = Cmd.create<Action>(done => {
+export const initialCmd: Cmd<Action> = Cmd.create<Action>(done => {
   const json = localStorage.getItem(LOCALSTORAGE_KEY)
   const result = Preferences.decoder.decodeJSON(json ?? '')
 
@@ -147,5 +147,5 @@ export const View: React.VFC<{
 // S K E L E T O N
 
 export const Skeleton: React.VFC = React.memo(() => (
-  <SkeletonRect width={24} height={24} />
+  <SkeletonRect width={70} height={24} />
 ))
