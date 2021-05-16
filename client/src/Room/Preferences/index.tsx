@@ -49,6 +49,10 @@ export type State = Maybe<Preferences>
 
 export const initialState: State = Maybe.Nothing
 
+export const withDefaults = (state: State): Preferences => {
+  return state.getOrElse(Preferences.defaults)
+}
+
 export const initialCmd: Cmd<Action> = Cmd.create<Action>(done => {
   const json = localStorage.getItem(LOCALSTORAGE_KEY)
   const result = Preferences.decoder.decodeJSON(json ?? '')
@@ -61,9 +65,11 @@ export const initialCmd: Cmd<Action> = Cmd.create<Action>(done => {
 // U P D A T E
 
 export type Action =
+  | Case<'NoOp'>
   | Case<'ReadLocalPreferences', { preferences: Preferences }>
   | Case<'ChangePreferences', { key: keyof Preferences }>
 
+const NoOp = Case.of<Action, 'NoOp'>('NoOp')()
 const ReadLocalPreferences = Case.of<Action, 'ReadLocalPreferences'>(
   'ReadLocalPreferences'
 )
@@ -71,6 +77,10 @@ const ChangePreferences = Case.of<Action, 'ChangePreferences'>(
   'ChangePreferences'
 )
 export const update = (action: Action, state: State): [State, Cmd<Action>] => {
+  if (action.type === 'NoOp') {
+    return [state, Cmd.none]
+  }
+
   if (action.type === 'ReadLocalPreferences') {
     return [Maybe.Just(action.preferences), Cmd.none]
   }
@@ -83,13 +93,13 @@ export const update = (action: Action, state: State): [State, Cmd<Action>] => {
       Just: newPreferenes => [
         Maybe.Just(newPreferenes),
 
-        Cmd.create(done => {
+        Cmd.create<Action>(done => {
           localStorage.setItem(
             LOCALSTORAGE_KEY,
             JSON.stringify(Preferences.encode(newPreferenes))
           )
 
-          done()
+          done(NoOp)
         })
       ]
     })

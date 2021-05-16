@@ -99,10 +99,16 @@ const ViewContainer: React.VFC<{
   <VStack spacing="4" align="start" alignItems="stretch">
     {!hideTextarea && textarea}
 
-    <HStack alignItems="flex-start" justifyContent="space-between" spacing="4">
-      {!hideTemplates && infoTemplatesInput}
-      {!hideTextarea && submitButton}
-    </HStack>
+    {!hideTextarea && (
+      <HStack
+        alignItems="flex-start"
+        justifyContent="space-between"
+        spacing="4"
+      >
+        {!hideTemplates && infoTemplatesInput}
+        {submitButton}
+      </HStack>
+    )}
 
     {!hideTemplates && infoTemplatesButtons}
   </VStack>
@@ -164,7 +170,7 @@ export const Skeleton: React.VFC<{
   <ViewContainer
     hideTextarea={hideTextarea}
     hideTemplates={hideTemplates}
-    textarea={<SkeletonRect width="100%" height={194} />}
+    textarea={<SkeletonRect width="100%" height={170} />}
     infoTemplatesInput={<InfoTemplates.SkeletonInput />}
     infoTemplatesButtons={<InfoTemplates.SkeletonButtons />}
     submitButton={<SkeletonRect width={72} height={32} />}

@@ -304,46 +304,49 @@ const ViewLayout: React.VFC<{
 export const View = React.memo<{
   state: State
   dispatch: Dispatch<Action>
-}>(({ state, dispatch }) => (
-  <ViewLayout
-    header={
-      <HStack justifyContent="space-between">
-        <Button
-          alignSelf="flex-start"
-          flexShrink={0}
-          size="xs"
-          variant="outline"
-          colorScheme="teal"
-          onClick={() => dispatch(GoToRobotsList)}
-        >
-          Back to Robots List
-        </Button>
+}>(({ state, dispatch }) => {
+  const { showTextarea, showTemplates, showInfoLog } = Preferences.withDefaults(
+    state.preferences
+  )
 
-        <Preferences.View
-          state={state.preferences}
-          dispatch={useMapDispatch(PreferencesAction, dispatch)}
-        />
-      </HStack>
-    }
-    sidebar={state.stream.cata({
-      NotAsked: () => <AlertPanel status="info">Call is ended.</AlertPanel>,
+  return (
+    <ViewLayout
+      header={
+        <HStack justifyContent="space-between">
+          <Button
+            alignSelf="flex-start"
+            flexShrink={0}
+            size="xs"
+            variant="outline"
+            colorScheme="teal"
+            onClick={() => dispatch(GoToRobotsList)}
+          >
+            Back to Robots List
+          </Button>
 
-      Loading: () => <InfoForm.Skeleton />,
+          <Preferences.View
+            state={state.preferences}
+            dispatch={useMapDispatch(PreferencesAction, dispatch)}
+          />
+        </HStack>
+      }
+      sidebar={state.stream.cata({
+        NotAsked: () => <AlertPanel status="info">Call is ended.</AlertPanel>,
 
-      Failure: message => (
-        <AlertPanel status="error" title="Video Stream Error!">
-          {message}
-        </AlertPanel>
-      ),
+        Loading: () => (
+          <InfoForm.Skeleton
+            hideTextarea={!showTextarea}
+            hideTemplates={!showTemplates}
+          />
+        ),
 
-      Succeed: () => {
-        const {
-          showTextarea,
-          showTemplates,
-          showInfoLog
-        } = state.preferences.getOrElse(Preferences.Preferences.defaults)
+        Failure: message => (
+          <AlertPanel status="error" title="Video Stream Error!">
+            {message}
+          </AlertPanel>
+        ),
 
-        return (
+        Succeed: () => (
           <>
             <ViewInfoForm
               hideTextarea={!showTextarea}
@@ -360,15 +363,15 @@ export const View = React.memo<{
             )}
           </>
         )
-      }
-    })}
-    content={state.stream.cata({
-      Succeed: stream => <ViewVideoStream stream={stream} />,
+      })}
+      content={state.stream.cata({
+        Succeed: stream => <ViewVideoStream stream={stream} />,
 
-      _: () => <SkeletonVideoStream />
-    })}
-  />
-))
+        _: () => <SkeletonVideoStream />
+      })}
+    />
+  )
+})
 
 // S K E L E T O N
 
