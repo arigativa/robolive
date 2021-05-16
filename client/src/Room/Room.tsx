@@ -270,12 +270,19 @@ const ViewSucceed = React.memo<{
   )
 })
 
+const ViewContainer: React.FC = ({ children }) => (
+  <VStack align="start" alignItems="stretch">
+    {children}
+  </VStack>
+)
+
 export const View = React.memo<{
   state: State
   dispatch: Dispatch<Action>
 }>(({ state, dispatch }) => (
-  <VStack align="start">
+  <ViewContainer>
     <Button
+      alignSelf="flex-start"
       size="xs"
       variant="outline"
       colorScheme="teal"
@@ -304,14 +311,14 @@ export const View = React.memo<{
         />
       )
     })}
-  </VStack>
+  </ViewContainer>
 ))
 
 // S K E L E T O N
 
 export const Skeleton = React.memo(() => (
-  <VStack align="start">
+  <ViewContainer>
     <SkeletonRect width={132} height={24} />
     <InfoForm.Skeleton />
-  </VStack>
+  </ViewContainer>
 ))
