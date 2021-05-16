@@ -2,7 +2,11 @@ const path = require('path')
 const toPath = _path => path.join(process.cwd(), _path)
 
 module.exports = {
-  stories: ['../src/**/*.stories.ts*', '../src/**/*.story.ts*'],
+  stories: [
+    '../src/**/*.stories.ts*',
+    '../src/**/*.story.ts*',
+    '../src/**/__stories__/*.ts*'
+  ],
   addons: [
     '@storybook/preset-create-react-app',
     '@storybook/addon-actions',

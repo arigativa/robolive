@@ -3,15 +3,13 @@ import {
   Wrap,
   WrapItem,
   Tooltip,
-  ButtonGroup,
-  Button,
   IconButton,
   InputGroup,
   InputRightElement,
   Input,
   InputLeftElement
 } from '@chakra-ui/react'
-import { AddIcon, DeleteIcon, WarningIcon } from '@chakra-ui/icons'
+import { AddIcon, WarningIcon } from '@chakra-ui/icons'
 import RemoteData from 'frctl/RemoteData'
 import Either from 'frctl/Either'
 
@@ -23,6 +21,7 @@ import { AlertPanel } from 'AlertPanel'
 import { Case } from 'utils'
 
 import type { Credentials } from 'Room'
+import { TemplateButton, SkeletonTemplateButton } from './TemplateButton'
 
 // S T A T E
 
@@ -207,44 +206,20 @@ export const update = (
 
 // V I E W
 
-const ViewTemplate = React.memo<{
-  infoTemplate: InfoTemplate
-  dispatch: Dispatch<Action>
-}>(({ infoTemplate, dispatch }) => (
-  <ButtonGroup isAttached size="sm">
-    <Button
-      variant="outline"
-      colorScheme="teal"
-      onClick={() => dispatch(SendTemplate({ content: infoTemplate.content }))}
-    >
-      {infoTemplate.name}
-    </Button>
-
-    <IconButton
-      aria-label="Delete template"
-      ml="-px"
-      colorScheme="pink"
-      onClick={() => dispatch(DeleteTemplate({ name: infoTemplate.name }))}
-    >
-      <DeleteIcon />
-    </IconButton>
-  </ButtonGroup>
-))
-
-const ViewTemplateForm = React.memo<{
-  template: string
+const ViewTemplateForm: React.VFC<{
+  content: string
   name: string
-  readonly: boolean
   busy: boolean
+  disabled: boolean
   error: null | string
   dispatch: Dispatch<Action>
-}>(({ template, name, readonly, busy, error, dispatch }) => (
+}> = React.memo(({ content, name, busy, disabled, error, dispatch }) => (
   <InputGroup
     as="form"
     size="sm"
-    width={200}
+    width={220}
     onSubmit={event => {
-      dispatch(SaveTemplate({ content: template }))
+      dispatch(SaveTemplate({ content }))
 
       event.preventDefault()
     }}
@@ -259,9 +234,10 @@ const ViewTemplateForm = React.memo<{
 
     <Input
       autoFocus
-      isReadOnly={busy || readonly}
+      isDisabled={disabled}
+      isReadOnly={busy}
       value={name}
-      placeholder="Template name"
+      placeholder="Save template with name"
       onChange={event => dispatch(ChangeName({ name: event.target.value }))}
     />
 
@@ -271,8 +247,8 @@ const ViewTemplateForm = React.memo<{
         type="submit"
         size="xs"
         colorScheme="teal"
-        isDisabled={readonly}
         isLoading={busy}
+        isDisabled={disabled}
       >
         <AddIcon />
       </IconButton>
@@ -280,77 +256,70 @@ const ViewTemplateForm = React.memo<{
   </InputGroup>
 ))
 
-const ViewTemplates = React.memo<{
-  infoTemplates: RemoteData<string, Array<InfoTemplate>>
+export const ViewInput: React.VFC<{
+  content: string
+  state: State
   dispatch: Dispatch<Action>
-}>(({ infoTemplates, dispatch }) => {
-  return infoTemplates.cata({
-    Loading: () => <SkeletonTemplates />,
+}> = React.memo(({ content, state, dispatch }) => (
+  <ViewTemplateForm
+    content={content}
+    name={state.templateName}
+    busy={state.savingTemplate.isLoading()}
+    disabled={!state.infoTemplates.isSucceed()}
+    error={state.savingTemplate.cata({
+      Failure: error => error,
+      _: () => null
+    })}
+    dispatch={dispatch}
+  />
+))
+
+export const ViewButtons: React.VFC<{
+  state: State
+  dispatch: Dispatch<Action>
+}> = React.memo(({ state, dispatch }) => {
+  return state.infoTemplates.cata({
+    Loading: () => <SkeletonButtons />,
 
     Failure: message => (
-      <WrapItem>
-        <AlertPanel status="error" title="Request Error!">
-          {message}
-        </AlertPanel>
-      </WrapItem>
+      <AlertPanel status="error" title="Request Error!">
+        {message}
+      </AlertPanel>
     ),
 
-    Succeed: templates => (
-      <>
-        {templates.map(template => (
-          <WrapItem key={template.name}>
-            <ViewTemplate infoTemplate={template} dispatch={dispatch} />
+    Succeed: infoTemplates => (
+      <Wrap spacing="2">
+        {infoTemplates.map(infoTemplate => (
+          <WrapItem key={infoTemplate.name}>
+            <TemplateButton
+              onSubmit={() => {
+                dispatch(SendTemplate({ content: infoTemplate.content }))
+              }}
+              onDelete={() => {
+                dispatch(DeleteTemplate({ name: infoTemplate.name }))
+              }}
+            >
+              {infoTemplate.name}
+            </TemplateButton>
           </WrapItem>
         ))}
-      </>
+      </Wrap>
     )
   })
 })
 
-export const View = React.memo<{
-  template: string
-  state: State
-  dispatch: Dispatch<Action>
-}>(({ template, state, dispatch }) => {
-  return (
-    <Wrap spacing="2">
-      <WrapItem>
-        <ViewTemplateForm
-          template={template}
-          name={state.templateName}
-          readonly={!state.infoTemplates.isSucceed()}
-          busy={state.savingTemplate.isLoading()}
-          error={state.savingTemplate.cata({
-            Failure: error => error,
-            _: () => null
-          })}
-          dispatch={dispatch}
-        />
-      </WrapItem>
-
-      <ViewTemplates infoTemplates={state.infoTemplates} dispatch={dispatch} />
-    </Wrap>
-  )
-})
-
 // S K E L E T O N
 
-const SkeletonTemplates = React.memo(() => (
-  <>
-    {[80, 120, 80].map((width, i) => (
-      <WrapItem key={i}>
-        <SkeletonRect width={width} height={32} />
-      </WrapItem>
-    ))}
-  </>
+export const SkeletonInput: React.VFC = React.memo(() => (
+  <SkeletonRect width={220} height={32} />
 ))
 
-export const Skeleton = React.memo(() => (
+export const SkeletonButtons: React.VFC = React.memo(() => (
   <Wrap spacing="2">
-    <WrapItem>
-      <SkeletonRect width={200} height={32} />
-    </WrapItem>
-
-    <SkeletonTemplates />
+    {[80, 120, 80].map((width, i) => (
+      <WrapItem key={i}>
+        <SkeletonTemplateButton width={width} />
+      </WrapItem>
+    ))}
   </Wrap>
 ))

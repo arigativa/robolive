@@ -17,17 +17,18 @@ export interface State {
   polling: boolean
 }
 
-export const init = (username: string): [State, Cmd<Action>] => [
-  {
-    robots: RemoteData.Loading,
-    polling: false
-  },
-  Cmd.create<Action>(done => {
+export const initialState: State = {
+  robots: RemoteData.Loading,
+  polling: false
+}
+
+export const initCmd = (username: string): Cmd<Action> => {
+  return Cmd.create<Action>(done => {
     getAgentList({ username })
       .then(result => LoadRobots({ result }))
       .then(done)
   })
-]
+}
 
 // U P D A T E
 
@@ -60,9 +61,7 @@ export const update = (
 ): Stage => {
   switch (action.type) {
     case 'ReInit': {
-      const [initialState, initialCmd] = init(username)
-
-      return Updated(initialState, initialCmd)
+      return Updated(initialState, initCmd(username))
     }
 
     case 'RunPolling': {

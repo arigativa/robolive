@@ -1,21 +1,12 @@
-import React, { ReactNode } from 'react'
-import {
-  Box,
-  FormControl,
-  FormLabel,
-  FormHelperText,
-  Button,
-  Textarea,
-  HStack,
-  VStack
-} from '@chakra-ui/react'
+import React from 'react'
+import { Button, Textarea, HStack, VStack } from '@chakra-ui/react'
 
 import type { Credentials } from 'Room'
 
 import { Dispatch, Cmd, useMapDispatch } from 'core'
 import { SipConnection } from 'sip'
 import { Case } from 'utils'
-import { SkeletonRect, SkeletonText } from 'Skeleton'
+import { SkeletonRect } from 'Skeleton'
 import * as InfoTemplates from './InfoTemplates'
 
 // S T A T E
@@ -90,108 +81,98 @@ export const update = (
 
 // V I E W
 
-const useFakeSubmitting = (ms: number): [boolean, VoidFunction] => {
-  const [submitting, setSubmitting] = React.useState(false)
-  const fakeSubmitting = React.useCallback(() => setSubmitting(true), [])
+const ViewContainer: React.VFC<{
+  hideTextarea?: boolean
+  hideTemplates?: boolean
+  textarea: React.ReactNode
+  infoTemplatesInput: React.ReactNode
+  infoTemplatesButtons: React.ReactNode
+  submitButton: React.ReactNode
+}> = ({
+  hideTextarea = false,
+  hideTemplates = false,
+  textarea,
+  infoTemplatesInput,
+  infoTemplatesButtons,
+  submitButton
+}) => (
+  <VStack spacing="4" align="start" alignItems="stretch">
+    {!hideTextarea && textarea}
 
-  React.useEffect(() => {
-    if (submitting) {
-      const timeoutId = setTimeout(() => {
-        setSubmitting(false)
-      }, ms)
-
-      return () => clearTimeout(timeoutId)
-    }
-  }, [ms, submitting])
-
-  return [submitting, fakeSubmitting]
-}
-
-const ContainerInfoForm: React.FC<{
-  label: ReactNode
-  textarea: ReactNode
-  helperText: ReactNode
-  submitButton: ReactNode
-}> = ({ label, textarea, helperText, submitButton }) => (
-  <FormControl>
-    <FormLabel>{label}</FormLabel>
-
-    {textarea}
-
-    <FormHelperText>
-      <HStack>
-        <Box flex="1">{helperText}</Box>
-
+    {!hideTextarea && (
+      <HStack
+        alignItems="flex-start"
+        justifyContent="space-between"
+        spacing="4"
+      >
+        {!hideTemplates && infoTemplatesInput}
         {submitButton}
       </HStack>
-    </FormHelperText>
-  </FormControl>
+    )}
+
+    {!hideTemplates && infoTemplatesButtons}
+  </VStack>
 )
 
-const ViewInfoForm = React.memo<{
-  info: string
-  dispatch: Dispatch<Action>
-}>(({ info, dispatch }) => {
-  const [submitting, fakeSubmitting] = useFakeSubmitting(400)
-
-  return (
-    <ContainerInfoForm
-      label="Send Info"
-      textarea={
-        <Textarea
-          fontFamily="monospace"
-          display="block"
-          rows={10}
-          resize="vertical"
-          value={info}
-          placeholder="Put info right here"
-          onChange={event => dispatch(ChangeInfo({ info: event.target.value }))}
-        />
-      }
-      helperText="You can submit both plain text and JSON"
-      submitButton={
-        <Button
-          size="sm"
-          colorScheme="teal"
-          isLoading={submitting}
-          onClick={() => {
-            fakeSubmitting()
-            dispatch(SendInfo)
-          }}
-        >
-          Submit
-        </Button>
-      }
-    />
-  )
-})
-
-export const View = React.memo<{
+export const View: React.VFC<{
+  hideTextarea?: boolean
+  hideTemplates?: boolean
   state: State
   dispatch: Dispatch<Action>
-}>(({ state, dispatch }) => (
-  <VStack spacing="4" align="start">
-    <ViewInfoForm info={state.info} dispatch={dispatch} />
-
-    <InfoTemplates.View
-      template={state.info}
-      state={state.infoTemplates}
-      dispatch={useMapDispatch(InfoTemplatesAction, dispatch)}
-    />
-  </VStack>
+}> = React.memo(({ hideTextarea, hideTemplates, state, dispatch }) => (
+  <ViewContainer
+    hideTextarea={hideTextarea}
+    hideTemplates={hideTemplates}
+    textarea={
+      <Textarea
+        fontFamily="monospace"
+        fontSize="sm"
+        display="block"
+        rows={8}
+        resize="vertical"
+        value={state.info}
+        placeholder="You can submit both plain text and JSON"
+        onChange={event => dispatch(ChangeInfo({ info: event.target.value }))}
+      />
+    }
+    infoTemplatesInput={
+      <InfoTemplates.ViewInput
+        content={state.info}
+        state={state.infoTemplates}
+        dispatch={useMapDispatch(InfoTemplatesAction, dispatch)}
+      />
+    }
+    infoTemplatesButtons={
+      <InfoTemplates.ViewButtons
+        state={state.infoTemplates}
+        dispatch={useMapDispatch(InfoTemplatesAction, dispatch)}
+      />
+    }
+    submitButton={
+      <Button
+        flexShrink={0}
+        size="sm"
+        colorScheme="teal"
+        onClick={() => dispatch(SendInfo)}
+      >
+        Submit
+      </Button>
+    }
+  />
 ))
 
 // S K E L E T O N
 
-export const Skeleton = React.memo(() => (
-  <VStack spacing="4" align="start">
-    <ContainerInfoForm
-      label={<SkeletonText />}
-      textarea={<SkeletonRect width="100%" height={188} />}
-      helperText={<SkeletonText />}
-      submitButton={<SkeletonRect width={72} height={32} />}
-    />
-
-    <InfoTemplates.Skeleton />
-  </VStack>
+export const Skeleton: React.VFC<{
+  hideTextarea?: boolean
+  hideTemplates?: boolean
+}> = React.memo(({ hideTextarea, hideTemplates }) => (
+  <ViewContainer
+    hideTextarea={hideTextarea}
+    hideTemplates={hideTemplates}
+    textarea={<SkeletonRect width="100%" height={170} />}
+    infoTemplatesInput={<InfoTemplates.SkeletonInput />}
+    infoTemplatesButtons={<InfoTemplates.SkeletonButtons />}
+    submitButton={<SkeletonRect width={72} height={32} />}
+  />
 ))

@@ -1,6 +1,6 @@
 import React from 'react'
 import RemoteData from 'frctl/RemoteData'
-import { Box, Button, VStack, Heading, Text } from '@chakra-ui/react'
+import { Box, VStack, HStack, Button } from '@chakra-ui/react'
 
 import { Dispatch, Cmd, Sub, useMapDispatch } from 'core'
 import { SipConnection } from 'sip'
@@ -9,26 +9,26 @@ import { AlertPanel } from 'AlertPanel'
 import { SkeletonRect } from 'Skeleton'
 
 import { Credentials } from '.'
+import { OutgoingInfoMessage, ViewInfoMessage } from './InfoMessage'
 import * as InfoForm from './InfoForm'
+import * as Preferences from './Preferences'
+
+const CONTAINER_MAX_WIDTH = 1800
+const SIDEBAR_WIDTH = 420
 
 // S T A T E
 
-interface OutgoingInfoMessage {
-  id: number
-  content: string
-}
-
 export interface State {
   stream: RemoteData.Optional<string, MediaStream>
-  terminating: boolean
-  outgoingInfoMessages: Array<OutgoingInfoMessage>
+  outgoingInfoMessages: ReadonlyArray<OutgoingInfoMessage>
+  preferences: Preferences.State
   infoForm: InfoForm.State
 }
 
 export const initialState: State = {
   stream: RemoteData.Optional.Loading,
-  terminating: false,
   outgoingInfoMessages: [],
+  preferences: Preferences.initialState,
   infoForm: InfoForm.initialState
 }
 
@@ -38,6 +38,7 @@ export const initCmd = (
 ): Cmd<Action> => {
   return Cmd.batch([
     connection.getStream(stream => Connect({ stream })),
+    Preferences.initialCmd.map(PreferencesAction),
     InfoForm.initCmd(credentials).map(InfoFormAction)
   ])
 }
@@ -59,8 +60,10 @@ export type Action =
   | Case<'Connect', { stream: MediaStream }>
   | Case<'FailConnection', { reason: string }>
   | Case<'NewOutgoingMessage', { content: string }>
+  | Case<'SaveOutgoingMessage', { message: OutgoingInfoMessage }>
   | Case<'SendInfoAgain', { content: string }>
   | Case<'GoToRobotsList'>
+  | Case<'PreferencesAction', { action: Preferences.Action }>
   | Case<'InfoFormAction', { action: InfoForm.Action }>
 
 const Connect = Case.of<Action, 'Connect'>('Connect')
@@ -68,8 +71,15 @@ const FailConnection = Case.of<Action, 'FailConnection'>('FailConnection')
 const NewOutgoingMessage = Case.of<Action, 'NewOutgoingMessage'>(
   'NewOutgoingMessage'
 )
+const SaveOutgoingMessage = Case.of<Action, 'SaveOutgoingMessage'>(
+  'SaveOutgoingMessage'
+)
 const SendInfoAgain = Case.of<Action, 'SendInfoAgain'>('SendInfoAgain')
 const GoToRobotsList = Case.of<Action, 'GoToRobotsList'>('GoToRobotsList')()
+const PreferencesAction = (action: Preferences.Action): Action => ({
+  type: 'PreferencesAction',
+  action
+})
 const InfoFormAction = (action: InfoForm.Action): Action => ({
   type: 'InfoFormAction',
   action
@@ -104,15 +114,26 @@ export const update = (
 
     case 'NewOutgoingMessage': {
       return Updated(
+        state,
+        Cmd.create<Action>(done => {
+          done(
+            SaveOutgoingMessage({
+              message: {
+                id: state.outgoingInfoMessages.length,
+                content: action.content,
+                timestamp: new Date()
+              }
+            })
+          )
+        })
+      )
+    }
+
+    case 'SaveOutgoingMessage': {
+      return Updated(
         {
           ...state,
-          outgoingInfoMessages: [
-            {
-              id: state.outgoingInfoMessages.length,
-              content: action.content
-            },
-            ...state.outgoingInfoMessages
-          ]
+          outgoingInfoMessages: [action.message, ...state.outgoingInfoMessages]
         },
         Cmd.none
       )
@@ -124,6 +145,21 @@ export const update = (
 
     case 'GoToRobotsList': {
       return BackToList
+    }
+
+    case 'PreferencesAction': {
+      const [nextPreferences, cmd] = Preferences.update(
+        action.action,
+        state.preferences
+      )
+
+      return Updated(
+        {
+          ...state,
+          preferences: nextPreferences
+        },
+        cmd.map(PreferencesAction)
+      )
     }
 
     case 'InfoFormAction': {
@@ -165,85 +201,60 @@ export const subscriptions = (
 // V I E W
 
 const ViewInfoForm = React.memo<{
+  hideTextarea: boolean
+  hideTemplates: boolean
   infoForm: InfoForm.State
   dispatch: Dispatch<Action>
-}>(({ infoForm, dispatch }) => (
+}>(({ hideTextarea, hideTemplates, infoForm, dispatch }) => (
   <InfoForm.View
+    hideTextarea={hideTextarea}
+    hideTemplates={hideTemplates}
     state={infoForm}
     dispatch={useMapDispatch(InfoFormAction, dispatch)}
   />
 ))
 
-const parseMessageContent = (content: string): string => {
-  try {
-    return JSON.stringify(JSON.parse(content), null, 4)
-  } catch {
-    return content
-  }
-}
+const ViewOutgoingInfoMessageList: React.VFC<{
+  messages: ReadonlyArray<OutgoingInfoMessage>
+  dispatch: Dispatch<Action>
+}> = React.memo(({ messages, dispatch }) => (
+  <Box display="flex" flexDirection="column" minHeight={0} alignItems="stretch">
+    <VStack
+      spacing="4"
+      maxHeight="100%"
+      overflowY="auto"
+      marginX="-4"
+      paddingX="4"
+      marginBottom="-4"
+      paddingBottom="4"
+    >
+      {messages.map(message => (
+        <ViewOutgoingInfoMessage
+          key={message.id}
+          message={message}
+          dispatch={dispatch}
+        />
+      ))}
+    </VStack>
+  </Box>
+))
 
 const ViewOutgoingInfoMessage = React.memo<{
   message: OutgoingInfoMessage
   dispatch: Dispatch<Action>
-}>(({ message, dispatch }) => {
-  const parsedContent = React.useMemo(
-    () => parseMessageContent(message.content),
-    [message.content]
-  )
-
-  return (
-    <Box
-      p="5"
-      width="100%"
-      shadow="md"
-      borderWidth="1"
-      borderRadius="md"
-      wordBreak="break-all"
-    >
-      <Heading fontSize="xl">Message #{message.id}</Heading>
-
-      <Box mt="2" p="3" width="100%" borderRadius="sm" bg="gray.50">
-        <Text fontSize="sm" as="pre">
-          {parsedContent}
-        </Text>
-      </Box>
-
-      <Button
-        mt="2"
-        size="xs"
-        type="submit"
-        colorScheme="teal"
-        onClick={() => {
-          dispatch(SendInfoAgain({ content: message.content }))
-        }}
-      >
-        Send again
-      </Button>
-    </Box>
-  )
-})
-
-const ViewOutgoingInfoMessages = React.memo<{
-  messages: Array<OutgoingInfoMessage>
-  dispatch: Dispatch<Action>
-}>(({ messages, dispatch }) => (
-  <VStack>
-    {messages.map(message => (
-      <ViewOutgoingInfoMessage
-        key={message.id}
-        message={message}
-        dispatch={dispatch}
-      />
-    ))}
-  </VStack>
+}>(({ message, dispatch }) => (
+  <ViewInfoMessage
+    message={message}
+    onResend={React.useCallback(
+      () => dispatch(SendInfoAgain({ content: message.content })),
+      [dispatch, message.content]
+    )}
+  />
 ))
 
-const ViewSucceed = React.memo<{
+const ViewVideoStream: React.VFC<{
   stream: MediaStream
-  outgoingInfoMessages: Array<OutgoingInfoMessage>
-  infoForm: InfoForm.State
-  dispatch: Dispatch<Action>
-}>(({ stream, outgoingInfoMessages, infoForm, dispatch }) => {
+}> = React.memo(({ stream }) => {
   const videoRef = React.useRef<HTMLVideoElement>(null)
 
   React.useEffect(() => {
@@ -253,65 +264,130 @@ const ViewSucceed = React.memo<{
   }, [stream])
 
   return (
-    <Box width="100%">
-      <video ref={videoRef} autoPlay />
-
-      <Box mt="2">
-        <ViewInfoForm infoForm={infoForm} dispatch={dispatch} />
-      </Box>
-
-      <Box mt="4">
-        <ViewOutgoingInfoMessages
-          messages={outgoingInfoMessages}
-          dispatch={dispatch}
-        />
-      </Box>
+    <Box height="100%" width="100%" background="gray.900">
+      <video
+        ref={videoRef}
+        autoPlay
+        style={{ width: '100%', height: '100%' }}
+      />
     </Box>
   )
 })
 
+const ViewLayout: React.VFC<{
+  header: React.ReactNode
+  sidebar: React.ReactNode
+  content: React.ReactNode
+}> = ({ header, sidebar, content }) => (
+  <HStack
+    padding="4"
+    spacing="4"
+    alignItems="flex-start"
+    width={CONTAINER_MAX_WIDTH}
+    maxWidth="100%"
+    height={CONTAINER_MAX_WIDTH - SIDEBAR_WIDTH}
+    maxHeight="100%"
+  >
+    {content}
+    <VStack
+      flexShrink={0}
+      width={SIDEBAR_WIDTH}
+      maxHeight="100%"
+      alignItems="stretch"
+    >
+      {header}
+      {sidebar}
+    </VStack>
+  </HStack>
+)
+
 export const View = React.memo<{
   state: State
   dispatch: Dispatch<Action>
-}>(({ state, dispatch }) => (
-  <VStack align="start">
-    <Button
-      size="xs"
-      variant="outline"
-      colorScheme="teal"
-      onClick={() => dispatch(GoToRobotsList)}
-    >
-      Back to Robots List
-    </Button>
+}>(({ state, dispatch }) => {
+  const { showTextarea, showTemplates, showInfoLog } = Preferences.withDefaults(
+    state.preferences
+  )
 
-    {state.stream.cata({
-      NotAsked: () => <AlertPanel status="info">Call is ended.</AlertPanel>,
+  return (
+    <ViewLayout
+      header={
+        <HStack justifyContent="space-between">
+          <Button
+            alignSelf="flex-start"
+            flexShrink={0}
+            size="xs"
+            variant="outline"
+            colorScheme="teal"
+            onClick={() => dispatch(GoToRobotsList)}
+          >
+            Back to Robots List
+          </Button>
 
-      Loading: () => <InfoForm.Skeleton />,
+          <Preferences.View
+            state={state.preferences}
+            dispatch={useMapDispatch(PreferencesAction, dispatch)}
+          />
+        </HStack>
+      }
+      sidebar={state.stream.cata({
+        NotAsked: () => <AlertPanel status="info">Call is ended.</AlertPanel>,
 
-      Failure: message => (
-        <AlertPanel status="error" title="Video Stream Error!">
-          {message}
-        </AlertPanel>
-      ),
+        Loading: () => (
+          <InfoForm.Skeleton
+            hideTextarea={!showTextarea}
+            hideTemplates={!showTemplates}
+          />
+        ),
 
-      Succeed: stream => (
-        <ViewSucceed
-          stream={stream}
-          outgoingInfoMessages={state.outgoingInfoMessages}
-          infoForm={state.infoForm}
-          dispatch={dispatch}
-        />
-      )
-    })}
-  </VStack>
-))
+        Failure: message => (
+          <AlertPanel status="error" title="Video Stream Error!">
+            {message}
+          </AlertPanel>
+        ),
+
+        Succeed: () => (
+          <>
+            <ViewInfoForm
+              hideTextarea={!showTextarea}
+              hideTemplates={!showTemplates}
+              infoForm={state.infoForm}
+              dispatch={dispatch}
+            />
+
+            {showInfoLog && (
+              <ViewOutgoingInfoMessageList
+                messages={state.outgoingInfoMessages}
+                dispatch={dispatch}
+              />
+            )}
+          </>
+        )
+      })}
+      content={state.stream.cata({
+        Succeed: stream => <ViewVideoStream stream={stream} />,
+
+        _: () => <SkeletonVideoStream />
+      })}
+    />
+  )
+})
 
 // S K E L E T O N
 
+const SkeletonVideoStream: React.VFC = React.memo(() => (
+  <SkeletonRect width="100%" height="100%" />
+))
+
 export const Skeleton = React.memo(() => (
-  <VStack align="start">
-    <SkeletonRect width={132} height={24} />
-    <InfoForm.Skeleton />
-  </VStack>
+  <ViewLayout
+    header={
+      <HStack justifyContent="space-between">
+        <SkeletonRect width={132} height={24} />
+        <Preferences.Skeleton />
+      </HStack>
+    }
+    sidebar={<InfoForm.Skeleton />}
+    content={<SkeletonVideoStream />}
+  />
 ))
