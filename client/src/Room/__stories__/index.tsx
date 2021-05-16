@@ -68,15 +68,6 @@ OnCall.useState = () => {
   }
 }
 
-export const Terminating = (): React.ReactNode => (
-  <Room.View state={Terminating.useState()} dispatch={action('dispatch')} />
-)
-
-Terminating.useState = () => ({
-  ...OnCall.useState(),
-  terminating: true
-})
-
 export const WithInfoMessage = (): React.ReactNode => {
   const messageContent = text('Message Content', 'Raw no JSON message')
 

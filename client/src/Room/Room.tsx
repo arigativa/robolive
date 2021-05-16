@@ -20,14 +20,12 @@ interface OutgoingInfoMessage {
 
 export interface State {
   stream: RemoteData.Optional<string, MediaStream>
-  terminating: boolean
   outgoingInfoMessages: Array<OutgoingInfoMessage>
   infoForm: InfoForm.State
 }
 
 export const initialState: State = {
   stream: RemoteData.Optional.Loading,
-  terminating: false,
   outgoingInfoMessages: [],
   infoForm: InfoForm.initialState
 }
