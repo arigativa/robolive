@@ -22,7 +22,8 @@ local function destroy(user)
     
     local uDecoded = json.decode(base64.decode(u))
 
-    KSR.jsonrpcs.exec(jsonrpc.requestBody("dlg","terminate_dlg",u))
+    KSR.info("Destroying dialog for "..json.encode(uDecoded).."\n")
+    KSR.jsonrpcs.exec(jsonrpc.requestBody("dlg","terminate_dlg",uDecoded))
 
     return true
 

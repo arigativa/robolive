@@ -1,6 +1,7 @@
 local json = require "cjson.safe"
 local dialog = require "roles.dialog"
 local base64 = require "base64"
+local config = require "config"
 
 
 --[[
@@ -74,39 +75,46 @@ end
 
 local function handle(username,source) 
     
+    if KSR.is_REGISTER() and config.TEST then
+        create(json.encode({
+                {  
+                    username = username,deadline = KSR.pv.get("$expires(min)") or  KSR.pv.get("$expires(max)")
+                }
+            }
+        ))
+    end
+
     local user = KSR.pv.get("$sht(users=>username:"..username..")")
     -- because of no user or expired data
     if  not user or string.len(user) == 0 then
         return false,{suggestedCode = 403,suggestedReason = "No such user" }
     end
     
-    if KSR.is_REGISTER() then
+    if not KSR.is_REGISTER() then return true end
         
-        local expires = KSR.pv.get("$expires(min)") or  KSR.pv.get("$expires(max)")
-        
-        if not expires or string.len(expires) == 0 then
-            KSR.err("Wrong exipres: destroying "..username.."\n")
-            KSR.pv.seti("$shtex(users=>username:"..username..")",1)
-            return false,{suggestedCode = 400,suggestedReason = "No expires found" }
-        end
-
-        -- Update expires first to not loose data
-        KSR.pv.seti("$shtex(users=>username:"..username..")",expires)
-
-        local conid = KSR.pv.get("$conid")
-        
-        local details = base64.encode(json.encode({conid,source}))
-
-        KSR.pv.sets("$sht(users=>username:"..username..")",details)
-        KSR.pv.seti("$shtex(users=>username:"..username..")",expires)
-
-        KSR.pv.sets("$sht(users=>lookup:"..conid..")",username)
-        KSR.pv.seti("$shtex(users=>lookup:"..conid..")",expires)
-        
-        KSR.pv.sets("$sht(users=>lookup:"..source..")",username)
-        KSR.pv.seti("$shtex(users=>lookup:"..source..")",expires)
-
+    local expires = KSR.pv.get("$expires(min)") or  KSR.pv.get("$expires(max)")
+    
+    if not expires or string.len(expires) == 0 then
+        KSR.err("Wrong exipres: destroying "..username.."\n")
+        KSR.pv.seti("$shtex(users=>username:"..username..")",1)
+        return false,{suggestedCode = 400,suggestedReason = "No expires found" }
     end
+
+    -- Update expires first to not loose data
+    KSR.pv.seti("$shtex(users=>username:"..username..")",expires)
+
+    local conid = KSR.pv.get("$conid")
+    
+    local details = base64.encode(json.encode({conid,source}))
+
+    KSR.pv.sets("$sht(users=>username:"..username..")",details)
+    KSR.pv.seti("$shtex(users=>username:"..username..")",expires)
+
+    KSR.pv.sets("$sht(users=>lookup:"..conid..")",username)
+    KSR.pv.seti("$shtex(users=>lookup:"..conid..")",expires)
+    
+    KSR.pv.sets("$sht(users=>lookup:"..source..")",username)
+    KSR.pv.seti("$shtex(users=>lookup:"..source..")",expires)
 
     KSR.log("info","Auth successfull for "..username.." from "..source.."\n")
     return true

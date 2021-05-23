@@ -62,8 +62,9 @@ function ksr_request_route()
     roles.nathandle.sip()
     roles.nathandle.sdp()
 
-    if not roles.auth.handle(KSR.pv.get("$fU"),KSR.pv.get("$si")..":"..KSR.pv.get("$sp")) then
-        KSR.sl.sl_send_reply("403","Forbidden")
+    local auth,err = roles.auth.handle(KSR.pv.get("$fU"),KSR.pv.get("$si")..":"..KSR.pv.get("$sp"))
+    if err then
+        KSR.sl.sl_send_reply(err.suggestedCode,err.suggestedReason)
         KSR.x.exit()
     end
 
@@ -117,13 +118,11 @@ end
 function ksr_socket_event_wrapper(evname)
     
     local proto, event = string.match(evname,"(.*):(.*)")
-    
-    if proto == "ws" then
-        sockets.websocket[event]()
-    end
-
-    if proto == "tcp" then
-        sockets.tcpsocket[event]()
+    KSR.info("Socket event received: "..proto..":"..event.."\n")
+    if sockets[proto] and sockets[proto][event] and type(sockets[proto][event]) == "function" then
+        sockets[proto][event]()
+    else
+        KSR.info("Can't find handler for socket "..proto..", event "..event.."\n") 
     end
 
 end
