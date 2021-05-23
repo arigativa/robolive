@@ -73,15 +73,19 @@ local function destroy(data)
 
 end
 
+local function createUserForTest(username)
+    return json.encode({
+            {  
+                username = username,deadline = KSR.pv.get("$expires(min)") or  KSR.pv.get("$expires(max)")
+            }
+        }
+    )
+end
+
 local function handle(username,source) 
     
     if KSR.is_REGISTER() and config.TEST then
-        create(json.encode({
-                {  
-                    username = username,deadline = KSR.pv.get("$expires(min)") or  KSR.pv.get("$expires(max)")
-                }
-            }
-        ))
+        create(createUserForTest(username))
     end
 
     local user = KSR.pv.get("$sht(users=>username:"..username..")")
