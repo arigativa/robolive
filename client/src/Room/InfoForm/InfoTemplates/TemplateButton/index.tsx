@@ -42,10 +42,12 @@ const useKeybinding = (
       onKeybindRef.current(event.key)
     }
 
-    document.addEventListener('keypress', listener, { passive: true })
+    document.addEventListener('keyup', listener, {
+      passive: true
+    })
 
     return () => {
-      document.removeEventListener('keypress', listener)
+      document.removeEventListener('keyup', listener)
     }
   }, [keybinding])
 
