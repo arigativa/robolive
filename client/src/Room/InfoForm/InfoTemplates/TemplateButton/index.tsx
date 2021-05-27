@@ -9,7 +9,8 @@ import {
   MenuItem,
   ButtonGroup,
   Button,
-  IconButton
+  IconButton,
+  useOutsideClick
 } from '@chakra-ui/react'
 import {
   DeleteIcon,
@@ -70,7 +71,6 @@ const ViewKeybindingMenuItem: React.VFC<{
 
   return (
     <MenuItem
-      closeOnSelect={false}
       icon={<LinkIcon />}
       bgColor={keybinding ? 'gray.100' : 'white'}
       onClick={toggleKeybinding}
@@ -86,6 +86,14 @@ const ViewMenu: React.VFC<{
   setCountdown(countdown: number): void
   onKeybind(key: null | string): void
 }> = ({ hotkey, counting, setCountdown, onKeybind }) => {
+  const ref = React.useRef(null)
+  const [isOpen, setIsOpen] = React.useState(false)
+
+  useOutsideClick({
+    ref,
+    handler: () => setIsOpen(false)
+  })
+
   if (counting) {
     return (
       <IconButton
@@ -100,7 +108,7 @@ const ViewMenu: React.VFC<{
   }
 
   return (
-    <Menu isLazy colorScheme="cyan" placement="bottom-end">
+    <Menu isLazy colorScheme="cyan" placement="bottom-end" isOpen={isOpen}>
       <MenuButton
         as={IconButton}
         icon={<ChevronDownIcon />}
@@ -108,14 +116,24 @@ const ViewMenu: React.VFC<{
         ml="-px"
         variant="outline"
         colorScheme="teal"
+        onClick={() => setIsOpen(x => !x)}
       />
 
-      <MenuList>
-        <ViewKeybindingMenuItem hotkey={hotkey} onKeybind={onKeybind} />
+      <MenuList ref={ref}>
+        <ViewKeybindingMenuItem
+          hotkey={hotkey}
+          onKeybind={nextHotkey => {
+            onKeybind(nextHotkey)
+            setIsOpen(false)
+          }}
+        />
 
         <MenuItem
           icon={<DeleteIcon />}
-          onClick={() => setCountdown(DELETE_CONFIRMATION_TIMEOUT_MS)}
+          onClick={() => {
+            setCountdown(DELETE_CONFIRMATION_TIMEOUT_MS)
+            setIsOpen(false)
+          }}
         >
           Delete
         </MenuItem>
