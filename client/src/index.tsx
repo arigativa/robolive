@@ -2,7 +2,7 @@ import './index.css'
 
 import React from 'react'
 import ReactDOM from 'react-dom'
-import { CSSReset, ThemeProvider, theme } from '@chakra-ui/react'
+import { CSSReset, ChakraProvider } from '@chakra-ui/react'
 
 import * as serviceWorker from 'serviceWorker'
 import { useStore } from 'store'
@@ -18,11 +18,11 @@ const Root = React.memo(() => {
 
   return (
     <React.StrictMode>
-      <ThemeProvider theme={theme}>
+      <ChakraProvider>
         <CSSReset />
 
         <Main.View state={state} dispatch={dispatch} />
-      </ThemeProvider>
+      </ChakraProvider>
     </React.StrictMode>
   )
 })

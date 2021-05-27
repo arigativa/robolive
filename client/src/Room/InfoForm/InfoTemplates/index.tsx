@@ -52,6 +52,7 @@ export type Action =
   | Case<'SendTemplate', { content: string }>
   | Case<'ChangeName', { name: string }>
   | Case<'SaveTemplate', { content: string }>
+  | Case<'SetHotkey', { name: string; hotkey: null | string }>
   | Case<'DeleteTemplate', { name: string }>
   | Case<
       'UpdateTemplatesDone',
@@ -64,6 +65,7 @@ const LoadInfoTemplates = Case.of<'LoadInfoTemplates', Action>(
 const SendTemplate = Case.of<'SendTemplate', Action>('SendTemplate')
 const ChangeName = Case.of<'ChangeName', Action>('ChangeName')
 const SaveTemplate = Case.of<'SaveTemplate', Action>('SaveTemplate')
+const SetHotkey = Case.of<'SetHotkey', Action>('SetHotkey')
 const DeleteTemplate = Case.of<'DeleteTemplate', Action>('DeleteTemplate')
 const UpdateTemplatesDone = Case.of<'UpdateTemplatesDone', Action>(
   'UpdateTemplatesDone'
@@ -143,9 +145,44 @@ export const update = (
         ...infoTemplates,
         {
           name: state.templateName.trim(),
-          content: action.content
+          content: action.content,
+          hotkey: null
         }
       ]
+
+      return [
+        {
+          ...state,
+          savingTemplate: RemoteData.Optional.Loading
+        },
+        Cmd.create<Action>(done => {
+          saveInfoTemplates(credentials, nextTemplates)
+            .then(result => UpdateTemplatesDone({ resetName: true, result }))
+            .then(done)
+        })
+      ]
+    }
+
+    case 'SetHotkey': {
+      const nextTemplates = state.infoTemplates.getOrElse([]).map(template => {
+        // save hotkey for target template
+        if (template.name === action.name) {
+          return {
+            ...template,
+            hotkey: action.hotkey
+          }
+        }
+
+        // remove the hotkey from another templates if it was used before
+        if (action.hotkey != null && template.hotkey === action.hotkey) {
+          return {
+            ...template,
+            hotkey: null
+          }
+        }
+
+        return template
+      })
 
       return [
         {
@@ -292,8 +329,12 @@ export const ViewButtons: React.VFC<{
         {infoTemplates.map(infoTemplate => (
           <WrapItem key={infoTemplate.name}>
             <TemplateButton
+              hotkey={infoTemplate.hotkey}
               onSubmit={() => {
                 dispatch(SendTemplate({ content: infoTemplate.content }))
+              }}
+              onKeybind={hotkey => {
+                dispatch(SetHotkey({ name: infoTemplate.name, hotkey }))
               }}
               onDelete={() => {
                 dispatch(DeleteTemplate({ name: infoTemplate.name }))

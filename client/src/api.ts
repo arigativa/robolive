@@ -139,7 +139,25 @@ export const joinRoom = (options: {
 export interface InfoTemplate {
   name: string
   content: string
+  hotkey: null | string
 }
+
+const SECRET_SYMBOL = '🥑🍑🥕'
+
+const infoTemplateContentDecoder = Decode.shape({
+  secret: Decode.index(0).exact(SECRET_SYMBOL),
+  content: Decode.index(1).string,
+  hotkey: Decode.index(2).optional.string
+})
+
+const infoTemplateDecoder: Decoder<InfoTemplate> = Decode.tuple([
+  Decode.field('name').string,
+  Decode.field('content').string.map(str => {
+    const result = infoTemplateContentDecoder.decodeJSON(str)
+
+    return result.value ?? { content: str, hotkey: null }
+  })
+]).map(([name, { content, hotkey }]) => ({ name, content, hotkey }))
 
 export const saveInfoTemplates = (
   options: {
@@ -152,11 +170,11 @@ export const saveInfoTemplates = (
     const descripiton = new UIDescription()
 
     descripiton.setButtonsList(
-      templates.map(({ name, content }) => {
+      templates.map(({ name, content, hotkey }) => {
         const btn = new Button()
 
         btn.setName(name)
-        btn.setTemplate(content)
+        btn.setTemplate(JSON.stringify([SECRET_SYMBOL, content, hotkey]))
 
         return btn
       })
@@ -192,10 +210,17 @@ export const getInfoTemplates = (options: {
       if (error) {
         done(Either.Left(error.message))
       } else {
-        const infoTemplates = response!.getButtonsList().map(btn => ({
-          name: btn.getName() ?? '',
-          content: btn.getTemplate() ?? ''
-        }))
+        const infoTemplates = response!
+          .getButtonsList()
+          .map(btn => {
+            return (
+              infoTemplateDecoder.decode({
+                name: btn.getName(),
+                content: btn.getTemplate()
+              }).value ?? null
+            )
+          })
+          .filter(isDefined)
 
         done(Either.Right(infoTemplates))
       }
