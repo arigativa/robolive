@@ -18,6 +18,7 @@ export const Skeleton: React.VFC = () => (
 export const TemplateButton: React.VFC = () => (
   <TemplateButtonView
     onSubmit={action('onSubmit')}
+    onKeybind={action('onKeybind')}
     onDelete={action('onDelete')}
   >
     {text('Template name', 'Rotate left')}

@@ -20,10 +20,57 @@ import { SkeletonRect } from 'Skeleton'
 
 const DELETE_CONFIRMATION_TIMEOUT_MS = 1500
 
+const useKeybinding = (
+  onKeybind: (key: string) => void
+): [boolean, () => void] => {
+  const [keybinding, setKeybinding] = React.useState(false)
+  const onKeybindRef = React.useRef(onKeybind)
+
+  React.useEffect(() => {
+    onKeybindRef.current = onKeybind
+  }, [onKeybind])
+
+  React.useEffect(() => {
+    if (!keybinding) {
+      return
+    }
+
+    const listener = (event: KeyboardEvent): void => {
+      onKeybindRef.current(event.key)
+    }
+
+    document.addEventListener('keypress', listener, { passive: true })
+
+    return () => {
+      document.removeEventListener('keypress', listener)
+    }
+  }, [keybinding])
+
+  return [keybinding, React.useCallback(() => setKeybinding(x => !x), [])]
+}
+
+const ViewKeybindingMenuItem: React.VFC<{
+  onKeybind(key: string): void
+}> = ({ onKeybind }) => {
+  const [keybinding, toggleKeybinding] = useKeybinding(onKeybind)
+
+  return (
+    <MenuItem
+      closeOnSelect={false}
+      icon={<LinkIcon />}
+      bgColor={keybinding ? 'gray.100' : 'white'}
+      onClick={toggleKeybinding}
+    >
+      {keybinding ? 'Press a key...' : 'Bind a hotkey'}
+    </MenuItem>
+  )
+}
+
 const ViewMenu: React.VFC<{
   counting: boolean
   setCountdown(countdown: number): void
-}> = React.memo(({ counting, setCountdown }) => {
+  onKeybind(key: string): void
+}> = ({ counting, setCountdown, onKeybind }) => {
   if (counting) {
     return (
       <IconButton
@@ -49,7 +96,7 @@ const ViewMenu: React.VFC<{
       />
 
       <MenuList>
-        <MenuItem icon={<LinkIcon />}>Bind a Hot Key...</MenuItem>
+        <ViewKeybindingMenuItem onKeybind={onKeybind} />
 
         <MenuItem
           icon={<DeleteIcon />}
@@ -60,7 +107,7 @@ const ViewMenu: React.VFC<{
       </MenuList>
     </Menu>
   )
-})
+}
 
 const ViewCountdown = React.memo<{ seconds: number }>(({ seconds }) => (
   <Box
@@ -114,8 +161,9 @@ const useDeleteWithCountdown = (
 
 export const TemplateButton: React.FC<{
   onSubmit(): void
+  onKeybind(): void
   onDelete(): void
-}> = ({ children, onSubmit, onDelete }) => {
+}> = ({ children, onSubmit, onKeybind, onDelete }) => {
   const [countdown, setCountdown] = useDeleteWithCountdown(onDelete)
   const counting = countdown > 0
 
@@ -139,7 +187,11 @@ export const TemplateButton: React.FC<{
         {counting && <ViewCountdown seconds={countdown / 1000} />}
       </Button>
 
-      <ViewMenu counting={counting} setCountdown={setCountdown} />
+      <ViewMenu
+        counting={counting}
+        setCountdown={setCountdown}
+        onKeybind={onKeybind}
+      />
     </ButtonGroup>
   )
 }

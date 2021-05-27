@@ -295,6 +295,9 @@ export const ViewButtons: React.VFC<{
               onSubmit={() => {
                 dispatch(SendTemplate({ content: infoTemplate.content }))
               }}
+              onKeybind={() => {
+                // do nothing
+              }}
               onDelete={() => {
                 dispatch(DeleteTemplate({ name: infoTemplate.name }))
               }}
