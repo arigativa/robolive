@@ -1,6 +1,8 @@
 import React from 'react'
 import {
   Box,
+  HStack,
+  Kbd,
   Menu,
   MenuButton,
   MenuList,
@@ -50,9 +52,18 @@ const useKeybinding = (
 }
 
 const ViewKeybindingMenuItem: React.VFC<{
-  onKeybind(key: string): void
-}> = ({ onKeybind }) => {
+  hotkey: null | string
+  onKeybind(key: null | string): void
+}> = ({ hotkey, onKeybind }) => {
   const [keybinding, toggleKeybinding] = useKeybinding(onKeybind)
+
+  if (hotkey) {
+    return (
+      <MenuItem icon={<LinkIcon />} onClick={() => onKeybind(null)}>
+        Unbind the hotkey <Kbd>{hotkey}</Kbd>
+      </MenuItem>
+    )
+  }
 
   return (
     <MenuItem
@@ -67,10 +78,11 @@ const ViewKeybindingMenuItem: React.VFC<{
 }
 
 const ViewMenu: React.VFC<{
+  hotkey: null | string
   counting: boolean
   setCountdown(countdown: number): void
-  onKeybind(key: string): void
-}> = ({ counting, setCountdown, onKeybind }) => {
+  onKeybind(key: null | string): void
+}> = ({ hotkey, counting, setCountdown, onKeybind }) => {
   if (counting) {
     return (
       <IconButton
@@ -96,7 +108,7 @@ const ViewMenu: React.VFC<{
       />
 
       <MenuList>
-        <ViewKeybindingMenuItem onKeybind={onKeybind} />
+        <ViewKeybindingMenuItem hotkey={hotkey} onKeybind={onKeybind} />
 
         <MenuItem
           icon={<DeleteIcon />}
@@ -160,10 +172,11 @@ const useDeleteWithCountdown = (
 }
 
 export const TemplateButton: React.FC<{
+  hotkey: null | string
   onSubmit(): void
-  onKeybind(): void
+  onKeybind(key: null | string): void
   onDelete(): void
-}> = ({ children, onSubmit, onKeybind, onDelete }) => {
+}> = ({ hotkey, children, onSubmit, onKeybind, onDelete }) => {
   const [countdown, setCountdown] = useDeleteWithCountdown(onDelete)
   const counting = countdown > 0
 
@@ -183,11 +196,15 @@ export const TemplateButton: React.FC<{
           }
         }}
       >
-        <Box opacity={counting ? 0 : 1}>{children}</Box>
+        <HStack opacity={counting ? 0 : 1} spacing="2">
+          <span>{children}</span>
+          {hotkey && <Kbd>{hotkey}</Kbd>}
+        </HStack>
         {counting && <ViewCountdown seconds={countdown / 1000} />}
       </Button>
 
       <ViewMenu
+        hotkey={hotkey}
         counting={counting}
         setCountdown={setCountdown}
         onKeybind={onKeybind}
