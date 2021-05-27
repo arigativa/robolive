@@ -99,7 +99,8 @@ ManyTemplates.init = (infoTemplatesCount: number) => ({
   infoTemplates: RemoteData.Succeed(
     range(infoTemplatesCount).map(index => ({
       name: `Template #${index}`,
-      content: `Content #${index}`
+      content: `Content #${index}`,
+      hotkey: null
     }))
   )
 })

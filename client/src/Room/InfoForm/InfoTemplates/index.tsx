@@ -143,7 +143,8 @@ export const update = (
         ...infoTemplates,
         {
           name: state.templateName.trim(),
-          content: action.content
+          content: action.content,
+          hotkey: null
         }
       ]
 
