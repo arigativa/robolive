@@ -19,6 +19,7 @@ import {
   LinkIcon
 } from '@chakra-ui/icons'
 import throttle from 'lodash.throttle'
+import debounce from 'lodash.debounce'
 
 import { SkeletonRect } from 'Skeleton'
 
@@ -192,7 +193,11 @@ const useDeleteWithCountdown = (
   return [countdown, setCountdown]
 }
 
-const useListenHotkey = (hotkey: null | string, onSubmit: () => void): void => {
+const useListenHotkey = (
+  hotkey: null | string,
+  onSubmit: () => void
+): boolean => {
+  const [pressed, setPressed] = React.useState(false)
   const onSubmitRef = React.useRef(onSubmit)
 
   React.useEffect(() => {
@@ -204,20 +209,35 @@ const useListenHotkey = (hotkey: null | string, onSubmit: () => void): void => {
       return
     }
 
+    const startPress = debounce(() => setPressed(true), 200, {
+      leading: true,
+      trailing: false
+    })
+    const stopPress = debounce(() => setPressed(false), 200, {
+      leading: false,
+      trailing: true
+    })
+
     const listener = throttle((event: KeyboardEvent): void => {
       if (event.key === hotkey) {
         onSubmitRef.current()
         event.preventDefault()
+        startPress()
+        stopPress()
       }
     }, 100)
 
     document.addEventListener('keydown', listener)
 
     return () => {
+      startPress.cancel()
+      stopPress.cancel()
       listener.cancel()
       document.removeEventListener('keydown', listener)
     }
   }, [hotkey])
+
+  return pressed
 }
 
 export const TemplateButton: React.FC<{
@@ -229,13 +249,13 @@ export const TemplateButton: React.FC<{
   const [countdown, setCountdown] = useDeleteWithCountdown(onDelete)
   const counting = countdown > 0
 
-  useListenHotkey(hotkey, onSubmit)
+  const hotkeyPressed = useListenHotkey(hotkey, onSubmit)
 
   return (
     <ButtonGroup isAttached size="sm">
       <Button
         variant="outline"
-        colorScheme="teal"
+        colorScheme={hotkeyPressed ? 'pink' : 'teal'}
         position="relative"
         overflow="hidden"
         onClick={() => {
