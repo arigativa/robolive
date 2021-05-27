@@ -17,6 +17,7 @@ import {
   ChevronDownIcon,
   LinkIcon
 } from '@chakra-ui/icons'
+import throttle from 'lodash.throttle'
 
 import { SkeletonRect } from 'Skeleton'
 
@@ -171,6 +172,34 @@ const useDeleteWithCountdown = (
   return [countdown, setCountdown]
 }
 
+const useListenHotkey = (hotkey: null | string, onSubmit: () => void): void => {
+  const onSubmitRef = React.useRef(onSubmit)
+
+  React.useEffect(() => {
+    onSubmitRef.current = onSubmit
+  }, [onSubmit])
+
+  React.useEffect(() => {
+    if (hotkey == null) {
+      return
+    }
+
+    const listener = throttle((event: KeyboardEvent): void => {
+      if (event.key === hotkey) {
+        onSubmitRef.current()
+        event.preventDefault()
+      }
+    }, 100)
+
+    document.addEventListener('keydown', listener)
+
+    return () => {
+      listener.cancel()
+      document.removeEventListener('keydown', listener)
+    }
+  }, [hotkey])
+}
+
 export const TemplateButton: React.FC<{
   hotkey: null | string
   onSubmit(): void
@@ -179,6 +208,8 @@ export const TemplateButton: React.FC<{
 }> = ({ hotkey, children, onSubmit, onKeybind, onDelete }) => {
   const [countdown, setCountdown] = useDeleteWithCountdown(onDelete)
   const counting = countdown > 0
+
+  useListenHotkey(hotkey, onSubmit)
 
   return (
     <ButtonGroup isAttached size="sm">
