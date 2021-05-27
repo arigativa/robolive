@@ -9,7 +9,12 @@ import {
   Button,
   IconButton
 } from '@chakra-ui/react'
-import { DeleteIcon, RepeatClockIcon, ChevronDownIcon } from '@chakra-ui/icons'
+import {
+  DeleteIcon,
+  RepeatClockIcon,
+  ChevronDownIcon,
+  LinkIcon
+} from '@chakra-ui/icons'
 
 import { SkeletonRect } from 'Skeleton'
 
@@ -44,6 +49,8 @@ const ViewMenu: React.VFC<{
       />
 
       <MenuList>
+        <MenuItem icon={<LinkIcon />}>Bind a Hot Key...</MenuItem>
+
         <MenuItem
           icon={<DeleteIcon />}
           onClick={() => setCountdown(DELETE_CONFIRMATION_TIMEOUT_MS)}
