@@ -38,7 +38,7 @@ object RegistryServer extends App {
   val SignallingHttpUri: String = getEnv("SIGNALLING_HTTP_URI", "http://localhost:9031")
   val StunUri: String = getEnv("STUN_URI", "stun:rl.arigativa.ru:8080")
   val AllowAll: Boolean = getEnv("ALLOW_ALL", "false").toBoolean
-  val TurnUri: String = getEnv("TURN_URI", "turn:rl.arigativa.ru:8080?transport=tcp")
+  val TurnUri: String = getEnv("TURN_URI", "turn:rl.arigativa.ru:8080?transport=udp")
   val TurnUsername: String = getEnv("TURN_USERNAME", "turn")
   val TurnPassword: String = getEnv("TURN_PASSWORD", "turn")
   val RestreamType: String = getEnv("RESTREAM_TYPE", "NONE")
