@@ -140,7 +140,14 @@ final class WebRTCController(
 
               call.ring()
 
-              webRTCBin.setRemoteOffer(remoteSdp)
+              val updatedSdp = {
+                val updatedAttrs = remoteSdp.media.head.a.filterNot { attr =>
+                  attr.name == "candidate" && !attr.valueOpt.exists(_.contains("52.136.233.255"))
+                }
+                remoteSdp.copy(media = Seq(remoteSdp.media.head.copy(a = updatedAttrs)))
+              }
+              logger.info(s"Updated sdp: $updatedSdp")
+              webRTCBin.setRemoteOffer(updatedSdp)
               (for {
                 localIceCandidates <- webRTCBin.fetchIceCandidates()
                 localIceCandidatesStr = localIceCandidates
@@ -150,7 +157,7 @@ final class WebRTCController(
                 answer <- webRTCBin.createAnswer()
                 _ = logger.debug(s"Answer created: ${answer.toSdpString}")
               } yield {
-                remoteSdp.media.zipWithIndex.foreach {
+                updatedSdp.media.zipWithIndex.foreach {
                   case (media, i) =>
                     val candidates = media.getRawAttributes("candidate")
                     candidates.foreach { candidate =>
