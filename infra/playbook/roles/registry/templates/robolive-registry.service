@@ -12,7 +12,7 @@ Group={{ registry_group }}
 Environment="SIGNALLING_SIP_URI=sips:rl.arigativa.ru:4443"
 Environment="SIGNALLING_HTTP_URI=https://rl.arigativa.ru:4443"
 Environment="STUN_URI=stun:rl.arigativa.ru:8080"
-Environment="TURN_URI=turn:rl.arigativa.ru:8080?transport=tcp"
+Environment="TURN_URI=turn:rl.arigativa.ru:8080?transport=udp"
 Environment="TURN_USERNAME=turn"
 Environment="TURN_PASSWORD=turn"
 Environment="SESSION_STATE_PATH={{ registry_config_dir }}/session-state.cfg"
