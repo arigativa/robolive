@@ -2,7 +2,7 @@ package robolive.puppet
 
 import org.freedesktop.gstreamer._
 import org.mjsip.sip.call.ExtendedCall
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 import robolive.gstreamer.WebRTCBinManaged.IceCandidate
 import robolive.gstreamer.{GstManaged, PipelineManaged, WebRTCBinManaged}
 import sdp.SdpMessage.RawValueAttribute
@@ -17,11 +17,13 @@ final class WebRTCController(
 )(implicit gst: GstManaged.GSTInit.type) {
   import WebRTCController._
 
-  private val logger = LoggerFactory.getLogger(getClass.getName)
+  implicit private val logger = LoggerFactory.getLogger(getClass.getName)
 
   private var webRTCBin: WebRTCBinManaged = _
   private var disposeRtpPipeline: () => () = _
   private var state: WebRTCControllerPlayState = WebRTCControllerPlayState.Wait
+
+  private val UseRelayOnly = false
 
   private def log(value: String) = {
     logger.info(s"Assembling call pipeline: $value")
@@ -140,12 +142,15 @@ final class WebRTCController(
 
               call.ring()
 
-              val updatedSdp = {
-                val updatedAttrs = remoteSdp.media.head.a.filterNot { attr =>
-                  attr.name == "candidate" && !attr.valueOpt.exists(_.contains("52.136.233.255"))
+              val updatedSdp =
+                if (UseRelayOnly) {
+                  val updatedAttrs = remoteSdp.media.head.a.filterNot { attr =>
+                    attr.name == "candidate" && !attr.valueOpt.exists(_.contains("52.136.233.255"))
+                  }
+                  remoteSdp.copy(media = Seq(remoteSdp.media.head.copy(a = updatedAttrs)))
+                } else {
+                  remoteSdp
                 }
-                remoteSdp.copy(media = Seq(remoteSdp.media.head.copy(a = updatedAttrs)))
-              }
               logger.info(s"Updated sdp: $updatedSdp")
               webRTCBin.setRemoteOffer(updatedSdp)
               (for {
@@ -222,11 +227,12 @@ object WebRTCController {
     case object Busy extends WebRTCControllerPlayState
   }
 
-  def getRtpTypeForVP8Media(sdp: SdpMessage): Either[Seq[String], Int] = {
+  def getRtpTypeForVP8Media(sdp: SdpMessage)(implicit logger: Logger): Either[Seq[String], Int] = {
     for {
       video <- sdp.getMedia("video").toRight(Seq("Video media not found"))
       rtpMaps <- video.getAttributes[Attributes.RtpMap]("rtpmap")
-      attr <- rtpMaps.find(_.encodingName == "VP8").toRight(Seq("VP8 codec not found in RtpMap"))
+      _ = logger.info(s"rtpMaps: $rtpMaps")
+      attr <- rtpMaps.find(_.encodingName == "H264").toRight(Seq("VP8 codec not found in RtpMap"))
     } yield {
       attr.payloadType
     }
@@ -237,8 +243,8 @@ object WebRTCController {
   }
 
   def description(rtcType: Int): String = {
-    s"""queue name=vpEncoder ! rtpvp8pay pt=$rtcType !
-       | application/x-rtp,media=video,encoding-name=VP8,payload=$rtcType !
+    s"""queue name=vpEncoder ! rtph264pay pt=$rtcType !
+       | application/x-rtp,media=video,encoding-name=H264,payload=$rtcType !
        | queue name=outputRTPStream""".stripMargin
 
   }
