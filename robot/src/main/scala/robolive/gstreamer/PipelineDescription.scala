@@ -8,7 +8,7 @@ object PipelineDescription {
   ): String = {
     val restreamDescription = restreamType match {
       case RestreamType.Local =>
-        "t. ! queue ! videoscale ! video/x-raw,width=640,height=480 ! videoconvert ! autovideosink"
+        "t. ! queue ! autovideosink"
 
       case RestreamType.None => "t. ! queue ! fakesink"
 
@@ -17,16 +17,28 @@ object PipelineDescription {
           rtmpLink.nonEmpty,
           "Can not start RTMP restream without link. Provide: `RTMP_LINK` environment variable."
         )
-        s"""t. ! queue name=rtmp_sink_queue ! vp8dec
-           |  ! x264enc bitrate=2000 byte-stream=false key-int-max=60 bframes=0 aud=true tune=zerolatency
+        s"""t. ! queue name=rtmp_sink_queue
            |  ! video/x-h264,profile=main
            |  ! flvmux streamable=true name=mux
            |  ! rtmpsink location="${rtmpLink.get} app=live2"
-           |audiotestsrc !
-           |  voaacenc bitrate=128000 !
+           |audiotestsrc wave=silence !
+           |  voaacenc bitrate=1024 !
            |  mux.""".stripMargin
     }
-    s"""$videoSource ! queue ! vp8enc deadline=1 ! tee name=t
+
+
+    // UDP RTP pipeline
+    // (!!) already encoded
+    // udpsrc ! application/x-rtp,media=video,clock-rate=90000,encoding-name=H264,payload=96 ! rtph264depay
+
+
+    val Vp8enc = "vp8enc deadline=1"
+    val GPUPoweredH264 = "omxh264enc"
+    val GenericH264 = "x264enc bitrate=2000 byte-stream=false key-int-max=60 bframes=0 aud=true tune=zerolatency"
+
+    s"""$videoSource ! queue
+       ! $GenericH264
+       | ! tee name=t
        |$restreamDescription""".stripMargin
   }
 
