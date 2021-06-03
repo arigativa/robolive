@@ -1,0 +1,36 @@
+
+message SecurityKey {
+  message Token {
+    required string value = 1;
+  }
+
+  oneof key {
+    Token token = 1;
+  }
+}
+
+message Command {
+   message GstreamerPipeline {
+     required string description = 1;
+   }
+
+   message ClientCommand {
+     required string command = 1;
+   }
+
+  optional string id = 1; // command id to be matched against PuppetOutput.commandID
+  oneof command {
+    GstreamerPipeline gstPipeline = 2;
+    ClientCommand clientCommand = 3;
+  }
+}
+
+message PuppetOutput {
+  optional string commandID = 1;
+  optional string log = 2;
+}
+
+
+service PuppetController {
+  rpc Execute(stream Command) returns (stream PuppetOutput);
+}

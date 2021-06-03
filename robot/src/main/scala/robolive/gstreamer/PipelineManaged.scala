@@ -1,10 +1,20 @@
 package robolive.gstreamer
 
 import org.freedesktop.gstreamer.{Bus, Gst, GstObject, Pipeline}
-import org.slf4j.Logger
 import robolive.gstreamer.GstManaged.GSTInit
 
 object PipelineManaged {
+
+  trait Logger {
+    def error(message: String): Unit
+  }
+
+  object Logger {
+    def toSlf4(logger: org.slf4j.Logger): Logger = {
+      (message: String) => logger.error(message)
+    }
+  }
+
   private def initBus(bus: Bus, logger: Logger): Unit = {
     val eosHandler: Bus.EOS = { (source: GstObject) =>
       logger.error(s"EOS ${source.getName}")
@@ -28,4 +38,8 @@ object PipelineManaged {
     initBus(pipeline.getBus, logger)
     pipeline
   }
+
+  def apply(name: String, description: String, logger: org.slf4j.Logger)(
+    implicit ev: GSTInit.type
+  ): Pipeline = apply(name, description, PipelineManaged.Logger.toSlf4(logger))
 }
