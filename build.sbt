@@ -9,6 +9,16 @@ lazy val robot =
     .enablePlugins(JavaServerAppPackaging, BuildInfoPlugin, GitVersioning)
     .dependsOn(mjsip, sdp)
 
+lazy val agent =
+  (project in file("agent"))
+    .enablePlugins(JavaServerAppPackaging, BuildInfoPlugin, GitVersioning)
+    .dependsOn(gstmanaged)
+
+lazy val gstmanaged =
+  (project in file("gstmanaged"))
+    .enablePlugins(JavaServerAppPackaging, BuildInfoPlugin, GitVersioning)
+    .dependsOn(sdp)
+
 lazy val registry =
   (project in file("registry"))
     .enablePlugins(JavaServerAppPackaging, BuildInfoPlugin)
