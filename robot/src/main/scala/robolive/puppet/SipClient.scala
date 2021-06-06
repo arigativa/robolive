@@ -1,7 +1,6 @@
 package robolive.puppet
 
 import java.util
-
 import org.mjsip.sip.address.{NameAddress, SipURI}
 import org.mjsip.sip.call._
 import org.mjsip.sip.message.SipMessage
@@ -10,6 +9,7 @@ import org.slf4j.{LoggerFactory, ZooluLoggerAdapter}
 import sdp.SdpMessage
 
 import scala.concurrent.ExecutionContext
+import scala.util.{Failure, Success}
 
 final class SipTransportHandler(sipCallToEventAdapter: SIPCallEventHandler, sipUser: SipUser)
     extends SipProviderListener {
@@ -149,7 +149,12 @@ final class SIPCallEventHandler(controller: WebRTCController, clientInputInterpr
     msg: SipMessage
   ): Unit = {
     val result = clientInputInterpreter.clientInput(msg.getStringBody)
-    call.respondSuccess(msg, "text/plain", result)
+    result.onComplete {
+      case Failure(exception) =>
+        call.respondSuccess(msg, "text/plain", s"error: ${exception.getMessage}")
+      case Success(value) =>
+        call.respondSuccess(msg, "text/plain", value)
+    }
   }
 
   /** Callback function called when arriving a new Re-INVITE method (re-inviting/call modify) */

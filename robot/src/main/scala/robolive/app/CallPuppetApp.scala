@@ -4,7 +4,7 @@ import org.freedesktop.gstreamer.{Bus, GstObject, Version}
 import org.slf4j.LoggerFactory
 import robolive.app.ManagedRobotApp.log
 import robolive.gstreamer.{GstManaged, PipelineDescription, PipelineManaged}
-import robolive.puppet.{ClientInputInterpreter, Puppet}
+import robolive.puppet.{ClientInputInterpreter, CalledPuppet}
 
 import java.util.concurrent.CountDownLatch
 import scala.concurrent.ExecutionContext
@@ -48,7 +48,7 @@ object CallPuppetApp extends App {
     logger
   )
 
-  val puppet = new Puppet(
+  val puppet = new CalledPuppet(
     pipeline = pipeline,
     sipAgentName = robotName,
     signallingUri = signallingUri,

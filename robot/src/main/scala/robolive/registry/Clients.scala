@@ -23,13 +23,14 @@ object Clients {
     }
 
   def grpcChannel[A](host: String, port: Int, usePlaintext: Boolean)(body: ManagedChannel => A): Try[A] = {
-    def makeChannel = {
-      val chBuilder = ManagedChannelBuilder.forAddress(host, port)
-      if (usePlaintext) chBuilder.usePlaintext()
-      chBuilder.keepAliveTime(1, TimeUnit.SECONDS)
+    Using(makeChannel(host, port, usePlaintext))(body)
+  }
 
-      chBuilder.build()
-    }
-    Using(makeChannel)(body)
+  def makeChannel(host: String, port: Int, usePlaintext: Boolean): ManagedChannel = {
+    val chBuilder = ManagedChannelBuilder.forAddress(host, port)
+    if (usePlaintext) chBuilder.usePlaintext()
+    chBuilder.keepAliveTime(1, TimeUnit.SECONDS)
+
+    chBuilder.build()
   }
 }

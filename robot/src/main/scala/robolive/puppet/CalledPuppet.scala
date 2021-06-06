@@ -7,14 +7,14 @@ import robolive.gstreamer.GstManaged
 import scala.concurrent.ExecutionContext
 
 // SOFTWARE CONTROLLER
-final class Puppet(
+final class CalledPuppet(
   pipeline: Pipeline,
   gstInit: GstManaged.GSTInit.type,
   sipAgentName: String,
   signallingUri: String,
   rawStunUri: String,
   clientInputInterpreter: ClientInputInterpreter,
-  eventListener: Puppet.PuppetEventListener,
+  eventListener: CalledPuppet.PuppetEventListener,
 )(implicit ec: ExecutionContext) {
   private implicit val gst = gstInit
 
@@ -45,7 +45,7 @@ final class Puppet(
   }
 }
 
-object Puppet {
+object CalledPuppet {
   trait PuppetEventListener {
     def stop(): Unit
   }

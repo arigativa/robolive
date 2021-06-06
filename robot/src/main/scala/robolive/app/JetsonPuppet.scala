@@ -12,6 +12,9 @@ import robolive.puppet.ClientInputInterpreter
 import robolive.puppet.ClientInputInterpreter.ClientInputInterpreterImpl
 
 import scala.concurrent.ExecutionContext
+import scala.util.{Failure, Success}
+
+import ExecutionContext.Implicits.global
 
 object JetsonPuppet extends App {
 
@@ -67,7 +70,12 @@ object JetsonPuppet extends App {
               responseObserver.onNext(PuppetOutput(commandID = command.id, log = Some(s"pipeline updated, state: ${state.name()}")))
             case Command.Command.ClientCommand(clCommand) =>
               val output = clientInputInterpreter.clientInput(clCommand.command)
-              responseObserver.onNext(PuppetOutput(commandID = command.id, log = Some(output)))
+              output.onComplete {
+                case Success(value) =>
+                  responseObserver.onNext(PuppetOutput(commandID = command.id, log = Some(value)))
+                case Failure(exception) =>
+                  responseObserver.onNext(PuppetOutput(commandID = command.id, log = Some(s"ERROR: ${exception.getMessage}")))
+              }
           }
         }
 

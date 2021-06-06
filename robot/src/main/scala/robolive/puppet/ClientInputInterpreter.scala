@@ -7,17 +7,18 @@ import robolive.puppet.driver.{PWMDriver, SerialDriver}
 import robolive.utils.Hex
 
 import java.util.concurrent.ConcurrentHashMap
+import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 
 trait ClientInputInterpreter {
-  def clientInput(input: String): String
+  def clientInput(input: String): Future[String]
 }
 
 object ClientInputInterpreter {
   final class FakeClientInputInterpreter(logger: Logger) extends ClientInputInterpreter {
-    def clientInput(input: String): String = {
+    def clientInput(input: String): Future[String] = {
       logger.info(s"FAKE: Client input received: $input")
-      "Ok"
+      Future.successful("Ok")
     }
   }
 
@@ -88,7 +89,7 @@ object ClientInputInterpreter {
       }
     }
 
-    def clientInput(input: String): String = synchronized {
+    def clientInput(input: String): Future[String] = synchronized {
 
       logger.info(s"Client input received: $input")
 
@@ -114,7 +115,7 @@ object ClientInputInterpreter {
           Seq(errorMessage)
       }
 
-      response.mkString("[", ", ", "]")
+      Future.successful(response.mkString("[", ", ", "]"))
     }
   }
 

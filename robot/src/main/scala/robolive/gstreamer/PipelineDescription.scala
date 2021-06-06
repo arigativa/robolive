@@ -36,8 +36,7 @@ object PipelineDescription {
     val GPUPoweredH264 = "omxh264enc"
     val GenericH264 = "x264enc bitrate=2000 byte-stream=false key-int-max=60 bframes=0 aud=true tune=zerolatency"
 
-    s"""$videoSource ! queue
-       ! $GenericH264
+    s"""$videoSource
        | ! tee name=t
        |$restreamDescription""".stripMargin
   }

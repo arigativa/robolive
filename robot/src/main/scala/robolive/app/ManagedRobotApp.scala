@@ -4,7 +4,7 @@ import Agent.AgentEndpointGrpc
 import Storage.StorageEndpointGrpc
 import org.slf4j.LoggerFactory
 import robolive.BuildInfo
-import robolive.gstreamer.{PipelineDescription, SimpleFunctionCalculator, VideoSources}
+import robolive.gstreamer.{SimpleFunctionCalculator, TemplatedVideoSource}
 import robolive.managed.{ConfigurationManager, RunningPuppet}
 import robolive.puppet.ClientInputInterpreter
 import robolive.registry.Clients
@@ -42,7 +42,7 @@ object ManagedRobotApp extends App {
 
   val configurationManager = new ConfigurationManager(ConfigurationPath)
 
-  val videoSources = new VideoSources(
+  val videoSources = new TemplatedVideoSource(
     new SimpleFunctionCalculator(
       Map(
         "jetson_camera_all(sensor_id,sensor_mode,width,height,flip_method,fps)" -> "nvarguscamerasrc sensor_id=$$sensor_id$$ sensor_mode=$$sensor_mode$$ ! video/x-raw(memory:NVMM),width=1280, height=720, framerate=30/1, format=NV12 ! nvvidconv flip-method=$$flip_method$$ ! videoconvert ! videoscale ! video/x-raw,width=$$width$$,height=$$height$$",

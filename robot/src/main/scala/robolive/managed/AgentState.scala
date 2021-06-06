@@ -8,7 +8,7 @@ import org.slf4j.Logger
 import robolive.gstreamer.{GstManaged, PipelineDescription, PipelineManaged, VideoSources}
 import robolive.microactor.MicroActor
 import robolive.microactor.MicroActor.TimeredMicroActor
-import robolive.puppet.{ClientInputInterpreter, Puppet}
+import robolive.puppet.{ClientInputInterpreter, CalledPuppet}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
@@ -78,14 +78,16 @@ object AgentState {
     servoController: ClientInputInterpreter,
     storageEndpointClient: StorageEndpointGrpc.StorageEndpointStub,
     sendMessage: AgentMessage => Unit,
+    onPipelineStarted: Pipeline => Unit,
     configurationManager: ConfigurationManager,
   )
 
+  val VideoSrcFn = "videoSrcFn"
+  val RestreamType = "restreamType"
+  val RTMPLink = "rtmpLink"
+  val ShareRestreamLink = "shareRestreamLink"
+
   final case class Idle() extends AgentState {
-    private val VideoSrcFn = "videoSrcFn"
-    private val RestreamType = "restreamType"
-    private val RTMPLink = "rtmpLink"
-    private val ShareRestreamLink = "shareRestreamLink"
 
     override def apply(deps: Deps, event: RegistryMessage.Message)(
       implicit ec: ExecutionContext
@@ -102,11 +104,6 @@ object AgentState {
               )
             )
             .map { storageResponse =>
-              val videoSource = {
-                val videoSourceFn = storageResponse.values.getOrElse(VideoSrcFn, "unknown")
-                deps.videoSources.getSource(videoSourceFn)
-              }
-
               val restreamType = {
                 val rawType = storageResponse.values.getOrElse(RestreamType, "NONE")
                 PipelineDescription.RestreamType.fromUnsafe(rawType)
@@ -117,6 +114,7 @@ object AgentState {
               val shareRestreamLink: Option[String] =
                 storageResponse.values.get(ShareRestreamLink)
 
+              val videoSource = deps.videoSources.getFromSettings(storageResponse.values)
               deps.logger.info(s"using video source: $videoSource")
 
               implicit val gstInit: GstManaged.GSTInit.type =
@@ -134,8 +132,13 @@ object AgentState {
               )
 
               pipeline.ready()
-              pipeline.play()
+              pipeline.pause()
 
+              deps.logger.info(s"pipeline state: ${pipeline.getState}")
+
+              deps.onPipelineStarted(pipeline)
+
+              pipeline.play()
               deps.logger.info(s"pipeline state: ${pipeline.getState}")
 
               deps.sendMessage(statusUpdate("Registered"))
@@ -199,7 +202,7 @@ object AgentState {
             val signallingUri = settings("signallingUri").get
             val stunUri = settings("stunUri").get
 
-            val freeRunningPuppet = new Puppet.PuppetEventListener {
+            val freeRunningPuppet = new CalledPuppet.PuppetEventListener {
               def stop(): Unit = {
                 deps
                   .enclosingMicroActor()
@@ -222,7 +225,7 @@ object AgentState {
             deps.logger.info(s"Trying to start puppet, thread: ${Thread.currentThread().getId}")
 
             scala.util.Try(
-              new Puppet(
+              new CalledPuppet(
                 pipeline = pipeline,
                 sipAgentName = connectionId,
                 signallingUri = signallingUri,
@@ -286,7 +289,7 @@ object AgentState {
   final case class Busy(
     pipeline: Pipeline,
     gstInit: GstManaged.GSTInit.type,
-    puppet: Puppet,
+    puppet: CalledPuppet,
     connectionId: String,
     login: String,
     password: String,
