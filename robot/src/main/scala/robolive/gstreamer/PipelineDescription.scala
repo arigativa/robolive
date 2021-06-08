@@ -8,7 +8,7 @@ object PipelineDescription {
   ): String = {
     val restreamDescription = restreamType match {
       case RestreamType.Local =>
-        "t. ! queue ! autovideosink"
+        "t. ! queue ! h264parse ! avdec_h264 ! autovideosink"
 
       case RestreamType.None => "t. ! queue ! fakesink"
 
@@ -26,17 +26,17 @@ object PipelineDescription {
            |  mux.""".stripMargin
     }
 
-
     // UDP RTP pipeline
     // (!!) already encoded
     // udpsrc ! application/x-rtp,media=video,clock-rate=90000,encoding-name=H264,payload=96 ! rtph264depay
 
-
     val Vp8enc = "vp8enc deadline=1"
     val GPUPoweredH264 = "omxh264enc"
-    val GenericH264 = "x264enc bitrate=2000 byte-stream=false key-int-max=60 bframes=0 aud=true tune=zerolatency"
+    val GenericH264 =
+      "x264enc bitrate=2000 byte-stream=false key-int-max=60 bframes=0 aud=true tune=zerolatency"
 
-    s"""$videoSource
+    s"""$videoSource ! queue
+       ! $GenericH264
        | ! tee name=t
        |$restreamDescription""".stripMargin
   }

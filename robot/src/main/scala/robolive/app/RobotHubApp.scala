@@ -22,9 +22,11 @@ object RobotHubApp extends App {
 
   val log = LoggerFactory.getLogger(getClass)
 
-  val RemoteRobotIP = getEnv("REMOTE_ROBOT_IP").getOrElse(throw new RuntimeException("Specify REMOTE_ROBOT_IP"))
+  val RemoteRobotIP =
+    getEnv("REMOTE_ROBOT_IP").getOrElse(throw new RuntimeException("Specify REMOTE_ROBOT_IP"))
   val RemoteRobotPort = getEnv("REMOTE_ROBOT_PORT").getOrElse("7777").toInt
-  val LocalHubIp = getEnv("LOCAL_HUB_IP").getOrElse(throw new RuntimeException("Specify LOCAL_HUB_IP"))
+  val LocalHubIp =
+    getEnv("LOCAL_HUB_IP").getOrElse(throw new RuntimeException("Specify LOCAL_HUB_IP"))
 
   log.info(BuildInfo.toString)
   log.info(s"$getClass started")
@@ -73,11 +75,11 @@ object RobotHubApp extends App {
         RegistryConnection.StoragePort,
         RegistryConnection.usePlaintext
       ) { storageChannel =>
-
         Using.resource(new RemotePuppet(RemoteRobotIP, RemoteRobotPort)) { remotePuppet =>
           val clientInputInterpreter = new ClientInputInterpreter {
             override def clientInput(input: String): Future[String] = {
-              remotePuppet.runCommand(Puppet.Command.Command.ClientCommand(ClientCommand(input)))
+              remotePuppet
+                .runCommand(Puppet.Command.Command.ClientCommand(ClientCommand(input)))
                 .map { output =>
                   output.log.getOrElse("<empty>")
                 }
@@ -88,8 +90,7 @@ object RobotHubApp extends App {
             new RunningPuppet(
               name = robotName,
               videoSources = new ConstVideoSource(
-//                "autovideosrc ! x264enc bitrate=2000 byte-stream=false key-int-max=60 bframes=0 aud=true tune=zerolatency"
-                s"udpsrc port=0 name=udpVideoSrc0 ! queue ! application/x-rtp,media=video,clock-rate=90000,encoding-name=H264,payload=96 ! rtph264depay ! h264parse"
+                s"videotestsrc is-live=true pattern=ball ! videoconvert"
               ),
               agentEndpointClient = AgentEndpointGrpc.stub(agentChannel),
               storageEndpointClient = StorageEndpointGrpc.stub(storageChannel),
@@ -101,22 +102,23 @@ object RobotHubApp extends App {
                   case srcElem =>
                     srcElem.get("port") match {
                       case port: Integer =>
-                        Await.result(remotePuppet.runCommand(Puppet.Command.Command.GstPipeline(GstreamerPipeline(
-                          "nvarguscamerasrc sensor_id=0 sensor_mode=4" +
-                            " ! video/x-raw(memory:NVMM),width=1280, height=720, framerate=30/1, format=NV12" +
-                            " ! nvvidconv flip-method=2" +
-                            " ! nvv4l2h264enc maxperf-enable=1" +
-                            " ! video/x-h264,width=1280,height=720" +
-                            " ! queue" +
-                            " ! rtph264pay" +
-                            s" ! udpsink host=$LocalHubIp port=${port.intValue()}"
-                        ))), Duration.Inf)
+                        Await.result(
+                          remotePuppet.runCommand(
+                            Puppet.Command.Command.GstPipeline(
+                              GstreamerPipeline(
+                                s"""videotestsrc is-live=true pattern=ball ! videoconvert ! udpsink host=$LocalHubIp port=${port
+                                  .intValue()}"""
+                              )
+                            )
+                          ),
+                          Duration.Inf
+                        )
                       case value =>
                         log.error(s"invalid port value: ${value}")
                     }
                 }
-            }
-          )
+              }
+            )
           ) { runningPuppet =>
             runningPuppet.register()
 
