@@ -90,7 +90,8 @@ object RobotHubApp extends App {
             new RunningPuppet(
               name = robotName,
               videoSources = new ConstVideoSource(
-                s"videotestsrc is-live=true pattern=ball ! videoconvert"
+//                s"videotestsrc is-live=true pattern=ball ! videoconvert"
+                s"""udpsrc port=0 name=udpVideoSrc0 mtu=150000 caps="video/x-h264, stream-format=(string)byte-stream, media=video""""
               ),
               agentEndpointClient = AgentEndpointGrpc.stub(agentChannel),
               storageEndpointClient = StorageEndpointGrpc.stub(storageChannel),
@@ -102,17 +103,22 @@ object RobotHubApp extends App {
                   case srcElem =>
                     srcElem.get("port") match {
                       case port: Integer =>
-                        Await.result(
-                          remotePuppet.runCommand(
+                        val res = remotePuppet
+                          .runCommand(
                             Puppet.Command.Command.GstPipeline(
                               GstreamerPipeline(
-                                s"""videotestsrc is-live=true pattern=ball ! videoconvert ! udpsink host=$LocalHubIp port=${port
+                                s"""videotestsrc is-live=true pattern=ball ! videoconvert ! x264enc bitrate=2000 byte-stream=false key-int-max=60 bframes=0 aud=true tune=zerolatency ! udpsink host=$LocalHubIp port=${port
                                   .intValue()}"""
                               )
                             )
-                          ),
-                          Duration.Inf
-                        )
+                          )
+                        res.onComplete {
+                          case Failure(exception) =>
+                            log.error("Fail to send pipeline to agent", exception)
+                          case Success(value) =>
+                            log.info(s"Pipeline sent to agent, result: `$value``")
+                        }
+                        Await.result(res, Duration.Inf)
                       case value =>
                         log.error(s"invalid port value: ${value}")
                     }

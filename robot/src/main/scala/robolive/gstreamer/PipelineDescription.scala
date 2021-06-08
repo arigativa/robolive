@@ -8,7 +8,7 @@ object PipelineDescription {
   ): String = {
     val restreamDescription = restreamType match {
       case RestreamType.Local =>
-        "t. ! queue ! h264parse ! avdec_h264 ! autovideosink"
+        """t. ! queue ! h264parse ! avdec_h264 ! videoconvert ! autovideosink"""
 
       case RestreamType.None => "t. ! queue ! fakesink"
 
@@ -36,7 +36,6 @@ object PipelineDescription {
       "x264enc bitrate=2000 byte-stream=false key-int-max=60 bframes=0 aud=true tune=zerolatency"
 
     s"""$videoSource ! queue
-       ! $GenericH264
        | ! tee name=t
        |$restreamDescription""".stripMargin
   }

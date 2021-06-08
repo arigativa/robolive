@@ -23,7 +23,7 @@ final class WebRTCController(
   private var disposeRtpPipeline: () => () = _
   private var state: WebRTCControllerPlayState = WebRTCControllerPlayState.Wait
 
-  private val UseRelayOnly = false
+  private val UseRelayOnly = true
 
   private def log(value: String) = {
     logger.info(s"Assembling call pipeline: $value")
@@ -232,7 +232,7 @@ object WebRTCController {
       video <- sdp.getMedia("video").toRight(Seq("Video media not found"))
       rtpMaps <- video.getAttributes[Attributes.RtpMap]("rtpmap")
       _ = logger.info(s"rtpMaps: $rtpMaps")
-      attr <- rtpMaps.find(_.encodingName == "H264").toRight(Seq("VP8 codec not found in RtpMap"))
+      attr <- rtpMaps.find(_.encodingName == "H264").toRight(Seq("H264 codec not found in RtpMap"))
     } yield {
       attr.payloadType
     }
