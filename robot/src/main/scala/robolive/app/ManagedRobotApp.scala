@@ -4,9 +4,12 @@ import Agent.AgentEndpointGrpc
 import Storage.StorageEndpointGrpc
 import org.slf4j.LoggerFactory
 import robolive.BuildInfo
-import robolive.gstreamer.{SimpleFunctionCalculator, TemplatedVideoSource}
-import robolive.managed.{ConfigurationManager, RunningPuppet}
-import robolive.puppet.ClientInputInterpreter
+import robolive.managed.{
+  ConfigurationManager,
+  RunningPuppet,
+  SimpleFunctionCalculator,
+  TemplatedVideoSource
+}
 import robolive.registry.Clients
 
 import scala.concurrent.Await
@@ -56,9 +59,8 @@ object ManagedRobotApp extends App {
   )
 
   val servoController = getEnv("SERVO_CONTROLLER_TYPE", "FAKE") match {
-    case "SERIAL" =>
-      new ClientInputInterpreter.ClientInputInterpreterImpl(log)
-    case "FAKE" => new ClientInputInterpreter.FakeClientInputInterpreter(log)
+    case "SERIAL" => ???
+    case "FAKE" => ???
   }
 
   implicit object PuppetReleasable extends Using.Releasable[RunningPuppet] {

@@ -6,6 +6,7 @@ import org.mjsip.sip.call._
 import org.mjsip.sip.message.SipMessage
 import org.mjsip.sip.provider.{SipProvider, SipProviderListener, SipStack}
 import org.slf4j.{LoggerFactory, ZooluLoggerAdapter}
+import robolive.managed.ClientInputInterpreter
 import sdp.SdpMessage
 
 import scala.concurrent.ExecutionContext
@@ -27,7 +28,11 @@ final class SipTransportHandler(sipCallToEventAdapter: SIPCallEventHandler, sipU
   }
 }
 
-final class SIPCallEventHandler(controller: WebRTCController, clientInputInterpreter: ClientInputInterpreter, halt: () => ())(
+final class SIPCallEventHandler(
+  controller: WebRTCController,
+  clientInputInterpreter: ClientInputInterpreter,
+  halt: () => ()
+)(
   implicit ec: ExecutionContext
 ) extends ExtendedCallListener {
   private val logger = LoggerFactory.getLogger(getClass.getName)
@@ -64,7 +69,11 @@ final class SIPCallEventHandler(controller: WebRTCController, clientInputInterpr
     logger.debug(s"Ignored: onCallTransferSuccess")
 
   /** Callback function called when a call transfer is NOT sucessfully completed. */
-  override def onCallTransferFailure(call: ExtendedCall, reason: String, notify: SipMessage): Unit = {
+  override def onCallTransferFailure(
+    call: ExtendedCall,
+    reason: String,
+    notify: SipMessage
+  ): Unit = {
     logger.debug(s"Halt: onCallTransferFailure")
     halt()
   }
@@ -166,7 +175,7 @@ final class SIPCallEventHandler(controller: WebRTCController, clientInputInterpr
     logger.debug(s"Ignored: onCallModifyAccepted")
 
   /** Callback function called when arriving a 4xx (re-invite/modify failure) */
-  override def onCallModifyRefused(call: Call, reason: String, resp: SipMessage): Unit ={
+  override def onCallModifyRefused(call: Call, reason: String, resp: SipMessage): Unit = {
     logger.debug(s"Halt: onCallModifyRefused")
     halt()
 }
@@ -174,11 +183,11 @@ final class SIPCallEventHandler(controller: WebRTCController, clientInputInterpr
   /** Callback function called when a re-invite expires */
   override def onCallModifyTimeout(call: Call): Unit = {
     logger.debug(s"Halt: onCallModifyTimeout")
-    halt()
+    // halt()
   }
 
   /** Callback function called when arriving a CANCEL request */
-  override def onCallCancel(call: Call, cancel: SipMessage): Unit ={
+  override def onCallCancel(call: Call, cancel: SipMessage): Unit = {
     logger.debug(s"Halt: onCallCancel")
     halt()
 }
@@ -275,7 +284,7 @@ final class SipClient(
 
   def start(expireTime: Int): Unit = {
     if (rc.isRegistering) rc.halt() // discard default registering loop
-    rc.loopRegister(expireTime, (expireTime*0.5).toInt)
+    rc.loopRegister(expireTime, (expireTime * 0.5).toInt)
   }
 
   def stop(): Unit = {

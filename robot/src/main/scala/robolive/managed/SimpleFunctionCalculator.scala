@@ -1,10 +1,10 @@
-package robolive.gstreamer
+package robolive.managed
 
 class SimpleFunctionCalculator(rawFunctions: Map[String, String]) {
 
   private val functions: Map[String, Seq[String] => Option[String]] =
-    rawFunctions
-      .map { case (functionDef, outputTemplate) =>
+    rawFunctions.map {
+      case (functionDef, outputTemplate) =>
         SimpleFunctionCalculator.simpleTemplateFunction(functionDef) match {
           case Some((functionName, argumentsNames)) =>
             val outputFunction: Seq[String] => Option[String] =
@@ -26,7 +26,7 @@ class SimpleFunctionCalculator(rawFunctions: Map[String, String]) {
 
           case None => throw new RuntimeException(s"can't parse function definition: $functionDef")
         }
-      }
+    }
 
   def calculate(invocation: String): Option[String] = {
     for {
@@ -38,7 +38,6 @@ class SimpleFunctionCalculator(rawFunctions: Map[String, String]) {
     }
   }
 }
-
 
 object SimpleFunctionCalculator {
 

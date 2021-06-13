@@ -4,15 +4,17 @@ import Agent.AgentEndpointGrpc
 import Puppet.Command
 import Puppet.Command.{ClientCommand, GstreamerPipeline}
 import Storage.StorageEndpointGrpc
-import org.freedesktop.gstreamer.elements.PlayBin
 import org.slf4j.LoggerFactory
 import robolive.BuildInfo
-import robolive.gstreamer.{ConstVideoSource, SimpleFunctionCalculator, VideoSources}
-import robolive.managed.{ConfigurationManager, RunningPuppet}
-import robolive.puppet.{ClientInputInterpreter, RemotePuppet}
+import robolive.managed.{
+  ClientInputInterpreter,
+  ConfigurationManager,
+  ConstVideoSource,
+  RunningPuppet,
+}
+import robolive.puppet.RemotePuppet
 import robolive.registry.Clients
 
-import java.rmi.Remote
 import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, DurationInt}
@@ -90,7 +92,7 @@ object RobotHubApp extends App {
             new RunningPuppet(
               name = robotName,
               videoSources = new ConstVideoSource(
-//                s"videotestsrc is-live=true pattern=ball ! videoconvert"
+//                s"videotestsrc is-live=true pattern=ball ! videoconvert ! x264enc bitrate=2000 byte-stream=false key-int-max=60 bframes=0 aud=true tune=zerolatency"
                 s"""udpsrc port=0 name=udpVideoSrc0 mtu=150000 caps="video/x-h264, stream-format=(string)byte-stream, media=video""""
               ),
               agentEndpointClient = AgentEndpointGrpc.stub(agentChannel),

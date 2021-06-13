@@ -1,7 +1,7 @@
-package robolive.app
-import robolive.puppet.driver.{PWMDriver, SerialDriver}
+package agent
+import agent.control.driver.{AgentDriver, SerialDriver}
 
-object TestPWMDriver extends App {
+object TestPWMDriverApp extends App {
 
   import com.fazecast.jSerialComm.SerialPort
   import org.slf4j.LoggerFactory
@@ -20,7 +20,7 @@ object TestPWMDriver extends App {
   arduinoComPort.setBaudRate(9600)
 
   SerialDriver.withSerial(getEnv("SYSTEM_PORT", "NANO")) { serialDriver =>
-    val pwmDriver = new PWMDriver.PWMDriverImpl(serialDriver, log)
+    val pwmDriver = new AgentDriver.AgentDriverImpl(serialDriver, log)
 
     log.info(s"isOpen ${arduinoComPort.isOpen}")
 

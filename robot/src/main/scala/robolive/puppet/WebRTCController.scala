@@ -1,10 +1,10 @@
 package robolive.puppet
 
+import gstmanaged.managed.{GstManaged, PipelineManaged, WebRTCBinManaged}
+import gstmanaged.managed.WebRTCBinManaged.IceCandidate
 import org.freedesktop.gstreamer._
 import org.mjsip.sip.call.ExtendedCall
 import org.slf4j.{Logger, LoggerFactory}
-import robolive.gstreamer.WebRTCBinManaged.IceCandidate
-import robolive.gstreamer.{GstManaged, PipelineManaged, WebRTCBinManaged}
 import sdp.SdpMessage.RawValueAttribute
 import sdp.{Attributes, SdpMessage}
 

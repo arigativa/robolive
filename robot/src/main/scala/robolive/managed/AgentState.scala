@@ -1,20 +1,29 @@
-package robolive.managed
+package robolive
+package managed
 
 import Agent.RegistryMessage.{Message, RegisterResponse}
 import Agent.{AgentMessage, RegistryMessage}
 import Storage.{ReadRequest, StorageEndpointGrpc}
+import gstmanaged.managed.{GstManaged, PipelineDescription, PipelineManaged}
 import org.freedesktop.gstreamer.{Pipeline, Version}
 import org.slf4j.Logger
-import robolive.gstreamer.{GstManaged, PipelineDescription, PipelineManaged, VideoSources}
-import robolive.microactor.MicroActor
-import robolive.microactor.MicroActor.TimeredMicroActor
-import robolive.puppet.{ClientInputInterpreter, CalledPuppet}
+import robolive.managed.AgentState.Deps
+import robolive.puppet.{
+  RegistrationClientHandler,
+  SIPCallEventHandler,
+  SipClient,
+  SipConfig,
+  WebRTCController
+}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
-sealed trait AgentState
-    extends MicroActor.State[AgentState.Deps, RegistryMessage.Message, AgentState] {
+sealed trait AgentState {
+
+  def apply(deps: Deps, event: RegistryMessage.Message)(
+    implicit ec: ExecutionContext
+  ): Future[AgentState]
 
   protected def accept(requestId: String, settings: Map[String, String]): AgentMessage = {
     AgentMessage(
@@ -67,11 +76,6 @@ sealed trait AgentState
 
 object AgentState {
   final case class Deps(
-    enclosingMicroActor: () => TimeredMicroActor[
-      AgentState.Deps,
-      RegistryMessage.Message,
-      AgentState
-    ],
     logger: Logger,
     agentName: String,
     videoSources: VideoSources,
@@ -147,7 +151,17 @@ object AgentState {
                 deps.sendMessage(settingsUpdate(ShareRestreamLink, link))
               }
 
-              Registered(pipeline, gstInit, connectionId, login, password)
+              Registered(
+                pipeline,
+                gstInit,
+                connectionId,
+                login,
+                password,
+                () => {
+                  pipeline.stop()
+                  gstInit.dispose()
+                }
+              )
             }
 
         case other =>
@@ -155,6 +169,8 @@ object AgentState {
           Future.successful(this)
       }
     }
+
+    def stop(): AgentState = Idle()
   }
 
   final case class Registered(
@@ -163,11 +179,17 @@ object AgentState {
     connectionId: String,
     login: String,
     password: String,
+    stopInitialPipeline: () => Unit,
   ) extends AgentState {
     private val SignallingUri = "signallingUri"
     private val StunUri = "stunUri"
     private val ServoControllerType = "servoControllerType"
     private val TurnUri = "turnUri"
+    @volatile private var currentSipClient: SipClient = _
+    private val stopSipClient = () => {
+      if (currentSipClient ne null ) currentSipClient.stop()
+      currentSipClient = null
+    }
 
     private val puppetConfigurationKeys = Seq(
       SignallingUri,
@@ -181,6 +203,8 @@ object AgentState {
     ): Future[AgentState] = {
       event match {
         case Message.Connected(clientConnectionRequest) =>
+          if (currentSipClient ne null) throw new RuntimeException("Agent is Busy")
+
           deps.logger.info(s"`${clientConnectionRequest.name}` is trying to connect")
 
           deps.logger.info("request settings from storage")
@@ -202,40 +226,48 @@ object AgentState {
             val signallingUri = settings("signallingUri").get
             val stunUri = settings("stunUri").get
 
-            val freeRunningPuppet = new CalledPuppet.PuppetEventListener {
-              def stop(): Unit = {
-                deps
-                  .enclosingMicroActor()
-                  .send(
-                    RegistryMessage.Message.Registered(
-                      RegistryMessage
-                        .RegisterResponse(
-                          connectionId,
-                          login,
-                          password,
-                          _root_.scalapb.UnknownFieldSet.empty
-                        )
-                    )
-                  )
-              }
-            }
-
             deps.logger.info(s"Starting Robolive inc. robot")
             deps.logger.info(s"Trying to connect to signalling `$signallingUri`")
             deps.logger.info(s"Trying to start puppet, thread: ${Thread.currentThread().getId}")
 
-            scala.util.Try(
-              new CalledPuppet(
-                pipeline = pipeline,
-                sipAgentName = connectionId,
-                signallingUri = signallingUri,
-                rawStunUri = stunUri,
-                clientInputInterpreter = deps.servoController,
-                eventListener = freeRunningPuppet,
-                gstInit = gstInit
+            var stopHook: () => () = null
+            scala.util.Try({
+              val stunUriFixed = stunUri.replaceAll("stun:", "stun://")
+              val controller =
+                new WebRTCController(
+                  videoSourcePipeline = pipeline,
+                  stunServerUrl = stunUriFixed,
+                )(gstInit)
+
+              val sipConfig = SipConfig(
+                registrarUri = signallingUri,
+                name = connectionId,
               )
-            ) match {
-              case Success(puppet) =>
+
+              stopHook = () => {
+                stopSipClient()
+                if (controller ne null) controller.dispose()
+                deps.sendMessage(statusUpdate("Registered"))
+              }
+
+              val sipEventsHandler =
+                new SIPCallEventHandler(
+                  controller,
+                  deps.servoController,
+                  stopHook
+                )
+
+              val registrationClientHandler = new RegistrationClientHandler(stopHook)
+
+              currentSipClient = new SipClient(
+                sipEventsHandler,
+                registrationClientHandler,
+                sipConfig,
+              )
+
+              currentSipClient.start(60)
+            }) match {
+              case Success(()) =>
                 deps.logger.info("accepting incoming connection")
 
                 val turnUri = settings("turnUri").get
@@ -255,20 +287,13 @@ object AgentState {
 
                 deps.sendMessage(statusUpdate("Busy"))
 
-                Busy(
-                  pipeline = pipeline,
-                  gstInit = gstInit,
-                  puppet = puppet,
-                  connectionId = connectionId,
-                  login = login,
-                  password = password
-                )
+                this
 
               case Failure(exception) =>
                 val errorMessage = s"Can not start-up the puppet: ${exception.getMessage}"
                 deps.logger.error(errorMessage, exception)
-                freeRunningPuppet.stop()
                 deps.sendMessage(decline(clientConnectionRequest.requestId, errorMessage))
+                stopHook()
                 this
             }
           }).recover {
@@ -281,38 +306,6 @@ object AgentState {
 
         case other =>
           deps.logger.error(s"Unexpected message $other in Registered state")
-          Future.successful(this)
-      }
-    }
-  }
-
-  final case class Busy(
-    pipeline: Pipeline,
-    gstInit: GstManaged.GSTInit.type,
-    puppet: CalledPuppet,
-    connectionId: String,
-    login: String,
-    password: String,
-  ) extends AgentState {
-    override def apply(deps: Deps, event: RegistryMessage.Message)(
-      implicit ec: ExecutionContext
-    ): Future[AgentState] = {
-      event match {
-        // fixme: hack to not create additional message for `Disconnect`
-        case Message.Registered(_) =>
-          puppet.stop()
-          deps.sendMessage(statusUpdate("Registered"))
-          Future.successful(AgentState.Registered(pipeline, gstInit, connectionId, login, password))
-
-        case other @ Message.Connected(clientConnectionRequest) =>
-          deps.logger.error(s"Unexpected message $other in Busy state")
-          deps.sendMessage(
-            decline(clientConnectionRequest.requestId, "Can not make new connection: `Busy`")
-          )
-          Future.successful(this)
-
-        case other =>
-          deps.logger.error(s"Unexpected message $other in Busy state")
           Future.successful(this)
       }
     }

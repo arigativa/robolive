@@ -1,4 +1,4 @@
-package robolive.gstreamer
+package robolive.managed
 
 import robolive.managed.AgentState.VideoSrcFn
 
@@ -6,7 +6,8 @@ trait VideoSources {
   def getFromSettings(settings: Map[String, String]): String
 }
 
-class TemplatedVideoSource(sourceFunctions: SimpleFunctionCalculator, defaultSource: String) extends VideoSources {
+class TemplatedVideoSource(sourceFunctions: SimpleFunctionCalculator, defaultSource: String)
+    extends VideoSources {
   def getSource(invocation: String): String = {
     if (invocation.startsWith("pipeline(") && invocation.endsWith(")")) {
       invocation.drop("pipeline(".size).dropRight(1)

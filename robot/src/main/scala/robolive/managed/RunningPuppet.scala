@@ -1,14 +1,20 @@
 package robolive.managed
 
+import Agent.RegistryMessage.{Message, RegisterResponse}
 import Agent.{AgentMessage, RegistryMessage}
-import Storage.StorageEndpointGrpc
+import Storage.{ReadRequest, StorageEndpointGrpc}
+import gstmanaged.managed.{GstManaged, PipelineDescription, PipelineManaged}
 import io.grpc.stub.StreamObserver
-import org.freedesktop.gstreamer.Pipeline
+import org.freedesktop.gstreamer.{Pipeline, Version}
 import org.slf4j.LoggerFactory
-import robolive.gstreamer.{PipelineDescription, VideoSources}
-import robolive.microactor.MicroActor
-import robolive.microactor.MicroActor.TimeredMicroActor
-import robolive.puppet.ClientInputInterpreter
+import robolive.managed.AgentState.{
+  Idle,
+  RTMPLink,
+  Registered,
+  RestreamType,
+  ShareRestreamLink,
+  VideoSrcFn
+}
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success}
@@ -25,30 +31,32 @@ final class RunningPuppet(
 )(implicit ec: ExecutionContext) {
   private val logger = LoggerFactory.getLogger(getClass.getName)
 
-  private val registryChannel: StreamObserver[AgentMessage] = {
-    lazy val actor: RunningPuppet.RunningPuppetActor =
-      new RunningPuppet.RunningPuppetActor(
-        AgentState.Idle(),
-        AgentState.Deps(
-          () => actor,
-          logger = logger,
-          agentName = name,
-          videoSources = videoSources,
-          servoController = servoController,
-          storageEndpointClient = storageEndpointClient,
-          sendMessage = (status: AgentMessage) => registryChannel.onNext(status),
-          configurationManager = configurationManager,
-          onPipelineStarted = onPipelineStarted,
-        )
-      )
+  @volatile private var agentState: AgentState = Idle()
+  private val deps = AgentState.Deps(
+    logger = logger,
+    agentName = name,
+    videoSources = videoSources,
+    servoController = servoController,
+    storageEndpointClient = storageEndpointClient,
+    sendMessage = (status: AgentMessage) => registryChannel.onNext(status),
+    configurationManager = configurationManager,
+    onPipelineStarted = onPipelineStarted,
+  )
 
+  private val registryChannel: StreamObserver[AgentMessage] = {
     val commandReceiver: StreamObserver[RegistryMessage] = new StreamObserver[RegistryMessage] {
 
       private val logger = LoggerFactory.getLogger(getClass)
 
       override def onNext(registryMessage: RegistryMessage): Unit = {
         try {
-          actor.send(registryMessage.message)
+          agentState(deps, registryMessage.message).onComplete {
+            case Failure(error) =>
+              logger.error("Something went really wrong in async call: ", error)
+
+            case Success(newState) =>
+              agentState = newState
+          }
         } catch {
           case NonFatal(error) => logger.error("Something went really wrong: ", error)
         }
@@ -56,13 +64,13 @@ final class RunningPuppet(
 
       override def onError(error: Throwable): Unit = {
         logger.error("error occured", error)
-        actor.shutdown()
+        agentState = Idle()
         terminatedPromise.failure(error)
       }
 
       override def onCompleted(): Unit = {
         logger.info("Inventory closed the connection")
-        actor.shutdown()
+        agentState = Idle()
         terminatedPromise.success(())
       }
     }
@@ -102,30 +110,5 @@ final class RunningPuppet(
   def stop(reason: String): Unit = {
     logger.info(s"stopped, reason: `$reason`")
     terminatedPromise.success(())
-  }
-}
-
-object RunningPuppet {
-  final class RunningPuppetActor(
-    initialState: AgentState,
-    deps: AgentState.Deps
-  ) extends TimeredMicroActor[AgentState.Deps, RegistryMessage.Message, AgentState](
-        initialState,
-        deps,
-      ) {
-    type AgentStateAlias = MicroActor.State[
-      AgentState.Deps,
-      RegistryMessage.Message,
-      AgentState
-    ]
-
-    def onError(
-      error: Throwable,
-      oldState: AgentStateAlias,
-    ): AgentStateAlias = {
-      val errorMessage = s"Fallback on previous state. Uncaught error: `${error.getMessage}`"
-      deps.logger.error(errorMessage, error)
-      oldState
-    }
   }
 }

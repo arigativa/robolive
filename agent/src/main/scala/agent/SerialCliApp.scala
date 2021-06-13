@@ -1,20 +1,20 @@
-package robolive.app
+package agent
 
 import com.fazecast.jSerialComm.SerialPort
-import robolive.puppet.driver.SerialDriver
-import robolive.utils.Hex
+import control.driver.SerialDriver
+import utils.Hex
 
 import scala.util.Failure
 
-object WriteToSerial extends App {
+object SerialCliApp extends App {
 
   private def printHelp(unrecognizedInput: List[String]): Unit = {
     println {
       s"""Unknown options `${unrecognizedInput.mkString(" ")}`, try:
-              | -l
-              | -s ttyACM1 -c reset
-              | -s ttyACM1 -c serial -b FFFFFFFFFF -r 5
-              | """.stripMargin
+         | -l
+         | -s ttyACM1 -c reset
+         | -s ttyACM1 -c serial -b FFFFFFFFFF -r 5
+         | """.stripMargin
     }
   }
 
@@ -22,10 +22,10 @@ object WriteToSerial extends App {
     case "-l" :: Nil =>
       SerialPort.getCommPorts.foreach { port =>
         println(s"""
-           |system port name:      ${port.getSystemPortName} 
-           |descriptive port name: ${port.getDescriptivePortName} 
-           |port description:      ${port.getPortDescription}
-           |""".stripMargin)
+                   |system port name:      ${port.getSystemPortName}
+                   |descriptive port name: ${port.getDescriptivePortName}
+                   |port description:      ${port.getPortDescription}
+                   |""".stripMargin)
       }
 
     case "-s" :: systemPortName :: rest =>
@@ -40,12 +40,11 @@ object WriteToSerial extends App {
             println(s"> $response")
 
           case "-c" :: command :: "-b" :: hexString :: rest =>
-            
             val toRead = rest match {
               case "-r" :: readBytes :: Nil => Some(readBytes)
               case _ => None
             }
-                
+
             val bytes = Hex.decodeBytes(hexString)
             val commandWithBodySize = s"$command:${bytes.length}\n"
 
