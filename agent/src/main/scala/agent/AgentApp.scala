@@ -33,14 +33,17 @@ object AgentApp extends App {
 
   object RunningPipeline extends GstreamerPipelineManager {
 
-    private var currentPipeline: Option[Pipeline] = None
+    private type Description = String
+    private var currentPipeline: Option[(Pipeline, Description)] = None
 
     def updatePipeline(description: String, errorLog: String => Unit): State = {
       RunningPipeline.synchronized {
-        currentPipeline.foreach { p =>
-          p.stop()
-          p.dispose()
-          p.close()
+        logger.info(s"starting new pipeline: $description")
+        currentPipeline.foreach { case (prevPipl, description) =>
+          logger.info(s"cancelling current pipeline: $description")
+          prevPipl.stop()
+          prevPipl.dispose()
+          prevPipl.close()
         }
         val newPipeline =
           PipelineManaged(
@@ -50,7 +53,7 @@ object AgentApp extends App {
           )
         newPipeline.ready()
         newPipeline.play()
-        currentPipeline = Some(newPipeline)
+        currentPipeline = Some((newPipeline, description))
         newPipeline.getState
       }
     }
@@ -69,8 +72,9 @@ object AgentApp extends App {
           command.command match {
             case Command.Command.Empty =>
             case Command.Command.GstPipeline(newPipeline) =>
-              val state = gstPipelineMgr.updatePipeline(newPipeline.description, error => {
-                responseObserver.onNext(PuppetOutput(commandID = command.id, log = Some(error)))
+              val state = gstPipelineMgr.updatePipeline(newPipeline.description, message => {
+                logger.info(s"(pipeline): $message")
+                responseObserver.onNext(PuppetOutput(commandID = command.id, log = Some(message)))
               })
               responseObserver.onNext(
                 PuppetOutput(
@@ -79,13 +83,15 @@ object AgentApp extends App {
                 )
               )
             case Command.Command.ClientCommand(clCommand) =>
+              logger.info(s"received command: ${clCommand.command}")
               val output = clientInputInterpreter.clientInput(clCommand.command)
+              logger.info(s"command result: ${output}")
               responseObserver.onNext(PuppetOutput(commandID = command.id, log = Some(output)))
           }
         }
 
         override def onError(t: Throwable): Unit = {
-          logger.error("received error", t)
+          logger.info("received error", t)
           responseObserver.onCompleted()
         }
 
