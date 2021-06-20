@@ -1,10 +1,9 @@
-package robolive.registry
-
-import java.util.concurrent.TimeUnit
+package robolive.managed
 
 import io.grpc.{ManagedChannel, ManagedChannelBuilder}
 import org.slf4j.LoggerFactory
 
+import java.util.concurrent.TimeUnit
 import scala.util.{Try, Using}
 
 object Clients {
@@ -22,7 +21,9 @@ object Clients {
       }
     }
 
-  def grpcChannel[A](host: String, port: Int, usePlaintext: Boolean)(body: ManagedChannel => A): Try[A] = {
+  def grpcChannel[A](host: String, port: Int, usePlaintext: Boolean)(
+    body: ManagedChannel => A
+  ): Try[A] = {
     Using(makeChannel(host, port, usePlaintext))(body)
   }
 

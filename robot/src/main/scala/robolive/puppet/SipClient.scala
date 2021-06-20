@@ -6,7 +6,6 @@ import org.mjsip.sip.call._
 import org.mjsip.sip.message.SipMessage
 import org.mjsip.sip.provider.{SipProvider, SipProviderListener, SipStack}
 import org.slf4j.{LoggerFactory, ZooluLoggerAdapter}
-import robolive.managed.ClientInputInterpreter
 import sdp.SdpMessage
 
 import scala.concurrent.ExecutionContext

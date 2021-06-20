@@ -1,22 +1,18 @@
-package robolive
-package managed
+package robolive.puppet
 
 import Agent.RegistryMessage.{Message, RegisterResponse}
 import Agent.{AgentMessage, RegistryMessage}
+import Puppet.Command.{ClientCommand, GstreamerPipeline}
 import Storage.{ReadRequest, StorageEndpointGrpc}
 import gstmanaged.managed.{GstManaged, PipelineDescription, PipelineManaged}
 import org.freedesktop.gstreamer.{Pipeline, Version}
 import org.slf4j.Logger
-import robolive.managed.AgentState.Deps
-import robolive.puppet.{
-  RegistrationClientHandler,
-  SIPCallEventHandler,
-  SipClient,
-  SipConfig,
-  WebRTCController
-}
+import robolive.app.RobotHubApp.{LocalHubIp, RemoteRobotIP, RemoteRobotPort, log}
+import robolive.managed.{ConfigurationManager, VideoSources}
+import robolive.puppet.AgentState.Deps
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 sealed trait AgentState {
@@ -79,10 +75,8 @@ object AgentState {
     logger: Logger,
     agentName: String,
     videoSources: VideoSources,
-    servoController: ClientInputInterpreter,
     storageEndpointClient: StorageEndpointGrpc.StorageEndpointStub,
     sendMessage: AgentMessage => Unit,
-    onPipelineStarted: Pipeline => Unit,
     configurationManager: ConfigurationManager,
   )
 
@@ -140,9 +134,6 @@ object AgentState {
 
               deps.logger.info(s"pipeline state: ${pipeline.getState}")
 
-              deps.onPipelineStarted(pipeline)
-
-              pipeline.play()
               deps.logger.info(s"pipeline state: ${pipeline.getState}")
 
               deps.sendMessage(statusUpdate("Registered"))
@@ -244,8 +235,49 @@ object AgentState {
                 name = connectionId,
               )
 
+              val remotePuppet = new RemotePuppet(RemoteRobotIP, RemoteRobotPort)
+
+              val clientInputInterpreter = new ClientInputInterpreter {
+                override def clientInput(input: String): Future[String] = {
+                  remotePuppet
+                    .runCommand(Puppet.Command.Command.ClientCommand(ClientCommand(input)))
+                    .map { output =>
+                      output.log.getOrElse("<empty>")
+                    }
+                }
+              }
+
+              pipeline.getElementByName("udpVideoSrc0") match {
+                case null => log.error("Could not find udpVideoSrc0 to perform network link")
+                case srcElem =>
+                  srcElem.get("port") match {
+                    case port: Integer =>
+                      val res = remotePuppet
+                        .runCommand(
+                          Puppet.Command.Command.GstPipeline(
+                            GstreamerPipeline(
+                              s"""videotestsrc is-live=true pattern=ball ! videoconvert ! x264enc bitrate=2000 byte-stream=false key-int-max=60 bframes=0 aud=true tune=zerolatency ! udpsink host=$LocalHubIp port=${port
+                                .intValue()}"""
+                            )
+                          )
+                        )
+                      res.onComplete {
+                        case Failure(exception) =>
+                          log.error("Fail to send pipeline to agent", exception)
+                        case Success(value) =>
+                          log.info(s"Pipeline sent to agent, result: `$value``")
+                          pipeline.play()
+                      }
+                      Await.result(res, Duration.Inf)
+                    case value =>
+                      log.error(s"invalid port value: ${value}")
+                  }
+              }
+
+
               stopHook = () => {
                 stopSipClient()
+                remotePuppet.close()
                 if (controller ne null) controller.dispose()
                 deps.sendMessage(statusUpdate("Registered"))
               }
@@ -253,7 +285,7 @@ object AgentState {
               val sipEventsHandler =
                 new SIPCallEventHandler(
                   controller,
-                  deps.servoController,
+                  clientInputInterpreter,
                   stopHook
                 )
 

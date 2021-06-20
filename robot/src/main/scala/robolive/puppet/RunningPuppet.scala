@@ -1,33 +1,22 @@
-package robolive.managed
+package robolive.puppet
 
-import Agent.RegistryMessage.{Message, RegisterResponse}
 import Agent.{AgentMessage, RegistryMessage}
-import Storage.{ReadRequest, StorageEndpointGrpc}
-import gstmanaged.managed.{GstManaged, PipelineDescription, PipelineManaged}
+import Storage.StorageEndpointGrpc
 import io.grpc.stub.StreamObserver
-import org.freedesktop.gstreamer.{Pipeline, Version}
 import org.slf4j.LoggerFactory
-import robolive.managed.AgentState.{
-  Idle,
-  RTMPLink,
-  Registered,
-  RestreamType,
-  ShareRestreamLink,
-  VideoSrcFn
-}
+import robolive.managed.{ConfigurationManager, VideoSources}
+import robolive.puppet.AgentState.Idle
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
-import scala.util.{Failure, Success}
 import scala.util.control.NonFatal
+import scala.util.{Failure, Success}
 
 final class RunningPuppet(
   name: String,
   videoSources: VideoSources,
-  servoController: ClientInputInterpreter,
   agentEndpointClient: Agent.AgentEndpointGrpc.AgentEndpointStub,
   storageEndpointClient: StorageEndpointGrpc.StorageEndpointStub,
   configurationManager: ConfigurationManager,
-  onPipelineStarted: Pipeline => Unit = _ => (),
 )(implicit ec: ExecutionContext) {
   private val logger = LoggerFactory.getLogger(getClass.getName)
 
@@ -36,11 +25,9 @@ final class RunningPuppet(
     logger = logger,
     agentName = name,
     videoSources = videoSources,
-    servoController = servoController,
     storageEndpointClient = storageEndpointClient,
     sendMessage = (status: AgentMessage) => registryChannel.onNext(status),
     configurationManager = configurationManager,
-    onPipelineStarted = onPipelineStarted,
   )
 
   private val registryChannel: StreamObserver[AgentMessage] = {

@@ -1,6 +1,5 @@
 package robolive.managed
-
-import robolive.managed.AgentState.VideoSrcFn
+import robolive.puppet.AgentState.VideoSrcFn
 
 trait VideoSources {
   def getFromSettings(settings: Map[String, String]): String

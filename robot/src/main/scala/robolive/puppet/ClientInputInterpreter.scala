@@ -1,4 +1,5 @@
-package robolive.managed
+package robolive.puppet
+
 import scala.concurrent.Future
 
 trait ClientInputInterpreter {

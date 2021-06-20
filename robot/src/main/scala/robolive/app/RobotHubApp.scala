@@ -1,19 +1,18 @@
 package robolive.app
 
 import Agent.AgentEndpointGrpc
-import Puppet.Command
 import Puppet.Command.{ClientCommand, GstreamerPipeline}
 import Storage.StorageEndpointGrpc
 import org.slf4j.LoggerFactory
 import robolive.BuildInfo
 import robolive.managed.{
-  ClientInputInterpreter,
+  Clients,
   ConfigurationManager,
   ConstVideoSource,
-  RunningPuppet,
+  SimpleFunctionCalculator,
+  TemplatedVideoSource
 }
-import robolive.puppet.RemotePuppet
-import robolive.registry.Clients
+import robolive.puppet.{RemotePuppet, RunningPuppet}
 
 import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -54,6 +53,21 @@ object RobotHubApp extends App {
 
   val configurationManager = new ConfigurationManager(ConfigurationPath)
 
+  val videoSources = new TemplatedVideoSource(
+    new SimpleFunctionCalculator(
+      Map(
+        "jetson_camera_all(sensor_id,sensor_mode,width,height,flip_method,fps)" -> "nvarguscamerasrc sensor_id=$$sensor_id$$ sensor_mode=$$sensor_mode$$ ! video/x-raw(memory:NVMM),width=1280, height=720, framerate=30/1, format=NV12 ! nvvidconv flip-method=$$flip_method$$ ! videoconvert ! videoscale ! video/x-raw,width=$$width$$,height=$$height$$",
+        "jetson_camera_scaled(sensor_id,sensor_mode,width,height)" -> "nvarguscamerasrc sensor_id=$$sensor_id$$ sensor_mode=$$sensor_mode$$ ! video/x-raw(memory:NVMM),width=1280, height=720, framerate=60/1, format=NV12 ! nvvidconv flip-method=0 ! videoconvert ! videoscale ! video/x-raw,width=$$width$$,height=$$height$$",
+        "jetson_camera(sensor_id,sensor_mode,flip_method)" -> "nvarguscamerasrc sensor_id=$$sensor_id$$ sensor_mode=$$sensor_mode$$ ! video/x-raw(memory:NVMM),width=1280, height=720, framerate=60/1, format=NV12 ! nvvidconv flip-method=$$flip_method$$ ! videoconvert",
+        "circles" -> "videotestsrc is-live=true pattern=ball ! videoconvert",
+        "circles_h264" -> "videotestsrc is-live=true pattern=ball ! videoconvert ! x264enc bitrate=2000 byte-stream=false key-int-max=60 bframes=0 aud=true tune=zerolatency",
+        "remote_udp" -> """udpsrc port=0 name=udpVideoSrc0 mtu=150000 caps="video/x-h264, stream-format=(string)byte-stream, media=video"""",
+        "autovideosrc" -> "autovideosrc ! videoconvert"
+      )
+    ),
+    defaultVideoSource
+  )
+
   implicit object PuppetReleasable extends Using.Releasable[RunningPuppet] {
     override def release(resource: RunningPuppet): Unit = {
       resource.stop("releasing resources")
@@ -77,70 +91,27 @@ object RobotHubApp extends App {
         RegistryConnection.StoragePort,
         RegistryConnection.usePlaintext
       ) { storageChannel =>
-        Using.resource(new RemotePuppet(RemoteRobotIP, RemoteRobotPort)) { remotePuppet =>
-          val clientInputInterpreter = new ClientInputInterpreter {
-            override def clientInput(input: String): Future[String] = {
-              remotePuppet
-                .runCommand(Puppet.Command.Command.ClientCommand(ClientCommand(input)))
-                .map { output =>
-                  output.log.getOrElse("<empty>")
-                }
-            }
-          }
+        Using.resource(
+          new RunningPuppet(
+            name = robotName,
+            videoSources = videoSources,
+            agentEndpointClient = AgentEndpointGrpc.stub(agentChannel),
+            storageEndpointClient = StorageEndpointGrpc.stub(storageChannel),
+            configurationManager = configurationManager,
+          )
+        ) { runningPuppet =>
+          runningPuppet.register()
 
-          Using.resource(
-            new RunningPuppet(
-              name = robotName,
-              videoSources = new ConstVideoSource(
-//                s"videotestsrc is-live=true pattern=ball ! videoconvert ! x264enc bitrate=2000 byte-stream=false key-int-max=60 bframes=0 aud=true tune=zerolatency"
-                s"""udpsrc port=0 name=udpVideoSrc0 mtu=150000 caps="video/x-h264, stream-format=(string)byte-stream, media=video""""
-              ),
-              agentEndpointClient = AgentEndpointGrpc.stub(agentChannel),
-              storageEndpointClient = StorageEndpointGrpc.stub(storageChannel),
-              servoController = clientInputInterpreter,
-              configurationManager = configurationManager,
-              onPipelineStarted = { pipeline =>
-                pipeline.getElementByName("udpVideoSrc0") match {
-                  case null => log.error("Could not find udpVideoSrc0 to perform network link")
-                  case srcElem =>
-                    srcElem.get("port") match {
-                      case port: Integer =>
-                        val res = remotePuppet
-                          .runCommand(
-                            Puppet.Command.Command.GstPipeline(
-                              GstreamerPipeline(
-                                s"""videotestsrc is-live=true pattern=ball ! videoconvert ! x264enc bitrate=2000 byte-stream=false key-int-max=60 bframes=0 aud=true tune=zerolatency ! udpsink host=$LocalHubIp port=${port
-                                  .intValue()}"""
-                              )
-                            )
-                          )
-                        res.onComplete {
-                          case Failure(exception) =>
-                            log.error("Fail to send pipeline to agent", exception)
-                          case Success(value) =>
-                            log.info(s"Pipeline sent to agent, result: `$value``")
-                        }
-                        Await.result(res, Duration.Inf)
-                      case value =>
-                        log.error(s"invalid port value: ${value}")
-                    }
-                }
-              }
-            )
-          ) { runningPuppet =>
-            runningPuppet.register()
-
-            Await.result(
-              runningPuppet.terminated.map(_ => None).recover { case th => Some(th) },
-              Duration.Inf
-            ) match {
-              case Some(error) =>
-                log.warn("RunningPuppet failed", error)
-                log.info("restarting the robot, after a 1 second nap")
-              case None =>
-                log.info("registry finished session, shutting down the robot")
-                gracefulQuit = true
-            }
+          Await.result(
+            runningPuppet.terminated.map(_ => None).recover { case th => Some(th) },
+            Duration.Inf
+          ) match {
+            case Some(error) =>
+              log.warn("RunningPuppet failed", error)
+              log.info("restarting the robot, after a 1 second nap")
+            case None =>
+              log.info("registry finished session, shutting down the robot")
+              gracefulQuit = true
           }
         }
       }
