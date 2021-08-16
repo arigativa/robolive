@@ -1,7 +1,4 @@
 jetson_robot_user: jetson
-jetson_robot_dir: "/home/{{ jetson_robot_user }}/robot"
+jetson_robot_dir: "/home/{{ jetson_robot_user }}/agent"
 jetson_robot_package: "locally-build-robot-package.zip"
-jetson_robot_package_remote: "/home/{{ jetson_robot_user }}/robot.zip"
-jetson_robot_video_pipeline: "videotestsrc is-live=true pattern=ball ! videoconvert"
-
-
+jetson_robot_package_remote: "/home/{{ jetson_robot_user }}/agent.zip"

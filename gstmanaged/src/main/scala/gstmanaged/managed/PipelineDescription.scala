@@ -18,6 +18,7 @@ object PipelineDescription {
           "Can not start RTMP restream without link. Provide: `RTMP_LINK` environment variable."
         )
         s"""t. ! queue name=rtmp_sink_queue
+           |   ! h264parse
            |  ! video/x-h264,profile=main
            |  ! flvmux streamable=true name=mux
            |  ! rtmpsink location="${rtmpLink.get} app=live2"

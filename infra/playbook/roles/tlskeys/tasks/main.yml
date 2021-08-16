@@ -1,0 +1,23 @@
+- name: Create a group to access TLS keys
+  group: name=tlskeys
+  tags:
+    - tlskeys
+
+- file:
+    path: "/etc/letsencrypt"
+    owner: root
+    group: tlskeys
+    recursive: yes
+
+
+- file:
+    path: "{{ item }}"
+    owner: root
+    group: tlskeys
+    mode: 0640
+  with_items:
+    - "{{ shared_tls_private_key }}"
+    - "{{ shared_tls_certificate }}"
+    - "{{ shared_tls_ca_list }}"
+  tags:
+    - tlskeys

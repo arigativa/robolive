@@ -1,0 +1,3 @@
+shared_tls_private_key: "/etc/letsencrypt/live/rl.arigativa.ru/privkey.pem"
+shared_tls_certificate: "/etc/letsencrypt/live/rl.arigativa.ru/cert.pem"
+shared_tls_ca_list: "/etc/letsencrypt/live/rl.arigativa.ru/fullchain.pem"
